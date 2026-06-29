@@ -1,0 +1,126 @@
+::v-deep .game-bind-dialog {
+  max-width: 96vw;
+}
+
+::v-deep .game-bind-dialog .el-dialog__body {
+  padding-top: 14px;
+}
+
+.bind-game-filter {
+  padding: 10px 12px 0;
+  margin-bottom: 10px;
+  background: #f8f9fb;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+}
+
+.bind-game-boards {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bind-game-panel {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #dfe6f2;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.bind-game-panel-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  color: #606266;
+  background: #f5f7fa;
+  border-bottom: 1px solid #dfe6f2;
+}
+
+.bind-game-panel-search {
+  padding: 10px 14px;
+}
+
+.bind-game-list {
+  height: 408px;
+  overflow-y: auto;
+  padding: 4px 14px 10px;
+}
+
+.bind-game-board-actions {
+  flex: 0 0 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.bind-game-board-actions .el-button + .el-button {
+  margin-left: 0;
+}
+
+.bind-alias-table {
+  margin-top: 12px;
+}
+
+.bind-sort-input {
+  width: 112px;
+}
+
+.bind-game-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 74px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5;
+  white-space: normal;
+}
+
+.bind-game-option:last-child {
+  border-bottom: 0;
+}
+
+.bind-game-check {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.bind-game-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.bind-game-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.bind-game-name {
+  flex: 1;
+  color: #303133;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.bind-game-id {
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bind-game-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: #606266;
+  font-size: 12px;
+}

@@ -1,0 +1,329 @@
+.common-activity-form-shell {
+  background: #ffffff;
+}
+
+.common-activity-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.activity-code-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.activity-code-row__label {
+  font-size: 12px;
+  color: #8c98ad;
+}
+
+.activity-code-row__value {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eff5ff;
+  color: #2a71eb;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.common-grid {
+  display: grid;
+  gap: 18px 20px;
+}
+
+.common-grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.common-grid--media {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  margin-top: 22px;
+}
+
+.common-grid__span-2 {
+  grid-column: span 2;
+}
+
+.field-number {
+  width: 100%;
+}
+
+.field-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a96ab;
+}
+
+.activity-intro-item,
+.activity-picture-item {
+  margin-bottom: 0;
+}
+
+.vip-level-item,
+.agent-code-item {
+  max-width: 100%;
+}
+
+.vip-level-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.vip-site-list,
+.agent-site-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vip-site-panel,
+.agent-site-panel {
+  padding: 12px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.vip-site-panel__title,
+.agent-site-panel__title {
+  margin-bottom: 10px;
+  color: #30445f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vip-level-group ::v-deep .el-checkbox-button + .el-checkbox-button {
+  margin-left: 0;
+}
+
+.vip-level-group ::v-deep .el-checkbox-button__inner {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #dbe4ef;
+  border-radius: 999px;
+  background: #f4f7fb;
+  box-shadow: none;
+  color: #6f7f96;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.vip-level-group ::v-deep .el-checkbox-button:first-child .el-checkbox-button__inner,
+.vip-level-group ::v-deep .el-checkbox-button:last-child .el-checkbox-button__inner {
+  border-radius: 999px;
+}
+
+.vip-level-group ::v-deep .el-checkbox-button.is-checked .el-checkbox-button__inner {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.field-label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-label-with-icon__icon {
+  color: #9aa8bc;
+  font-size: 12px;
+}
+
+.agent-code-item {
+  padding-right: 4px;
+}
+
+.agent-code-item ::v-deep .el-input__inner {
+  cursor: pointer;
+}
+
+.agent-selector-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agent-selector-table-wrap {
+  overflow: hidden;
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.agent-selector-table ::v-deep .el-table__header th {
+  background: #f7faff;
+  color: #6f7f96;
+  font-weight: 700;
+}
+
+.agent-selector-table ::v-deep .el-table__body td {
+  color: #30445f;
+}
+
+.agent-selector-table ::v-deep .el-checkbox {
+  margin-right: 0;
+}
+
+.agent-selector-table ::v-deep .el-table__body tr:hover > td {
+  background: #f7fbff;
+}
+
+.activity-intro-item {
+  grid-column: 1 / -1;
+}
+
+.activity-picture-panel {
+  position: relative;
+  width: 100%;
+}
+
+.activity-picture-panel.is-empty ::v-deep .el-upload--picture-card i {
+  display: none;
+}
+
+.activity-picture-panel ::v-deep .component-upload-image {
+  width: 100%;
+}
+
+.activity-picture-panel ::v-deep .el-upload,
+.activity-picture-panel ::v-deep .el-upload--picture-card,
+.activity-picture-panel ::v-deep .el-upload-list--picture-card,
+.activity-picture-panel ::v-deep .el-upload-list--picture-card .el-upload-list__item {
+  width: 100%;
+}
+
+.activity-picture-panel ::v-deep .el-upload--picture-card,
+.activity-picture-panel ::v-deep .el-upload-list--picture-card .el-upload-list__item {
+  height: 144px;
+  margin: 0;
+  border: 1px dashed #d9e3ef;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.activity-picture-panel ::v-deep .el-upload-list--picture-card {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-placeholder {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-placeholder__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #e1eaf5;
+  background: #ffffff;
+  color: #95a3bb;
+  font-size: 18px;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-placeholder__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7d8ca6;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-placeholder__desc {
+  font-size: 12px;
+  color: #9aa7bc;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-actions {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(42, 70, 110, 0.14);
+}
+
+.activity-picture-panel ::v-deep .activity-picture-actions .el-button {
+  padding: 0;
+}
+
+.activity-picture-panel ::v-deep .activity-picture-actions__remove {
+  color: #f56c6c;
+}
+
+.common-activity-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #edf1f6;
+}
+
+.common-activity-form ::v-deep .el-form-item__label {
+  padding-bottom: 8px;
+  color: #5e6d86;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.common-activity-form ::v-deep .el-input__inner,
+.common-activity-form ::v-deep .el-textarea__inner {
+  border-color: #dbe4ef;
+  border-radius: 10px;
+  color: #33445f;
+}
+
+.common-activity-form ::v-deep .el-input__inner {
+  height: 42px;
+  line-height: 42px;
+}
+
+.agent-select-all-link {
+  cursor: pointer;
+  color: #409eff;
+  font-weight: 700;
+}
+
+.agent-select-all-link:hover {
+  color: #66b1ff;
+}
+
+@media (max-width: 1200px) {
+  .common-grid--media {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .common-grid--triple,
+  .common-grid--media {
+    grid-template-columns: 1fr;
+  }
+}

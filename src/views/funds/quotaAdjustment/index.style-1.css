@@ -1,0 +1,263 @@
+.quota-adjustment-page {
+  min-height: calc(100vh - 84px);
+  background: #f4f7fb;
+}
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.page-heading h2 {
+  position: relative;
+  margin: 0;
+  padding-left: 14px;
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.page-heading h2::before {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 20px;
+  background: #2563eb;
+  border-radius: 2px;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.adjust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.adjust-card {
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #dfe6ef;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(31, 45, 61, 0.04);
+}
+
+.adjust-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.adjust-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: #2563eb;
+  background: #eef4ff;
+  border-radius: 6px;
+  font-size: 18px;
+}
+
+.adjust-card__tag {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adjust-card h3 {
+  margin: 0 0 6px;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.adjust-card p {
+  margin: 0 0 18px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.adjust-card .el-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.adjust-card .el-select,
+.adjust-card .el-input-number,
+.adjust-card .el-input {
+  width: 100%;
+}
+
+.deduct-priority-item ::v-deep .el-form-item__content {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.deduct-priority-item ::v-deep .el-radio {
+  margin-right: 18px;
+}
+
+.field-tip {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.adjust-card__submit {
+  width: 100%;
+  margin-top: auto;
+}
+
+.adjust-card--agent .adjust-card__icon {
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.adjust-card--member .adjust-card__icon {
+  color: #9333ea;
+  background: #f5f0ff;
+}
+
+.record-panel {
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #dfe6ef;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(31, 45, 61, 0.04);
+}
+
+.record-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section-title i {
+  color: #2563eb;
+}
+
+.record-filter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.record-keyword {
+  width: 220px;
+}
+
+.record-type {
+  width: 140px;
+}
+
+.record-table {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.record-table ::v-deep th {
+  color: #334155;
+  background: #f8fafc;
+}
+
+.record-table ::v-deep .el-table__footer-wrapper td {
+  background: #f8fafc;
+}
+
+.record-table ::v-deep .el-table__footer-wrapper td:nth-child(3) .cell,
+.record-table ::v-deep .el-table__footer-wrapper td:nth-child(4) .cell {
+  font-weight: 700;
+}
+
+.record-table ::v-deep .el-table__footer-wrapper td:nth-child(3) .cell {
+  color: #1f2937;
+  text-align: right;
+}
+
+.record-table ::v-deep .quota-summary-amounts {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.record-table ::v-deep .quota-summary-amounts .amount-add {
+  color: #059669;
+}
+
+.record-table ::v-deep .quota-summary-amounts .amount-subtract {
+  color: #e11d48;
+}
+
+.target-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.5;
+}
+
+.target-cell strong {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.target-cell span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.balance-mini {
+  display: flex;
+  flex-direction: column;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.amount-add {
+  color: #059669;
+  font-weight: 700;
+}
+
+.amount-subtract {
+  color: #e11d48;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .adjust-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .record-panel__head {
+    display: block;
+  }
+
+  .record-filter {
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,435 @@
+<div class="app-container pay-channel-page">
+  <el-form
+    :model="queryParams"
+    ref="queryForm"
+    :inline="true"
+    v-show="showSearch"
+    class="pay-channel-search"
+    label-width="80px"
+  >
+    <el-form-item label="存款类型" prop="payType">
+      <el-select v-model="queryParams.payType" placeholder="请选择存款类型" clearable size="small">
+        <el-option
+          v-for="item in depositTypeOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="存款币种" prop="payCoin">
+      <el-select v-model="queryParams.payCoin" placeholder="请选择存款币种" clearable size="small">
+        <el-option
+          v-for="item in depositCoinOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="通道状态" prop="status">
+      <el-select v-model="queryParams.status" placeholder="请选择通道状态" clearable size="small">
+        <el-option
+          v-for="item in statusOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+
+  <el-row :gutter="10" class="mb8 pay-channel-toolbar">
+    <el-col :span="1.5">
+      <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd">
+        新增
+      </el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate">
+        修改
+      </el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete">
+        删除
+      </el-button>
+    </el-col>
+    <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
+  </el-row>
+
+  <el-table
+    v-loading="loading"
+    :data="payChannelList"
+    size="mini"
+    stripe
+    class="pay-channel-table"
+    @selection-change="handleSelectionChange"
+  >
+    <el-table-column type="selection" width="46" align="center" />
+    <el-table-column label="ID" align="center" prop="id" width="70" />
+    <el-table-column label="存款类型" align="center" min-width="120">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getPayTypeTagType(scope.row)" effect="light">
+          {{ displayPayType(scope.row) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="存款币种" align="center" min-width="110">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getPayCoinTagType(scope.row)" effect="light">
+          {{ displayPayCoin(scope.row) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="上游服务商" align="center" min-width="110">
+      <template slot-scope="scope">
+        <span>{{ getProviderTypeLabel(scope.row.providerType) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="上游通道编码" align="center" prop="providerWayCode" min-width="120" />
+    <el-table-column label="展示排序" align="center" prop="sortOrder" width="90" />
+    <el-table-column label="支付姓名" align="center" prop="payeeName" min-width="110" show-overflow-tooltip />
+    <el-table-column label="金额类型" align="center" min-width="105">
+      <template slot-scope="scope">
+        {{ formatAmountType(scope.row) }}
+      </template>
+    </el-table-column>
+    <el-table-column label="支付区间" align="center" min-width="160">
+      <template slot-scope="scope">
+        <span class="range-text">{{ formatAmountRange(scope.row) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="协议手续费" align="center" min-width="260" show-overflow-tooltip>
+      <template slot-scope="scope">
+        <span>{{ formatProtocolFeeSummary(scope.row) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="状态" align="center" width="90">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="scope.row.status === '1' ? 'success' : 'info'" effect="light">
+          {{ scope.row.status === '1' ? '启用' : '停用' }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="创建时间" align="center" prop="createTime" min-width="150" />
+    <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="130">
+      <template slot-scope="scope">
+        <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)">修改</el-button>
+        <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)">删除</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <pagination
+    v-show="total > 0"
+    :total="total"
+    :page.sync="queryParams.pageNum"
+    :limit.sync="queryParams.pageSize"
+    @pagination="getList"
+  />
+
+  <el-dialog :title="title" :visible.sync="open" width="980px" append-to-body class="pay-channel-dialog">
+    <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+      <section class="form-section">
+        <div class="form-section__title">基础信息</div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="存款类型" prop="payType">
+              <el-select v-model="form.payType" placeholder="请选择存款类型" style="width: 100%" @change="handlePayTypeChange">
+                <el-option
+                  v-for="item in depositTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="存款币种" prop="payCoin">
+              <el-select v-model="form.payCoin" placeholder="请选择存款币种" style="width: 100%" @change="handlePayCoinChange">
+                <el-option
+                  v-for="item in depositCoinOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="上游服务商" prop="providerType">
+              <el-select v-model="form.providerType" placeholder="请选择上游服务商" style="width: 100%" @change="handleProviderTypeChange">
+                <el-option
+                  v-for="item in providerTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="上游通道编码" prop="providerWayCode">
+              <el-input v-model="form.providerWayCode" :placeholder="getProviderWayCodePlaceholder(form.providerType)" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="展示排序" prop="sortOrder">
+              <el-input-number v-model="form.sortOrder" controls-position="right" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="通道状态" prop="status">
+              <el-radio-group v-model="form.status" class="radio-group-align">
+                <el-radio label="1">启用</el-radio>
+                <el-radio label="0">停用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-if="requiresUsdCnyRate(form.payCoin)" label="人民币汇率" prop="exchangeRate">
+              <el-input v-model="form.exchangeRate" placeholder="请输入人民币汇率" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-if="!isNexusChannel()" label="支付姓名" prop="payeeName">
+              <el-input v-model="form.payeeName" placeholder="请输入支付姓名" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </section>
+
+      <section v-if="isDigitalPayCoin(form.payCoin)" class="form-section">
+        <div class="form-section__title">
+          充值网络
+          <el-button type="primary" plain size="mini" icon="el-icon-plus" @click="addRechargeNetwork">新增网络</el-button>
+        </div>
+        <div class="network-editor">
+          <div class="network-editor__row network-editor__head">
+            <span>网络名称</span>
+            <span>网络代码</span>
+            <span>代币标准</span>
+            <span>充值资产</span>
+            <span>合约地址</span>
+            <span>状态</span>
+            <span>操作</span>
+          </div>
+          <div
+            v-for="(item, index) in form.rechargeNetworks"
+            :key="'recharge-network-' + index"
+            class="network-editor__row"
+            :class="{ 'is-editing': item.editing }"
+          >
+            <el-input
+              v-model="item.networkName"
+              placeholder="如 TRON"
+              :readonly="!item.editing"
+            />
+            <el-input
+              v-model="item.networkCode"
+              placeholder="如 tron"
+              :readonly="!item.editing"
+              @change="syncProtocolsFromNetworks"
+            />
+            <el-input
+              v-model="item.tokenStandard"
+              placeholder="如 TRC-20"
+              :readonly="!item.editing"
+              @change="syncProtocolsFromNetworks"
+            />
+            <el-input
+              v-model="item.asset"
+              placeholder="如 USDT"
+              :readonly="!item.editing"
+            />
+            <el-input
+              v-model="item.contractAddress"
+              placeholder="请输入合约地址"
+              :readonly="!item.editing"
+            >
+              <i slot="suffix" class="el-input__icon el-icon-document-copy"></i>
+            </el-input>
+            <div class="network-status-cell">
+              <el-switch
+                v-model="item.enabled"
+                :disabled="!item.editing"
+                active-color="#13ce66"
+                inactive-color="#ff9f1a"
+              />
+              <span :class="['network-status-text', item.enabled ? 'is-enabled' : 'is-maintain']">
+                {{ item.enabled ? '启用' : '维护中' }}
+              </span>
+            </div>
+            <div class="network-action-cell">
+              <el-button type="text" @click="toggleRechargeNetworkEdit(item)">
+                {{ item.editing ? '完成' : '编辑' }}
+              </el-button>
+              <el-button
+                type="text"
+                class="network-action-cell__delete"
+                :disabled="form.rechargeNetworks.length <= 1"
+                @click="removeRechargeNetwork(index)"
+              >删除</el-button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section__title">支付区间与手续费</div>
+        <el-form-item label="支付区间类型">
+          <el-checkbox v-model="form.isFixedAmount" :true-label="1" :false-label="0">固定金额</el-checkbox>
+          <el-checkbox v-model="form.isFloatingAmount" :true-label="1" :false-label="0" style="margin-left: 20px;">浮动区间</el-checkbox>
+        </el-form-item>
+        <el-form-item v-if="form.isFixedAmount === 1" label="固定金额" prop="fixedAmounts">
+          <el-input v-model="form.fixedAmounts" placeholder="多个金额用逗号分隔，如：100,200,500" />
+        </el-form-item>
+        <el-form-item v-if="form.isFloatingAmount === 1" label="浮动区间">
+          <el-col :span="11">
+            <el-form-item prop="minAmount">
+              <el-input v-model="form.minAmount" placeholder="最低金额" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="2" style="text-align: center">-</el-col>
+          <el-col :span="11">
+            <el-form-item prop="maxAmount">
+              <el-input v-model="form.maxAmount" placeholder="最高金额" />
+            </el-form-item>
+          </el-col>
+        </el-form-item>
+        <el-form-item label="充值手续费模式" prop="feeMode">
+          <el-radio-group v-model="form.feeMode">
+            <el-radio label="tiered_rate">按档位费率</el-radio>
+            <el-radio label="fixed_fee">固定手续费</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.feeMode === 'tiered_rate'" label="费率档位">
+          <div class="fee-rate-editor">
+            <div class="fee-rate-row fee-rate-header">
+              <span class="fee-col">最小金额</span>
+              <span class="fee-col">最大金额</span>
+              <span class="fee-col">费率(%)</span>
+              <span class="fee-col fee-col-action">操作</span>
+            </div>
+            <div v-for="(item, index) in form.feeRates" :key="'deposit-fee-rate-' + index" class="fee-rate-row">
+              <el-input-number v-model="item.min" :min="0" :precision="2" :controls="false" class="fee-col" />
+              <el-input-number v-model="item.max" :min="0" :precision="2" :controls="false" class="fee-col" />
+              <el-input-number v-model="item.rate" :min="0" :precision="4" :step="0.1" :controls="false" class="fee-col" />
+              <div class="fee-col fee-col-action">
+                <el-button type="text" icon="el-icon-delete" @click="removeFeeRateRow(index)" :disabled="form.feeRates.length === 1">删除</el-button>
+              </div>
+            </div>
+            <el-button type="primary" plain size="mini" icon="el-icon-plus" @click="addFeeRateRow">新增档位</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="form.feeMode === 'tiered_rate'" label="最低手续费">
+          <el-input-number v-model="form.minFeeCny" :min="0" :precision="2" :step="0.1" />
+          <span class="fee-unit"> CNY</span>
+        </el-form-item>
+        <el-form-item v-if="form.feeMode === 'fixed_fee'" label="固定手续费">
+          <el-input-number v-model="form.fixedFee" :min="0" :precision="2" :step="0.1" />
+          <span class="fee-unit"> {{ getFixedFeeUnit(form.payCoin) }}</span>
+        </el-form-item>
+      </section>
+
+      <section class="form-section">
+        <div class="condition-setting">
+          <div class="condition-setting__left">
+            <span class="condition-setting__title">使用条件设置</span>
+            <span :class="['condition-setting__state', !form.conditionEnabled ? 'is-active' : '']">关闭</span>
+            <el-switch v-model="form.conditionEnabled" active-color="#1890ff" inactive-color="#dcdfe6" />
+            <span :class="['condition-setting__state', form.conditionEnabled ? 'is-active' : '']">启用</span>
+          </div>
+          <div class="condition-setting__right">
+            <span class="condition-setting__label">VIP等级限制</span>
+            <el-select
+              v-model="form.vipLevelLimit"
+              placeholder="请选择VIP等级"
+              :disabled="!form.conditionEnabled"
+              style="width: 260px"
+            >
+              <el-option
+                v-for="item in vipLevelOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section__title">支持的站点</div>
+        <el-form-item label="支持的客户端" prop="supportedClients">
+          <el-checkbox-group v-model="form.selectedClients">
+            <el-checkbox
+              v-for="dict in dict.type.plat_type"
+              :key="dict.value"
+              :label="dict.value"
+            >{{dict.label}}</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="支持站点" prop="supportedSiteCodeList">
+          <el-select
+            v-model="form.selectedSiteCodes"
+            multiple
+            filterable
+            clearable
+            placeholder="不选择则支持全部站点"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="site in siteOptions"
+              :key="site.siteCode"
+              :label="site.label"
+              :value="site.siteCode"
+            />
+          </el-select>
+        </el-form-item>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section__title">收款展示</div>
+        <el-form-item v-if="!isNexusChannel() && !isDigitalPayCoin(form.payCoin)" label="收款银行信息">
+          <el-row :gutter="12">
+            <el-col :span="8">
+              <el-form-item prop="bankName">
+                <el-input v-model="form.bankName" placeholder="银行名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item prop="accountName">
+                <el-input v-model="form.accountName" placeholder="收款人姓名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item prop="accountNumber">
+                <el-input v-model="form.accountNumber" placeholder="收款账号" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form-item>
+        <el-form-item label="展示图标" prop="icon">
+          <image-upload v-model="form.icon" />
+        </el-form-item>
+        <el-form-item label="收款二维码" prop="qrCode">
+          <image-upload v-model="form.qrCode" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
+        </el-form-item>
+      </section>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+      <el-button @click="cancel">取 消</el-button>
+    </div>
+  </el-dialog>
+</div>

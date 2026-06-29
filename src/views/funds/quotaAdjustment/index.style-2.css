@@ -1,0 +1,22 @@
+.quota-confirm-box {
+  padding: 4px 0;
+}
+
+.quota-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.quota-confirm-row span {
+  min-width: 80px;
+  color: #64748b;
+}
+
+.quota-confirm-row strong {
+  color: #1f2937;
+  font-weight: 700;
+  text-align: right;
+}

@@ -1,0 +1,414 @@
+<div class="member-detail-page app-container" v-loading="pageLoading">
+  <div class="detail-card">
+    <div class="detail-card__header">
+      <div class="detail-profile">
+        <div class="detail-profile__item detail-profile__item--name">
+          <span class="detail-profile__label">用户名:</span>
+          <span class="detail-profile__name">{{ memberName }}</span>
+          <span class="detail-profile__alias">({{ memberAccountAlias }})</span>
+        </div>
+        <div class="detail-profile__item">
+          <span class="detail-profile__label">账号状态:</span>
+          <span
+            class="detail-profile__status"
+            :class="{ 'is-danger': Number(member.status) === 0, 'is-normal': Number(member.status) !== 0 }"
+          >
+            {{ memberStatusText }}
+          </span>
+        </div>
+        <div class="detail-profile__item">
+          <span class="detail-profile__label">会员等级:</span>
+          <span class="detail-profile__value">{{ memberLevelText }}</span>
+        </div>
+      </div>
+
+      <div class="detail-toolbar">
+        <el-input
+          v-model="jumpKeyword"
+          size="mini"
+          clearable
+          placeholder="请输入会员账号"
+          class="detail-toolbar__search"
+          @keyup.enter.native="handleMemberJump"
+        />
+        <el-button type="primary" size="mini" class="detail-button detail-button--primary" @click="handleMemberJump">
+          搜 索
+        </el-button>
+        <button type="button" class="close-trigger" @click="goBack">
+          <i class="el-icon-close"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="detail-card__main-tabs">
+      <button
+        v-for="tab in mainTabs"
+        :key="tab.key"
+        type="button"
+        class="main-tab"
+        :class="{ 'is-active': activeMainTab === tab.key }"
+        @click="setMainTab(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <div class="detail-card__body">
+      <div class="watermark-layer"></div>
+      <div class="detail-card__content" v-loading="sectionLoading">
+        <div class="detail-card__sub-tabs">
+          <button
+            v-for="tab in currentSubTabs"
+            :key="tab.key"
+            type="button"
+            class="sub-tab"
+            :class="{ 'is-active': activeSubTab === tab.key }"
+            @click="setSubTab(tab.key)"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <div v-if="showFilterStrip" class="filter-strip">
+          <div class="filter-strip__row">
+            <div class="filter-strip__field">
+              <span class="filter-strip__label">计算时间：</span>
+              <el-date-picker
+                v-model="startDate"
+                type="date"
+                size="mini"
+                value-format="yyyy-MM-dd"
+                placeholder="开始时间"
+                class="filter-strip__input"
+                @change="handleDateInputChange"
+              />
+              <span class="filter-strip__separator">-</span>
+              <el-date-picker
+                v-model="endDate"
+                type="date"
+                size="mini"
+                value-format="yyyy-MM-dd"
+                placeholder="结束时间"
+                class="filter-strip__input"
+                @change="handleDateInputChange"
+              />
+            </div>
+
+            <div class="filter-strip__actions">
+              <el-button type="primary" size="mini" class="detail-button detail-button--primary" @click="handleRefresh">
+                筛 选
+              </el-button>
+              <el-button size="mini" class="detail-button" @click="resetFilters">
+                重 置
+              </el-button>
+            </div>
+          </div>
+
+          <div class="filter-strip__quick">
+            <button
+              v-for="item in quickRanges"
+              :key="item.label"
+              type="button"
+              class="quick-chip"
+              :class="{ 'is-active': activeQuickRange === item.value }"
+              @click="applyQuickRange(item.value)"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+        </div>
+
+        <template v-if="isOverviewSection">
+          <div class="table-block">
+            <div class="table-block__inner">
+              <table class="member-grid member-grid--summary">
+                <thead>
+                  <tr>
+                    <th v-for="column in overviewSummaryColumns" :key="column.key">
+                      {{ column.label }}
+                      <span v-if="column.tip" class="table-help">?</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td v-for="column in overviewSummaryColumns" :key="column.key">
+                      {{ overviewSummaryValues[column.key] }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="isBasicSection">
+          <div class="section-caption">基本信息</div>
+
+          <div class="table-block">
+            <div class="table-block__inner">
+              <table class="member-grid member-grid--basic">
+                <tbody>
+                  <tr v-for="(row, rowIndex) in basicTableRows" :key="`basic-row-${rowIndex}`">
+                    <template v-for="(item, itemIndex) in row">
+                      <th :key="`basic-label-${rowIndex}-${itemIndex}`">{{ item.label }}</th>
+                      <td
+                        :key="`basic-value-${rowIndex}-${itemIndex}`"
+                        :class="{ 'member-grid__cell--risk-tags': item.type === 'riskTags' }"
+                      >
+                        <div v-if="item.type === 'riskTags'" class="member-risk-tags">
+                          <div class="member-risk-tags__list">
+                            <el-tag
+                              v-for="tag in memberRiskTags"
+                              :key="getRiskTagKey(tag)"
+                              size="mini"
+                              closable
+                              :type="getRiskTagElementType(tag)"
+                              effect="plain"
+                              class="member-risk-tag"
+                              @close="handleRemoveMemberRiskTag(tag)"
+                            >
+                              {{ getRiskTagName(tag) }}
+                            </el-tag>
+                            <span v-if="!memberRiskTags.length" class="member-risk-tags__empty">暂无风控标签</span>
+                          </div>
+                          <el-popover
+                            v-model="riskTagPickerVisible"
+                            placement="bottom-start"
+                            width="300"
+                            trigger="click"
+                            @show="handleRiskTagPickerShow"
+                          >
+                            <div class="member-risk-tag-picker" v-loading="riskTagOptionsLoading">
+                              <el-input
+                                v-model.trim="riskTagKeyword"
+                                size="mini"
+                                clearable
+                                prefix-icon="el-icon-search"
+                                placeholder="搜索标签名称"
+                              />
+                              <div class="member-risk-tag-picker__list">
+                                <button
+                                  v-for="tag in filteredAvailableRiskTags"
+                                  :key="getRiskTagKey(tag)"
+                                  type="button"
+                                  class="member-risk-tag-option"
+                                  :disabled="riskTagSaving"
+                                  @click="handleAddMemberRiskTag(tag)"
+                                >
+                                  <span class="member-risk-tag-option__name">{{ getRiskTagName(tag) }}</span>
+                                  <span class="member-risk-tag-option__type">{{ getRiskTagTypeLabel(tag) }}</span>
+                                </button>
+                                <div
+                                  v-if="!filteredAvailableRiskTags.length && !riskTagOptionsLoading"
+                                  class="member-risk-tag-picker__empty"
+                                >
+                                  无可用标签
+                                </div>
+                              </div>
+                            </div>
+                            <el-button slot="reference" type="text" size="mini" class="member-risk-tags__add">
+                              <i class="el-icon-plus"></i>
+                              添加
+                            </el-button>
+                          </el-popover>
+                        </div>
+                        <span v-else>{{ item.value }}</span>
+                      </td>
+                    </template>
+                    <template v-if="row.length < 2">
+                      <th :key="`basic-empty-label-${rowIndex}`"></th>
+                      <td :key="`basic-empty-value-${rowIndex}`"></td>
+                  </template>
+                </tr>
+              </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="isCenterWalletSection">
+          <div class="wallet-toolbar">
+            <el-button type="primary" size="mini" class="detail-button detail-button--primary" @click="handleWalletCollect">
+              一键回收
+            </el-button>
+            <button type="button" class="wallet-refresh" @click="handleWalletRefresh">
+              <i class="el-icon-refresh-right"></i>
+            </button>
+          </div>
+
+          <div class="wallet-matrix">
+            <div
+              v-for="wallet in centerWalletCards"
+              :key="wallet.name"
+              class="wallet-matrix__cell"
+            >
+              <div class="wallet-matrix__name">{{ wallet.name }}</div>
+              <div class="wallet-matrix__amount">{{ wallet.amount }}</div>
+              <div v-if="wallet.status" class="wallet-matrix__status">{{ wallet.status }}</div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="isWithdrawMethodSection">
+          <div class="section-caption">提现方式</div>
+
+          <div class="withdraw-method-grid">
+            <div
+              v-for="group in withdrawMethodGroups"
+              :key="group.key"
+              class="withdraw-method-card"
+            >
+              <div class="withdraw-method-card__title">{{ group.title }}</div>
+              <template v-if="group.entries.length">
+                <div
+                  v-for="entry in group.entries"
+                  :key="entry.key"
+                  class="withdraw-method-entry"
+                >
+                  <div v-if="group.entries.length > 1" class="withdraw-method-entry__title">{{ entry.title }}</div>
+                  <div class="withdraw-method-entry__rows">
+                    <div
+                      v-for="row in entry.rows"
+                      :key="row.label"
+                      class="withdraw-method-line"
+                    >
+                      <span class="withdraw-method-label">{{ row.label }}</span>
+                      <span class="withdraw-method-value">{{ row.value }}</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="withdraw-method-empty">暂无数据</div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="isAccountAdjustSection">
+          <div class="account-adjust-panel">
+            <el-form
+              ref="adjustForm"
+              :model="adjustForm"
+              :rules="adjustRules"
+              label-width="100px"
+              size="mini"
+              class="account-adjust-form"
+            >
+              <el-form-item label="会员账号:">
+                <el-input :value="memberName" disabled class="adjust-field--short" />
+              </el-form-item>
+
+              <el-form-item label="钱包余额:">
+                <div class="adjust-balance-row">
+                  <el-input :value="adjustWalletBalance" disabled class="adjust-field--short" />
+                  <span class="adjust-unit">元</span>
+                  <button type="button" class="wallet-refresh wallet-refresh--inline" @click="handleWalletRefresh">
+                    <i class="el-icon-refresh-right"></i>
+                  </button>
+                </div>
+              </el-form-item>
+
+              <el-form-item label="调整类型:">
+                <div class="adjust-fixed-text">系统调整</div>
+              </el-form-item>
+
+              <el-form-item label="调整方式:" prop="adjustDirection" required>
+                <div class="adjust-direction-row">
+                  <el-radio-group v-model="adjustForm.adjustDirection">
+                    <el-radio label="up">上分</el-radio>
+                    <el-radio label="down">下分</el-radio>
+                  </el-radio-group>
+                  <div class="adjust-warning-text">请注意：上下分调整会直接更新余额，不走审核流程</div>
+                </div>
+              </el-form-item>
+
+              <el-form-item label="流水倍数:" prop="flowMultiple" required>
+                <div class="adjust-direction-row">
+                  <el-input-number
+                    v-model="adjustForm.flowMultiple"
+                    :min="0"
+                    :precision="0"
+                    :step="1"
+                    controls-position="right"
+                    class="adjust-field--short"
+                  />
+                  <div class="adjust-warning-text">0 表示直接调整可提现额度，大于 0 表示生成锁定流水</div>
+                </div>
+              </el-form-item>
+
+              <el-form-item label="调整金额:" prop="amount" required>
+                <div class="adjust-balance-row">
+                  <el-input v-model="adjustForm.amount" placeholder="请输入调整金额，最多两位小数" class="adjust-field--short" />
+                  <span class="adjust-unit">元</span>
+                </div>
+              </el-form-item>
+
+              <el-form-item label="备注:" prop="remark" required>
+                <div class="adjust-remark">
+                  <el-input
+                    v-model="adjustForm.remark"
+                    type="textarea"
+                    :rows="5"
+                    maxlength="100"
+                    show-word-limit
+                    placeholder="请输入备注信息，不超过100字"
+                    class="adjust-field--remark"
+                  />
+                </div>
+              </el-form-item>
+
+              <div class="account-adjust-actions">
+                <el-button
+                  type="primary"
+                  size="mini"
+                  class="detail-button detail-button--primary"
+                  :loading="adjustSubmitting"
+                  @click="submitAccountAdjust"
+                >
+                  提交
+                </el-button>
+              </div>
+            </el-form>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="section-caption">{{ activeSectionTitle }}</div>
+
+          <div :class="['table-block', currentTableBlockClass]">
+            <div class="table-block__inner">
+              <table :class="['member-grid', currentSectionGridClass]">
+                <thead>
+                  <tr>
+                    <th
+                      v-for="(column, columnIndex) in currentSectionColumns"
+                      :key="column.prop"
+                      :class="getSectionColumnClass(column, columnIndex)"
+                    >
+                      {{ column.label }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, rowIndex) in currentSectionRows" :key="`${activeSubTab}-${rowIndex}`">
+                    <td
+                      v-for="(column, columnIndex) in currentSectionColumns"
+                      :key="column.prop"
+                      :class="getSectionColumnClass(column, columnIndex)"
+                      :title="getCellTitle(row[column.prop])"
+                    >
+                      <span class="member-grid__cell-text">{{ row[column.prop] }}</span>
+                    </td>
+                  </tr>
+                  <tr v-if="!currentSectionRows.length">
+                    <td :colspan="currentSectionColumns.length || 1" class="member-grid__empty">暂无数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>

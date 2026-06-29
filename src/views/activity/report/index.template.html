@@ -1,0 +1,224 @@
+<div class="activity-report-page app-container">
+  <section class="page-header">
+    <h1 class="page-title">活动报表</h1>
+  </section>
+
+  <section class="report-filter-card">
+    <el-form ref="queryForm" :model="queryParams" class="report-filter-form" @submit.native.prevent>
+      <div class="report-filter-bar">
+        <div class="report-filter-fields">
+          <div class="report-filter-inline">
+            <span class="report-filter-inline__label">站点:</span>
+            <el-form-item class="report-filter-inline__control" prop="siteCode">
+              <el-select
+                v-model="queryParams.siteCode"
+                :disabled="meta.siteReadonly"
+                :clearable="!meta.siteReadonly"
+                placeholder="全部"
+                @change="handleAutoQuery"
+              >
+                <el-option label="全部" value="" />
+                <el-option
+                  v-for="item in siteOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </div>
+
+          <el-form-item class="report-filter-item report-filter-item--name" prop="activityName">
+            <el-input
+              v-model.trim="queryParams.activityName"
+              clearable
+              placeholder="活动名称"
+              prefix-icon="el-icon-search"
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+
+          <el-form-item class="report-filter-item report-filter-item--member" prop="memberKeyword">
+            <el-input
+              v-model.trim="queryParams.memberKeyword"
+              clearable
+              placeholder="会员"
+              prefix-icon="el-icon-user"
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+
+          <div class="report-filter-inline">
+            <span class="report-filter-inline__label">活动类型:</span>
+            <el-form-item class="report-filter-inline__control" prop="activityType">
+              <el-select v-model="queryParams.activityType" clearable placeholder="全部" @change="handleAutoQuery">
+                <el-option label="全部" value="" />
+                <el-option
+                  v-for="item in activityTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </div>
+
+          <div class="report-filter-inline">
+            <span class="report-filter-inline__label">活动状态:</span>
+            <el-form-item class="report-filter-inline__control" prop="status">
+              <el-select v-model="queryParams.status" placeholder="全部" @change="handleAutoQuery">
+                <el-option
+                  v-for="item in statusOptions"
+                  :key="String(item.value)"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </div>
+
+          <div class="report-filter-inline report-filter-inline--date">
+            <span class="report-filter-inline__label">日期</span>
+            <el-form-item class="report-filter-inline__control">
+              <el-date-picker
+                v-model="queryDateRange"
+                type="daterange"
+                range-separator="~"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                format="yyyy/MM/dd"
+                value-format="yyyy-MM-dd"
+                @change="handleAutoQuery"
+              />
+            </el-form-item>
+          </div>
+        </div>
+
+        <div class="report-filter-actions">
+          <el-button class="report-action report-action--secondary" @click="resetQuery">重置</el-button>
+          <el-button type="primary" class="report-action report-action--primary" icon="el-icon-download" @click="handleExport">导出报表</el-button>
+        </div>
+      </div>
+    </el-form>
+  </section>
+
+  <section class="summary-grid">
+    <article
+      v-for="card in summaryCards"
+      :key="card.key"
+      :class="['summary-card', card.themeClass]"
+    >
+      <div class="summary-card__head">
+        <div :class="['summary-card__icon', card.iconTheme]">
+          <i :class="card.icon"></i>
+        </div>
+        <i class="el-icon-info summary-card__info"></i>
+      </div>
+      <div class="summary-card__label">{{ card.label }}</div>
+      <div :class="['summary-card__value', card.valueClass]">{{ card.value }}</div>
+      <div class="summary-card__meta">{{ card.meta }}</div>
+    </article>
+  </section>
+
+  <section class="detail-card">
+    <div class="detail-card__header">
+      <div class="detail-card__title-wrap">
+        <h2 class="detail-card__title">活动明细</h2>
+        <span class="detail-card__badge">共 {{ total }} 条</span>
+      </div>
+      <el-button type="text" class="detail-card__refresh" icon="el-icon-refresh" @click="refreshData"></el-button>
+    </div>
+
+    <el-table
+      v-loading="loading"
+      :data="list"
+      class="detail-table"
+      empty-text="暂无数据"
+      :header-cell-style="headerCellStyle"
+    >
+      <el-table-column label="时间" prop="createTime" min-width="178" align="center">
+        <template slot-scope="{ row }">
+          <span>{{ parseTime(row.createTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="站点" prop="siteName" min-width="110" align="center" />
+      <el-table-column label="活动编码" prop="activityCode" min-width="188" align="center">
+        <template slot-scope="{ row }">
+          <span class="table-code">{{ row.activityCode || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="活动名称" prop="activityName" min-width="168" align="center">
+        <template slot-scope="{ row }">
+          <el-button type="text" class="table-link-button" @click="handleOpenActivityConfig(row)">{{ row.activityName || '-' }}</el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="活动类型" prop="activityType" min-width="144" align="center">
+        <template slot-scope="{ row }">
+          <span class="type-pill">{{ row.activityType || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="开始时间" prop="activityBeginTime" min-width="118" align="center">
+        <template slot-scope="{ row }">
+          <span>{{ parseTime(row.activityBeginTime, '{y}-{m}-{d}') || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="结束时间" prop="endTimeText" min-width="118" align="center" />
+      <el-table-column label="参与人数" prop="participantCount" min-width="98" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCount(row.participantCount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="完成人数" prop="completedCount" min-width="98" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCount(row.completedCount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="完成率" prop="completionRateText" min-width="92" align="center">
+        <template slot-scope="{ row }">
+          <span :class="['completion-text', completionRateClass(row.completionRateColor)]">{{ row.completionRateText || formatPercent(row.completionRate) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="充值额度 (元)" prop="rechargeAmount" min-width="132" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCurrency(row.rechargeAmount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="投注流水 (元)" prop="betAmount" min-width="132" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCurrency(row.betAmount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="总赢亏 (元)" prop="grossProfit" min-width="118" align="right">
+        <template slot-scope="{ row }">
+          <span :class="['profit-text', profitClass(row.grossProfit)]">{{ formatCurrency(row.grossProfit, true) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="派发奖励 (元)" prop="rewardGrantAmount" min-width="132" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCurrency(row.rewardGrantAmount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="已被领取奖励 (元)" prop="rewardClaimedAmount" min-width="138" align="right">
+        <template slot-scope="{ row }">
+          <span class="table-number">{{ formatCurrency(row.rewardClaimedAmount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="活动状态" prop="statusText" min-width="96" align="center">
+        <template slot-scope="{ row }">
+          <span :class="['status-pill', statusClass(row.status)]">{{ row.statusText || resolveStatusText(row.status) }}</span>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="detail-card__footer">
+      <div class="detail-card__range">{{ rangeText }}</div>
+      <pagination
+        v-show="total > 0"
+        :total="total"
+        :page.sync="queryParams.pageNum"
+        :limit.sync="queryParams.pageSize"
+        @pagination="getList"
+      />
+    </div>
+  </section>
+</div>

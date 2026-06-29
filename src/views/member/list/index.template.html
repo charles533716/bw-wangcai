@@ -1,0 +1,428 @@
+<div class="app-container member-list-page">
+  <div class="member-card">
+    <div class="member-header">
+      <div class="member-title">会员管理</div>
+      <div class="member-tags">
+        <div class="member-tag member-tag--active">
+          会员
+          <span class="member-tag__count">{{ total }}</span>
+        </div>
+      </div>
+    </div>
+
+    <el-form
+      v-show="showSearch"
+      ref="queryForm"
+      :model="queryParams"
+      :inline="true"
+      size="small"
+      label-width="84px"
+      class="member-query member-query--grid"
+    >
+      <el-form-item class="member-query__item" label="所属站点" prop="siteCode">
+        <el-select
+          v-model="queryParams.siteCode"
+          class="query-control"
+          placeholder="全部站点"
+          clearable
+          filterable
+        >
+          <el-option label="全部站点" value="" />
+          <el-option
+            v-for="item in siteOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item class="member-query__item" label="用户ID" prop="userId">
+        <el-input
+          v-model="queryParams.userId"
+          class="query-control"
+          placeholder="请输入用户ID"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item class="member-query__item" label="用户名" prop="name">
+        <el-input
+          v-model="queryParams.name"
+          class="query-control"
+          placeholder="请输入用户名"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item class="member-query__item" label="实名信息" prop="realName">
+        <el-input
+          v-model="queryParams.realName"
+          class="query-control"
+          placeholder="请输入实名信息"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item class="member-query__item" label="上级代理" prop="parentAgentName">
+        <el-input
+          v-model="queryParams.parentAgentName"
+          class="query-control"
+          placeholder="请输入上级代理"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item class="member-query__item" label="状态" prop="status">
+        <el-select v-model="queryParams.status" class="query-control" placeholder="全部状态" clearable>
+          <el-option label="全部状态" value="" />
+          <el-option
+            v-for="item in statusOptions"
+            :key="item.dictValue"
+            :label="item.dictLabel"
+            :value="String(item.dictValue)"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item class="member-query__item" label="风控标签" prop="riskTagId">
+        <el-select
+          v-model="queryParams.riskTagId"
+          class="query-control"
+          placeholder="全部风控标签"
+          clearable
+          filterable
+          :loading="riskTagOptionsLoading"
+          @visible-change="handleRiskTagSelectVisible"
+        >
+          <el-option label="全部风控标签" value="" />
+          <el-option
+            v-for="tag in riskTagOptions"
+            :key="getRiskTagKey(tag)"
+            :label="getRiskTagName(tag)"
+            :value="getRiskTagIdentity(tag)"
+          >
+            <span class="risk-tag-option__name">{{ getRiskTagName(tag) }}</span>
+            <span class="risk-tag-option__type">{{ getRiskTagTypeLabel(tag) }}</span>
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item class="member-query__item query-actions">
+        <el-button type="primary" icon="el-icon-search" size="mini" class="detail-button detail-button--primary" @click="handleQuery">查询</el-button>
+        <el-button icon="el-icon-refresh" size="mini" class="detail-button" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <div class="member-toolbar">
+      <div class="member-toolbar__actions">
+        <el-button
+          type="danger"
+          plain
+          size="mini"
+          class="detail-button"
+          :disabled="selectedRows.length === 0"
+          :loading="batchDisableLoading"
+          @click="handleBatchBan"
+        >
+          批量封禁
+        </el-button>
+        <el-button
+          type="primary"
+          plain
+          size="mini"
+          class="detail-button"
+          :disabled="selectedRows.length === 0"
+          :loading="batchDisableLoading"
+          @click="handleBatchUnban"
+        >
+          批量解封
+        </el-button>
+        <span v-if="selectedRows.length > 0" class="member-toolbar__meta">已选 {{ selectedRows.length }} 项</span>
+      </div>
+      <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
+    </div>
+
+    <div class="table-block">
+      <div class="table-block__inner">
+        <el-table
+          ref="memberTable"
+          v-loading="listLoading"
+          :data="listData"
+          class="member-table"
+          row-key="id"
+          @selection-change="handleSelectionChange"
+          @row-dblclick="handleViewDetail"
+        >
+          <el-table-column type="selection" width="42" align="center" />
+          <el-table-column label="会员信息" align="left" min-width="380" class-name="member-user-column">
+            <template slot-scope="scope">
+              <div class="group-cell">
+                <div class="group-line">
+                  <span class="group-label">id/用户名</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getPrimaryId(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getUserName(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">实名信息</span>
+                  <span class="group-value">{{ getRealName(scope.row) }}</span>
+                </div>
+                <div class="group-line group-line--risk-tags">
+                  <span class="group-label">风控标签</span>
+                  <span class="group-value group-value--risk-tags">
+                    <template v-if="getMemberRiskTags(scope.row).length">
+                      <el-tag
+                        v-for="tag in getVisibleMemberRiskTags(scope.row)"
+                        :key="getRiskTagKey(tag)"
+                        :type="getRiskTagElementType(tag)"
+                        effect="plain"
+                        size="mini"
+                        class="member-risk-tag"
+                      >
+                        {{ getRiskTagName(tag) }}
+                      </el-tag>
+                      <el-popover
+                        v-if="getHiddenMemberRiskTags(scope.row).length"
+                        placement="bottom-start"
+                        width="260"
+                        trigger="click"
+                        popper-class="member-risk-tag-popover"
+                      >
+                        <div class="member-risk-tag-more">
+                          <div class="member-risk-tag-more__title">所有风控标签（{{ getMemberRiskTags(scope.row).length }}）</div>
+                          <div class="member-risk-tag-more__list">
+                            <el-tag
+                              v-for="tag in getMemberRiskTags(scope.row)"
+                              :key="`all-${getRiskTagKey(tag)}`"
+                              :type="getRiskTagElementType(tag)"
+                              effect="plain"
+                              size="mini"
+                              class="member-risk-tag"
+                            >
+                              {{ getRiskTagName(tag) }}
+                            </el-tag>
+                          </div>
+                        </div>
+                        <el-button slot="reference" type="text" size="mini" class="risk-tag-more-trigger" @click.stop>
+                          +{{ getHiddenMemberRiskTags(scope.row).length }} 更多
+                        </el-button>
+                      </el-popover>
+                    </template>
+                    <span v-else>--</span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">站点id/名称</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getSiteId(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getSiteName(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line group-line--status">
+                  <span class="group-label">状态</span>
+                  <span class="group-value">
+                    <el-tag :type="getStatusTagType(getStatusValue(scope.row))" effect="plain" size="small" class="status-tag">
+                      {{ formatStatus(getStatusValue(scope.row)) }}
+                    </el-tag>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">vip等级/推荐码</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getVipLevel(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getInviteCode(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">电话/qq/微信</span>
+                  <span class="group-value">
+                    <span class="inline-triple">
+                      <span class="inline-triple__item">{{ getPhone(scope.row) }}</span>
+                      <span class="inline-triple__divider">/</span>
+                      <span class="inline-triple__item">{{ getQq(scope.row) }}</span>
+                      <span class="inline-triple__divider">/</span>
+                      <span class="inline-triple__item">{{ getWechat(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="代理信息" align="left" min-width="300" class-name="member-agent-column">
+            <template slot-scope="scope">
+              <div class="group-cell">
+                <div class="group-line">
+                  <span class="group-label group-label--agent">上级代理id/用户名</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getParentAgentId(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getParentAgentName(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label group-label--agent">上级代理级别/星级</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ formatAgentLevel(getParentAgentLevel(scope.row)) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ formatStarLevel(getParentAgentStarLevel(scope.row)) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label group-label--agent">是否代理</span>
+                  <span class="group-value">{{ formatYesNo(getAgentFlag(scope.row)) }}</span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label group-label--agent">当前代理级别/星级</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ formatAgentLevel(getAgentLevel(scope.row)) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ formatStarLevel(getAgentStarLevel(scope.row)) }}</span>
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="账户信息" align="left" min-width="210">
+            <template slot-scope="scope">
+              <div class="group-cell">
+                <div class="group-line">
+                  <span class="group-label">用户中心余额</span>
+                  <span class="group-value">{{ formatMoney(getCenterBalance(scope.row)) }}</span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">场馆余额</span>
+                  <span class="group-value">{{ formatMoney(getVenueBalance(scope.row)) }}</span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">累计有效投注</span>
+                  <span class="group-value">{{ formatMoney(getValidBetAmount(scope.row)) }}</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="注册信息" align="left" min-width="260">
+            <template slot-scope="scope">
+              <div class="group-cell">
+                <div class="group-line">
+                  <span class="group-label">注册IP/地区</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getRegisterIp(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getRegisterRegion(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">注册时间</span>
+                  <span class="group-value">{{ formatListTime(getRegisterTime(scope.row)) }}</span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">最后登录IP/地区</span>
+                  <span class="group-value">
+                    <span class="inline-pair">
+                      <span class="inline-pair__item">{{ getLastLoginIp(scope.row) }}</span>
+                      <span class="inline-pair__divider">/</span>
+                      <span class="inline-pair__item">{{ getLastLoginRegion(scope.row) }}</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="group-line">
+                  <span class="group-label">最后登录时间</span>
+                  <span class="group-value">{{ formatListTime(getLastLoginTime(scope.row)) }}</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" align="center" fixed="right" width="288" class-name="small-padding fixed-width member-actions-column">
+            <template slot-scope="scope">
+              <div class="action-group">
+                <div class="action-row">
+                  <el-button type="text" size="mini" @click.stop="handleViewDetail(scope.row)">详情</el-button>
+                  <el-button type="text" size="mini" @click.stop="handleEdit(scope.row)">编辑</el-button>
+                  <el-button
+                    type="text"
+                    size="mini"
+                    :loading="isStatusActionLoading(scope.row)"
+                    @click.stop="handleToggleStatus(scope.row)"
+                  >
+                    {{ getStatusActionText(scope.row) }}
+                  </el-button>
+                </div>
+                <div class="action-row">
+                  <el-button type="text" size="mini" @click.stop="handleResetLoginPassword(scope.row)">修改登录密码</el-button>
+                  <el-button type="text" size="mini" @click.stop="handleResetWithdrawPassword(scope.row)">重置提现密码</el-button>
+                  <el-button
+                    type="text"
+                    size="mini"
+                    :loading="isRecoverActionLoading(scope.row)"
+                    @click.stop="handleRecoverVenueBalance(scope.row)"
+                  >
+                    一键回收场馆余额
+                  </el-button>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
+
+    <pagination
+      v-show="total > 0"
+      :total="total"
+      :page.sync="queryParams.pageNum"
+      :limit.sync="queryParams.pageSize"
+      @pagination="getList"
+    />
+  </div>
+
+  <el-dialog title="编辑会员" :visible.sync="editDialogOpen" width="520px" append-to-body @close="resetEditState">
+    <el-form ref="editForm" v-loading="submitLoading" :model="editForm" :rules="editRules" label-width="88px">
+      <el-form-item label="ID">
+        <el-input :value="editForm.id" disabled />
+      </el-form-item>
+      <el-form-item label="用户ID">
+        <el-input :value="editForm.userId" disabled />
+      </el-form-item>
+      <el-form-item label="用户名" prop="name">
+        <el-input v-model="editForm.name" placeholder="请输入用户名" maxlength="60" />
+      </el-form-item>
+      <el-form-item label="手机号" prop="phone">
+        <el-input v-model="editForm.phone" placeholder="请输入中国大陆手机号（如 +8613812345678）" maxlength="32" />
+      </el-form-item>
+      <el-form-item label="实名信息">
+        <el-input v-model="editForm.realName" placeholder="请输入实名信息" maxlength="60" />
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-radio-group v-model="editForm.status">
+          <el-radio
+            v-for="item in statusOptions"
+            :key="item.dictValue"
+            :label="String(item.dictValue)"
+          >
+            {{ item.dictLabel }}
+          </el-radio>
+        </el-radio-group>
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" :loading="submitLoading" @click="submitEdit">保 存</el-button>
+      <el-button @click="editDialogOpen = false">取 消</el-button>
+    </div>
+  </el-dialog>
+</div>

@@ -1,0 +1,311 @@
+<div v-loading="loading" class="promotion-page app-container">
+  <section class="page-head">
+    <div class="page-head__main">
+      <div class="page-head__icon">
+        <i class="el-icon-share"></i>
+      </div>
+      <div>
+        <h1 class="page-title">会员推广邀请奖励设置</h1>
+        <p class="page-subtitle">配置会员邀请好友的阶梯奖励机制，提升平台活跃度与用户增长。</p>
+      </div>
+    </div>
+
+    <div class="page-head__actions">
+      <el-button class="toolbar-btn" icon="el-icon-plus" @click="handleAddInviteRewardItem">
+        新增层级
+      </el-button>
+      <el-button
+        class="toolbar-btn toolbar-btn--primary"
+        type="primary"
+        icon="el-icon-document-checked"
+        :loading="saving"
+        v-hasPermi="['member:promotion:edit']"
+        @click="handleSave"
+      >
+        保存配置
+      </el-button>
+    </div>
+  </section>
+
+  <section class="guide-banner">
+    <div class="guide-banner__icon">
+      <i class="el-icon-info"></i>
+    </div>
+    <div class="guide-banner__content">
+      <div class="guide-banner__title">配置说明</div>
+      <div class="guide-banner__line">
+        系统将根据会员成功邀请的人数、被邀请会员有效充值额度及后续存款情况，匹配对应的奖励层级。
+      </div>
+      <div class="guide-banner__line">
+        例如：设置邀请人数为 10，邀请人奖励 15，则当会员邀请满 10 人且达标后，每成功邀请一人将获得 15 元礼金。
+      </div>
+    </div>
+  </section>
+
+  <section class="summary-grid">
+    <article class="summary-card">
+      <div class="summary-card__label">
+        <span class="summary-card__spot summary-card__spot--gold"></span>
+        被邀请人最低有效充值额度
+      </div>
+      <div class="input-shell input-shell--large">
+        <i class="el-icon-coin input-shell__icon input-shell__icon--gold"></i>
+        <el-input-number
+          v-model="form.effectiveRechargeAmount"
+          :controls="false"
+          :min="0"
+          :precision="2"
+          :step="10"
+        />
+        <span class="input-shell__suffix">CNY</span>
+      </div>
+      <div class="summary-card__hint">被邀请人充值达到此金额后，该次邀请才被计为有效邀请。</div>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-card__label">
+        <span class="summary-card__spot summary-card__spot--violet"></span>
+        实际提现流水倍数
+      </div>
+      <div class="input-shell input-shell--large">
+        <i class="el-icon-sort input-shell__icon input-shell__icon--violet"></i>
+        <el-input-number
+          v-model="form.withdrawTurnoverMultiple"
+          :controls="false"
+          :min="0"
+          :precision="2"
+          :step="0.1"
+        />
+        <span class="input-shell__suffix">倍</span>
+      </div>
+      <div class="summary-card__hint">获得的礼金需完成指定的有效流水后才可提现。</div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <div class="panel__title-wrap">
+        <div class="panel__icon panel__icon--blue">
+          <i class="el-icon-user"></i>
+        </div>
+        <div>
+          <div class="panel__title">邀请人数阶梯奖励</div>
+          <div class="panel__desc">按邀请人数门槛发放邀请人与被邀请人的单人奖励。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-table tier-table--invite">
+      <div class="tier-table__head">
+        <div>邀请人数门槛（≥）</div>
+        <div>邀请人单人奖励（CNY）</div>
+        <div>被邀请人奖励（CNY）</div>
+        <div class="tier-table__op">操作</div>
+      </div>
+
+      <div
+        v-for="(item, index) in form.inviteRewardItems"
+        :key="item.localKey"
+        class="tier-table__row"
+      >
+        <div class="tier-table__cell">
+          <div class="row-index">{{ index + 1 }}</div>
+          <div class="input-shell">
+            <i class="el-icon-user input-shell__icon input-shell__icon--slate"></i>
+            <el-input-number
+              v-model="item.inviteCount"
+              :controls="false"
+              :min="0"
+              :precision="0"
+              :step="1"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell">
+          <div class="input-shell">
+            <i class="el-icon-coin input-shell__icon input-shell__icon--gold"></i>
+            <el-input-number
+              v-model="item.inviterRewardAmount"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="1"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell">
+          <div class="input-shell">
+            <i class="el-icon-present input-shell__icon input-shell__icon--rose"></i>
+            <el-input-number
+              v-model="item.inviteeRewardAmount"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="1"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell tier-table__cell--op">
+          <el-button
+            type="text"
+            icon="el-icon-delete"
+            class="delete-btn"
+            @click="handleRemoveInviteRewardItem(index)"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head panel__head--split">
+      <div class="panel__title-wrap">
+        <div class="panel__icon panel__icon--gold">
+          <i class="el-icon-coin"></i>
+        </div>
+        <div>
+          <div class="panel__title">被推广会员存款奖励</div>
+          <div class="panel__desc">针对被推广会员后续存款额度，配置推广员与被推广人的额外奖励。</div>
+        </div>
+      </div>
+
+      <el-button class="ghost-btn" icon="el-icon-plus" @click="handleAddDepositRewardItem">
+        新增存款奖励
+      </el-button>
+    </div>
+
+    <div class="tier-table tier-table--deposit">
+      <div class="tier-table__head">
+        <div>存款额度（≥）</div>
+        <div>推广员奖励（CNY）</div>
+        <div>被推广人奖励（CNY）</div>
+        <div class="tier-table__op">操作</div>
+      </div>
+
+      <div
+        v-for="(item, index) in form.depositRewardItems"
+        :key="item.localKey"
+        class="tier-table__row"
+      >
+        <div class="tier-table__cell">
+          <div class="input-shell">
+            <i class="el-icon-money input-shell__icon input-shell__icon--slate"></i>
+            <el-input-number
+              v-model="item.depositAmount"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="100"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell">
+          <div class="input-shell">
+            <i class="el-icon-coin input-shell__icon input-shell__icon--gold"></i>
+            <el-input-number
+              v-model="item.inviterRewardAmount"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="1"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell">
+          <div class="input-shell">
+            <i class="el-icon-present input-shell__icon input-shell__icon--rose"></i>
+            <el-input-number
+              v-model="item.inviteeRewardAmount"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="1"
+            />
+          </div>
+        </div>
+
+        <div class="tier-table__cell tier-table__cell--op">
+          <el-button
+            type="text"
+            icon="el-icon-delete"
+            class="delete-btn"
+            @click="handleRemoveDepositRewardItem(index)"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <div class="panel__title-wrap">
+        <div class="panel__icon panel__icon--green">
+          <i class="el-icon-s-data"></i>
+        </div>
+        <div>
+          <div class="panel__title">投注返佣设置</div>
+          <div class="panel__desc">根据 `venue_type` 场馆类型维护游戏返水比例，返佣期限统一生效。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="commission-grid">
+      <div
+        v-for="item in form.commissionItems"
+        :key="item.venueType"
+        class="commission-item"
+      >
+        <div class="commission-item__label">
+          <i :class="[item.icon, `commission-item__icon commission-item__icon--${resolveTheme(item.theme)}`]"></i>
+          <span>{{ item.venueLabel }}</span>
+        </div>
+        <div class="commission-item__input">
+          <el-input-number
+            v-model="item.gameTurnoverRate"
+            :controls="false"
+            :min="0"
+            :max="100"
+            :precision="2"
+            :step="0.01"
+          />
+          <span class="commission-item__suffix">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="commission-foot">
+      <div class="commission-foot__field">
+        <div class="commission-foot__label">返佣期限</div>
+        <div class="input-shell input-shell--small">
+          <i class="el-icon-time input-shell__icon input-shell__icon--violet"></i>
+          <el-input-number
+            v-model="form.commissionValidDays"
+            :controls="false"
+            :min="1"
+            :precision="0"
+            :step="1"
+          />
+          <span class="input-shell__suffix">天</span>
+        </div>
+      </div>
+      <div class="commission-foot__hint">设置会员推广后可享受返佣的有效时长。</div>
+    </div>
+  </section>
+
+  <section class="logic-card">
+    <div class="logic-card__icon">
+      <i class="el-icon-warning-outline"></i>
+    </div>
+    <div class="logic-card__body">
+      <div class="logic-card__title">奖励发放逻辑</div>
+      <div class="logic-card__line">1. 邀请人数奖励：当成功邀请人数达到设定门槛时，邀请人和被邀请人都将获得对应的礼金奖励。</div>
+      <div class="logic-card__line">2. 存款奖励：被推广用户通过邀请链接注册并完成后续存款，系统即按等级对应的礼包发奖。</div>
+      <div class="logic-card__line">3. 阶梯计算：系统会自动按照当前满足的最高层级发放奖励。</div>
+    </div>
+  </section>
+</div>

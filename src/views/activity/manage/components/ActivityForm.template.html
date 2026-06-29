@@ -1,0 +1,299 @@
+<div v-loading="loading" class="activity-form-shell">
+  <el-form ref="form" :model="form" :rules="rules" label-position="top" class="activity-form">
+    <section class="activity-section activity-section--base">
+      <div v-if="isEdit && form.activityCode" class="activity-code-row">
+        <span class="activity-code-row__label">活动编码</span>
+        <span class="activity-code-row__value">{{ form.activityCode }}</span>
+      </div>
+
+      <div class="activity-grid activity-grid--triple">
+        <el-form-item label="活动名称" prop="activityName">
+          <el-input
+            v-model="form.activityName"
+            :disabled="isEdit"
+            maxlength="12"
+            show-word-limit
+            placeholder="请输入2-12个汉字、英文或数字"
+          />
+        </el-form-item>
+
+        <el-form-item label="站点" prop="siteCode">
+          <el-select
+            v-model="form.siteCode"
+            multiple
+            collapse-tags
+            :disabled="isSiteReadonly"
+            placeholder="请选择站点"
+            style="width: 100%"
+          >
+            <el-option v-for="item in siteOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="活动主题" prop="activityTheme">
+          <el-select v-model="form.activityTheme" :disabled="!canEditActivityTheme" placeholder="请选择活动主题" style="width: 100%">
+            <el-option v-for="item in activityThemeOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="活动对象" prop="activityObject">
+          <el-select v-model="form.activityObject" :disabled="isEdit" placeholder="请选择活动对象" style="width: 100%">
+            <el-option v-for="item in activityObjectOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isEdit" label="状态" prop="status">
+          <el-select v-model="form.status" placeholder="请选择活动状态" style="width: 100%">
+            <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item
+          v-if="isVipObject"
+          label="选择VIP等级"
+          prop="vipLevel"
+          class="activity-grid__span-2 vip-level-item"
+        >
+          <el-checkbox-group v-model="form.vipLevel" class="vip-level-group">
+            <el-checkbox-button v-for="item in vipLevelOptions" :key="item" :label="item">{{ formatVipLevelOption(item) }}</el-checkbox-button>
+          </el-checkbox-group>
+        </el-form-item>
+
+        <el-form-item
+          v-if="isAgentObject"
+          prop="agentCode"
+          class="activity-grid__span-2 agent-code-item"
+        >
+          <template slot="label">
+            <span class="field-label-with-icon">
+              <span>代理名称</span>
+              <i class="el-icon-info field-label-with-icon__icon" />
+            </span>
+          </template>
+          <el-popover
+            v-model="agentSelectorVisible"
+            placement="bottom-start"
+            width="720"
+            trigger="click"
+            :disabled="agentSelectorDisabled"
+            popper-class="agent-selector-popover"
+            @show="handleAgentSelectorOpen"
+            @hide="handleAgentSelectorClose"
+          >
+            <div class="agent-selector-dropdown">
+              <el-input
+                v-model.trim="agentTreeKeyword"
+                clearable
+                maxlength="100"
+                placeholder="请输入代理名称进行筛选"
+              />
+              <div class="field-tip">显示当前站点全部代理，勾选上级代理后会自动勾选关联下级代理。</div>
+              <div v-loading="agentTreeLoading" class="agent-selector-table-wrap">
+                <el-table
+                  :data="filteredAgentOptions"
+                  size="mini"
+                  height="288"
+                  class="agent-selector-table"
+                  empty-text="暂无匹配代理"
+                >
+                  <el-table-column label="选择" width="72" align="center">
+                    <template slot-scope="{ row }">
+                      <el-checkbox
+                        :value="isAgentSelected(row)"
+                        :disabled="isAgentLockedByAncestor(row)"
+                        @change="toggleAgentSelection(row, $event)"
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="value" label="代理ID" width="110" />
+                  <el-table-column prop="name" label="代理名称" min-width="180" show-overflow-tooltip />
+                  <el-table-column prop="parentLabel" label="上级代理" min-width="180" show-overflow-tooltip />
+                  <el-table-column prop="childCount" label="下级代理数" width="110" align="center" />
+                </el-table>
+              </div>
+            </div>
+            <el-input
+              slot="reference"
+              :value="agentSelectionSummary"
+              readonly
+              placeholder="点击选择代理名称"
+              @click.native="handleAgentSelectorTrigger"
+            >
+              <i slot="suffix" class="el-input__icon el-icon-arrow-down" />
+            </el-input>
+          </el-popover>
+          <div class="field-tip">点击后按代理名称筛选。勾选上级代理后会自动勾选关联下级代理。已选 {{ form.agentCode.length }} 项</div>
+        </el-form-item>
+
+        <el-form-item label="活动开始时间" prop="activityBeginTime">
+          <el-date-picker
+            v-model="form.activityBeginTime"
+            type="date"
+            format="yyyy/MM/dd"
+            value-format="yyyy-MM-dd"
+            :disabled="isActivityBeginTimeLocked"
+            :picker-options="activityBeginPickerOptions"
+            placeholder="yyyy/mm/日"
+            style="width: 100%"
+          />
+          <div v-if="isActivityBeginTimeLocked" class="field-tip">活动已开始，开始日期不可修改</div>
+        </el-form-item>
+
+        <el-form-item label="活动结束时间" prop="activityEndTime">
+          <el-date-picker
+            v-model="form.activityEndTime"
+            type="date"
+            format="yyyy/MM/dd"
+            value-format="yyyy-MM-dd"
+            clearable
+            :picker-options="activityEndPickerOptions"
+            placeholder="yyyy/mm/日"
+            style="width: 100%"
+          />
+          <div class="field-tip">留空 = 长期有效</div>
+        </el-form-item>
+
+        <el-form-item label="提现流水倍数" prop="withdrawBetMultiple">
+          <el-input-number v-model="form.withdrawBetMultiple" :min="1" :precision="0" :controls="false" class="field-number" />
+          <div class="field-tip">提现所需有效投注 = 奖金 × 倍数</div>
+        </el-form-item>
+
+        <el-form-item label="活动排序" prop="activitySort">
+          <el-input-number v-model="form.activitySort" :min="1" :precision="0" :controls="false" class="field-number" />
+        </el-form-item>
+
+        <el-form-item label="热门排序" prop="hotSort">
+          <el-input-number v-model="form.hotSort" :min="1" :precision="0" :controls="false" class="field-number" />
+        </el-form-item>
+
+      </div>
+
+      <div class="activity-grid activity-grid--media">
+        <el-form-item label="活动简介" prop="activityIntroduction" class="activity-intro-item">
+          <el-input
+            v-model="form.activityIntroduction"
+            type="textarea"
+            :rows="5"
+            maxlength="500"
+            show-word-limit
+            placeholder="活动规则简介..."
+          />
+        </el-form-item>
+
+        <el-form-item label="活动图片" prop="activityPictureUrl" class="activity-picture-item">
+          <div :class="['activity-picture-panel', { 'is-empty': !hasActivityPicture }]">
+            <image-upload
+              ref="activityPictureUpload"
+              v-model="form.activityPictureUrl"
+              :limit="1"
+              :file-size="2"
+              :file-type="['jpg', 'jpeg', 'png', 'gif']"
+              :is-show-tip="false"
+              :replace-on-exceed="true"
+            />
+            <div v-if="!hasActivityPicture" class="activity-picture-placeholder">
+              <div class="activity-picture-placeholder__icon"><i class="el-icon-plus" /></div>
+              <div class="activity-picture-placeholder__title">点击或拖拽上传图片</div>
+              <div class="activity-picture-placeholder__desc">支持 JPG, PNG, GIF (最大 2MB)</div>
+            </div>
+            <div v-else class="activity-picture-actions">
+              <el-button type="text" icon="el-icon-refresh" @click="handleReplacePicture('activityPictureUpload')">更换图片</el-button>
+              <el-button type="text" icon="el-icon-delete" class="activity-picture-actions__remove" @click="handleClearPicture('activityPictureUrl')">移除图片</el-button>
+            </div>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="列表图片" prop="activityListPictureUrl" class="activity-picture-item">
+          <div :class="['activity-picture-panel', { 'is-empty': !hasActivityListPicture }]">
+            <image-upload
+              ref="activityListPictureUpload"
+              v-model="form.activityListPictureUrl"
+              :limit="1"
+              :file-size="2"
+              :file-type="['jpg', 'jpeg', 'png', 'gif']"
+              :is-show-tip="false"
+              :replace-on-exceed="true"
+            />
+            <div v-if="!hasActivityListPicture" class="activity-picture-placeholder">
+              <div class="activity-picture-placeholder__icon"><i class="el-icon-plus" /></div>
+              <div class="activity-picture-placeholder__title">上传列表图片</div>
+              <div class="activity-picture-placeholder__desc">活动列表展示用图</div>
+            </div>
+            <div v-else class="activity-picture-actions">
+              <el-button type="text" icon="el-icon-refresh" @click="handleReplacePicture('activityListPictureUpload')">更换图片</el-button>
+              <el-button type="text" icon="el-icon-delete" class="activity-picture-actions__remove" @click="handleClearPicture('activityListPictureUrl')">移除图片</el-button>
+            </div>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="首页弹窗图" prop="homePopupPictureUrl" class="activity-picture-item">
+          <div :class="['activity-picture-panel', { 'is-empty': !hasHomePopupPicture }]">
+            <image-upload
+              ref="homePopupPictureUpload"
+              v-model="form.homePopupPictureUrl"
+              :limit="1"
+              :file-size="2"
+              :file-type="['jpg', 'jpeg', 'png', 'gif']"
+              :is-show-tip="false"
+              :replace-on-exceed="true"
+            />
+            <div v-if="!hasHomePopupPicture" class="activity-picture-placeholder">
+              <div class="activity-picture-placeholder__icon"><i class="el-icon-plus" /></div>
+              <div class="activity-picture-placeholder__title">上传首页弹窗图</div>
+              <div class="activity-picture-placeholder__desc">首页活动弹窗展示用图</div>
+            </div>
+            <div v-else class="activity-picture-actions">
+              <el-button type="text" icon="el-icon-refresh" @click="handleReplacePicture('homePopupPictureUpload')">更换图片</el-button>
+              <el-button type="text" icon="el-icon-delete" class="activity-picture-actions__remove" @click="handleClearPicture('homePopupPictureUrl')">移除图片</el-button>
+            </div>
+          </div>
+        </el-form-item>
+      </div>
+
+      <div class="activity-grid activity-grid--double">
+        <el-form-item label="达标后可领取时间（天）" prop="claimTime">
+          <el-input-number v-model="form.claimTime" :min="1" :precision="0" :controls="false" class="field-number" />
+          <div class="field-tip">超过此天数则奖励过期，不可领取</div>
+        </el-form-item>
+
+        <el-form-item :label="isSigninActivity ? '发放规则' : '领取规则'" prop="claimRule">
+          <el-select v-model="form.claimRule" :disabled="!isClaimRuleSelectable" placeholder="请选择领取规则" style="width: 100%">
+            <el-option v-for="item in displayClaimRuleOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </div>
+    </section>
+
+    <section class="activity-section activity-section--types">
+      <el-form-item label="选择活动类型" prop="activityType" class="activity-type-form-item">
+        <div class="type-card-list">
+          <button
+            v-for="item in displayActivityTypeOptions"
+            :key="item.value"
+            type="button"
+            :disabled="isEdit && !isTypeCardActive(item.value)"
+            :class="['type-card', { 'is-active': isTypeCardActive(item.value), 'is-disabled': isEdit && !isTypeCardActive(item.value) }]"
+            @click="handleSelectActivityType(item.value)"
+          >
+            <span class="type-card__title">{{ item.label }}</span>
+            <span class="type-card__desc">{{ item.description }}</span>
+          </button>
+        </div>
+      </el-form-item>
+    </section>
+
+    <activity-type-dynamic-sections
+      ref="dynamicSections"
+      :form="form"
+      :activity-type="form.activityType"
+      :option-sources="dynamicOptionSources"
+      :is-edit="isEdit"
+    />
+    <div class="activity-form__footer">
+      <el-button @click="handleCancel">取消</el-button>
+      <el-button type="primary" :loading="saving" v-hasPermi="[isEdit ? 'activity:manage:edit' : 'activity:manage:add']" @click="handleSubmit">
+        {{ isEdit ? '保存修改' : '确认新增活动' }}
+      </el-button>
+    </div>
+  </el-form>
+</div>

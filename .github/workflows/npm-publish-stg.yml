@@ -1,0 +1,75 @@
+name: Deploy Staging
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1️⃣ 拉取代码
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2️⃣ Node 环境
+    - name: Use Node.js 23.9.0
+      uses: actions/setup-node@v3
+      with:
+        node-version: 23.9.0
+
+    # 3️⃣ 先在服务器上备份 + 清空目录
+    - name: Backup and Clean Remote Folder
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.BAOTA_HOST_STG }}
+        username: ${{ secrets.BAOTA_USER_STG }}
+        password: ${{ secrets.BAOTA_PASSWORD_STG }}
+        port: 22
+        script: |
+          set -e
+          echo "===== 开始备份网站目录 ====="
+
+          TARGET_DIR="/www/wwwroot/stght.wangcaisports.com"
+          BACKUP_ROOT="/www/wwwroot/backup"
+          TIME=$(date +%Y%m%d%H%M%S)
+          BACKUP_DIR="$BACKUP_ROOT/stght.wangcaisports.com-$TIME"
+
+          mkdir -p "$BACKUP_ROOT"
+
+          if [ -d "$TARGET_DIR" ]; then
+            echo "备份当前网站目录..."
+            cp -r "$TARGET_DIR" "$BACKUP_DIR"
+            echo "备份完成: $BACKUP_DIR"
+
+            echo "清理旧备份（只保留最近5个）..."
+            cd "$BACKUP_ROOT"
+            ls -dt stght.wangcaisports.com-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+          else
+            echo "目标目录不存在，跳过备份"
+          fi
+
+          echo "清空原网站目录..."
+          rm -rf "$TARGET_DIR"/*
+          echo "目录已清空"
+
+    # 4️⃣ 本地安装依赖
+    - name: Install dependencies
+      run: npm install
+
+    # 5️⃣ 构建 Vue
+    - name: Build Vue project
+      run: npm run build:stage
+
+    # 6️⃣ 上传 dist 到服务器
+    - name: Upload dist to Baota Server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.BAOTA_HOST_STG }}
+        username: ${{ secrets.BAOTA_USER_STG }}
+        password: ${{ secrets.BAOTA_PASSWORD_STG }}
+        port: 22
+        source: "dist/**"
+        strip_components: 1
+        target: "/www/wwwroot/stght.wangcaisports.com/"

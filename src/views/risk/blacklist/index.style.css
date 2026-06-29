@@ -1,0 +1,58 @@
+.risk-card {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 12px 0 0;
+}
+
+.risk-query {
+  padding: 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 12px;
+}
+
+.risk-query .el-form-item {
+  margin-right: 0;
+  margin-bottom: 0;
+}
+
+.risk-query .el-form-item__label {
+  padding-right: 8px;
+}
+
+.risk-query .query-item--sm .query-control {
+  width: 180px;
+}
+
+.risk-query .query-item--lg .query-control {
+  width: 280px;
+}
+
+.risk-query .query-actions {
+  margin-left: auto;
+}
+
+.risk-query .query-actions .el-form-item__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-link-btn {
+  padding: 0;
+}
+
+@media (max-width: 1200px) {
+  .risk-query .query-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .risk-query .query-item--sm .query-control,
+  .risk-query .query-item--lg .query-control {
+    width: 100%;
+  }
+}

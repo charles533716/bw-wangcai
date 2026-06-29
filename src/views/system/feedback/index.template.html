@@ -1,0 +1,463 @@
+<div class="app-container feedback-page">
+  <div class="feedback-stats">
+    <div
+      v-for="card in statCards"
+      :key="card.key"
+      :class="['feedback-stat', 'feedback-stat--' + card.theme]"
+    >
+      <div>
+        <div class="feedback-stat__label">{{ card.label }}</div>
+        <div class="feedback-stat__value">
+          {{ card.value }}
+          <span>{{ card.unit }}</span>
+        </div>
+      </div>
+      <div class="feedback-stat__icon">
+        <i :class="card.icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <el-row :gutter="16" class="feedback-layout">
+    <el-col :xs="24" :lg="15">
+      <div class="feedback-card">
+        <div class="feedback-card__header">
+          <div>
+            <div class="feedback-card__title">意见反馈查询</div>
+            <div class="feedback-card__desc">按会员、订单、类型、站点与处理状态筛选反馈工单</div>
+          </div>
+          <el-tag v-if="useMockData" size="mini" type="info">待后端接口对接</el-tag>
+        </div>
+
+        <el-form
+          ref="queryForm"
+          :model="queryParams"
+          :inline="true"
+          size="small"
+          label-width="86px"
+          class="feedback-query"
+        >
+          <el-form-item label="会员账号" prop="username">
+            <el-input
+              v-model.trim="queryParams.username"
+              class="query-control"
+              placeholder="请输入会员账号"
+              clearable
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="关联订单" prop="orderNo">
+            <el-input
+              v-model.trim="queryParams.orderNo"
+              class="query-control"
+              placeholder="充提/游戏订单号"
+              clearable
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="所属站点" prop="siteCode">
+            <el-select
+              v-model="queryParams.siteCode"
+              class="query-control"
+              placeholder="全部站点"
+              clearable
+              filterable
+            >
+              <el-option label="全部站点" value="" />
+              <el-option
+                v-for="item in siteOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="站点关键字" prop="siteKeyword">
+            <el-input
+              v-model.trim="queryParams.siteKeyword"
+              class="query-control"
+              placeholder="站点名称/编码"
+              clearable
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="问题类别" prop="questionType">
+            <el-select v-model="queryParams.questionType" class="query-control" placeholder="全部类型" clearable>
+              <el-option label="全部类型" value="" />
+              <el-option v-for="item in questionTypes" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="处理状态" prop="status">
+            <el-select v-model="queryParams.status" class="query-control" placeholder="全部状态" clearable>
+              <el-option label="全部状态" value="" />
+              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="创建时间">
+            <el-date-picker
+              v-model="dateRange"
+              class="date-control"
+              value-format="yyyy-MM-dd"
+              type="daterange"
+              range-separator="-"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+            />
+          </el-form-item>
+          <el-form-item class="feedback-query__actions">
+            <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">查询</el-button>
+            <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <div class="feedback-card feedback-card--table">
+        <div class="feedback-card__header feedback-card__header--compact">
+          <div>
+            <div class="feedback-card__title">反馈队列明细</div>
+            <div class="feedback-card__desc">共 {{ total }} 条结果，点击行查看完整工单流</div>
+          </div>
+          <el-button
+            type="warning"
+            plain
+            size="mini"
+            icon="el-icon-download"
+            @click="handleExport"
+            v-hasPermi="['system:feedback:export']"
+          >导出</el-button>
+        </div>
+
+        <el-table
+          ref="feedbackTable"
+          v-loading="listLoading"
+          :data="listData"
+          highlight-current-row
+          @row-click="handleSelectFeedback"
+        >
+          <el-table-column label="序号" type="index" width="68" align="center">
+            <template slot-scope="scope">
+              {{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}
+            </template>
+          </el-table-column>
+          <el-table-column label="ID" width="82" align="center">
+            <template slot-scope="scope">{{ getFeedbackId(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column label="会员/站点" min-width="180" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <div class="member-cell">
+                <div class="member-cell__name">
+                  {{ getUsername(scope.row) }}
+                  <span>{{ getVipLevel(scope.row) }}</span>
+                </div>
+                <div class="member-cell__site">{{ getSiteDisplay(scope.row) }}</div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="问题描述" min-width="260" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <div class="feedback-desc">{{ getDescription(scope.row) }}</div>
+              <div v-if="getScreenshots(scope.row).length" class="attachment-pill">
+                <i class="el-icon-picture-outline"></i>
+                含 {{ getScreenshots(scope.row).length }} 张截图
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="问题类型" width="128" align="center">
+            <template slot-scope="scope">
+              <span :class="['type-badge', 'type-badge--' + getTypeMeta(scope.row).theme]">
+                <i :class="getTypeMeta(scope.row).icon"></i>
+                {{ getTypeMeta(scope.row).label }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" width="156" align="center">
+            <template slot-scope="scope">{{ getCreateTime(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="106" align="center">
+            <template slot-scope="scope">
+              <el-tag :type="isPending(scope.row) ? 'warning' : 'success'" size="mini">
+                {{ getStatusLabel(scope.row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="94" align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                size="mini"
+                icon="el-icon-view"
+                @click.stop="handleSelectFeedback(scope.row)"
+                v-hasPermi="['system:feedback:query']"
+              >详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <pagination
+          v-show="total > 0"
+          :total="total"
+          :page.sync="queryParams.pageNum"
+          :limit.sync="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </div>
+    </el-col>
+
+    <el-col :xs="24" :lg="9">
+      <div class="feedback-detail" v-loading="detailLoading">
+        <template v-if="selectedFeedback">
+          <div class="detail-header">
+            <div class="detail-header__icon">
+              <i class="el-icon-chat-line-square"></i>
+            </div>
+            <div class="detail-header__body">
+              <div class="detail-header__title">
+                工单 #{{ getFeedbackId(selectedFeedback) }}
+                <el-tag :type="isPending(selectedFeedback) ? 'warning' : 'success'" size="mini">
+                  {{ getStatusLabel(selectedFeedback) }}
+                </el-tag>
+              </div>
+              <div class="detail-header__meta">
+                {{ getUsername(selectedFeedback) }} / {{ getVipLevel(selectedFeedback) }} / {{ getSiteDisplay(selectedFeedback) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-body">
+            <div class="conversation-block">
+              <div class="conversation-meta">
+                <span class="avatar avatar--member">M</span>
+                <span>会员咨询反馈</span>
+                <em>{{ getCreateTime(selectedFeedback) }}</em>
+              </div>
+
+              <div class="conversation-card">
+                <div class="conversation-card__head">
+                  <span>问题大类</span>
+                  <span :class="['type-badge', 'type-badge--' + getTypeMeta(selectedFeedback).theme]">
+                    <i :class="getTypeMeta(selectedFeedback).icon"></i>
+                    {{ getTypeMeta(selectedFeedback).label }}
+                  </span>
+                </div>
+                <p>{{ getDescription(selectedFeedback) }}</p>
+
+                <div v-if="getScreenshots(selectedFeedback).length" class="screenshot-group">
+                  <div class="section-label">
+                    <i class="el-icon-picture-outline"></i>
+                    相关附件截图（{{ getScreenshots(selectedFeedback).length }}张）
+                  </div>
+                  <div class="screenshot-list">
+                    <button
+                      v-for="(url, index) in getScreenshots(selectedFeedback)"
+                      :key="url + index"
+                      type="button"
+                      class="screenshot-thumb"
+                      @click="previewImage(url)"
+                    >
+                      <img :src="url" :alt="'反馈截图' + (index + 1)" referrerpolicy="no-referrer" />
+                      <span><i class="el-icon-view"></i></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="getAssociatedOrderNo(selectedFeedback)" class="order-box">
+                  <div>
+                    <span>关联订单号</span>
+                    <strong>{{ getAssociatedOrderNo(selectedFeedback) }}</strong>
+                  </div>
+                  <el-button
+                    size="mini"
+                    icon="el-icon-copy-document"
+                    @click="copyText(getAssociatedOrderNo(selectedFeedback))"
+                  >复制</el-button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="isReplied(selectedFeedback)" class="conversation-block">
+              <div class="conversation-meta conversation-meta--reply">
+                <span class="avatar avatar--cs">CS</span>
+                <span>{{ getReplier(selectedFeedback) }}</span>
+                <em>{{ getReplyTime(selectedFeedback) }}</em>
+              </div>
+
+              <div class="conversation-card conversation-card--reply">
+                <p>{{ getReplyContent(selectedFeedback) }}</p>
+                <div class="rating-row">
+                  <span>本次解决是否满意？</span>
+                  <el-rate
+                    v-if="getRating(selectedFeedback)"
+                    :value="Number(getRating(selectedFeedback))"
+                    disabled
+                    text-color="#ff9900"
+                  />
+                  <el-tag v-else type="warning" size="mini">暂无评价</el-tag>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="waiting-card">
+              <i class="el-icon-time"></i>
+              <div>
+                <strong>正在等待您的回复</strong>
+                <p>该工单处于待处理状态。回复后将同步至前台“我的反馈”与站内信通知。</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isPending(selectedFeedback)" class="reply-panel">
+            <div class="reply-panel__head">
+              <div>
+                <span>快捷回复语</span>
+                <em>当前账号：{{ currentAccountName }}</em>
+              </div>
+              <el-button
+                type="text"
+                size="mini"
+                icon="el-icon-setting"
+                @click="openTemplateManager"
+              >配置</el-button>
+            </div>
+            <div class="template-list">
+              <el-button
+                v-for="tpl in enabledReplyTemplates"
+                :key="tpl.id"
+                size="mini"
+                plain
+                @click="replyText = tpl.content"
+              >{{ tpl.content }}</el-button>
+              <div v-if="!enabledReplyTemplates.length" class="template-empty">
+                暂无启用的快捷回复语，请点击右上角“配置”添加。
+              </div>
+            </div>
+            <el-input
+              v-model.trim="replyText"
+              type="textarea"
+              :rows="4"
+              maxlength="1000"
+              show-word-limit
+              placeholder="在此输入回复说明，该信息将生成并派发站内信反馈给前台用户"
+            />
+            <el-button
+              class="reply-submit"
+              type="primary"
+              icon="el-icon-s-promotion"
+              :loading="replyLoading"
+              @click="handleSendReply"
+              v-hasPermi="['system:feedback:reply']"
+            >立即发送回复信件</el-button>
+          </div>
+
+          <div v-else class="archive-panel">
+            <span>此工单已经回复归档。</span>
+            <el-button
+              size="mini"
+              type="danger"
+              plain
+              :loading="replyLoading"
+              @click="handleReopen"
+              v-hasPermi="['system:feedback:reopen']"
+            >重新编辑</el-button>
+          </div>
+        </template>
+
+        <div v-else class="empty-detail">
+          <i class="el-icon-chat-dot-square"></i>
+          <span>请在左侧选择需要阅读或回复的反馈记录</span>
+        </div>
+      </div>
+    </el-col>
+  </el-row>
+
+  <el-dialog
+    title="账号快捷回复配置"
+    :visible.sync="templateDialog.open"
+    width="900px"
+    append-to-body
+    class="template-dialog"
+  >
+    <div class="template-dialog__top">
+      <div class="template-dialog__account">
+        <span>当前账号</span>
+        <strong>{{ currentAccountName }}</strong>
+        <em>仅当前账号可见并使用</em>
+      </div>
+      <el-button
+        type="primary"
+        size="mini"
+        icon="el-icon-plus"
+        @click="handleAddTemplate"
+      >新增快捷语</el-button>
+    </div>
+
+    <el-table v-loading="templateDialog.loading" :data="replyTemplateRecords" row-key="id">
+      <el-table-column label="快捷回复内容" prop="content" min-width="460" show-overflow-tooltip />
+      <el-table-column label="排序" prop="sort" width="80" align="center" />
+      <el-table-column label="启用" width="90" align="center">
+        <template slot-scope="scope">
+          <el-switch
+            v-model="scope.row.status"
+            :active-value="1"
+            :inactive-value="0"
+            @change="handleTemplateStatusChange(scope.row)"
+          />
+        </template>
+      </el-table-column>
+      <el-table-column label="更新时间" width="160" align="center">
+        <template slot-scope="scope">{{ scope.row.updateTime || scope.row.createTime || '--' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="130" align="center" fixed="right">
+        <template slot-scope="scope">
+          <el-button type="text" size="mini" icon="el-icon-edit" @click="handleEditTemplate(scope.row)">编辑</el-button>
+          <el-button type="text" size="mini" icon="el-icon-delete" @click="handleDeleteTemplate(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="templateDialog.open = false">关 闭</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :title="templateFormDialog.title"
+    :visible.sync="templateFormDialog.open"
+    width="620px"
+    append-to-body
+  >
+    <el-form ref="templateForm" :model="templateForm" :rules="templateRules" label-width="88px">
+      <el-form-item label="回复内容" prop="content">
+        <el-input
+          v-model.trim="templateForm.content"
+          type="textarea"
+          :rows="5"
+          maxlength="1000"
+          show-word-limit
+          placeholder="请输入快捷回复内容"
+        />
+      </el-form-item>
+      <el-form-item label="排序" prop="sort">
+        <el-input-number v-model="templateForm.sort" :min="0" :max="9999" controls-position="right" />
+      </el-form-item>
+      <el-form-item label="启用" prop="status">
+        <el-switch v-model="templateForm.status" :active-value="1" :inactive-value="0" />
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" :loading="templateFormDialog.loading" @click="submitTemplateForm">确 定</el-button>
+      <el-button @click="templateFormDialog.open = false">取 消</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    title="会员上传的原图附件"
+    :visible.sync="imageDialog.open"
+    width="760px"
+    append-to-body
+    class="image-dialog"
+  >
+    <div class="image-preview">
+      <img :src="imageDialog.url" alt="反馈附件预览" referrerpolicy="no-referrer" />
+    </div>
+  </el-dialog>
+</div>

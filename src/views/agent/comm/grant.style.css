@@ -1,0 +1,88 @@
+.settlement-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.query-form {
+  margin-bottom: 0;
+}
+
+.section-card :deep(.el-card__header) {
+  padding: 12px 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.settle-dialog-content {
+  margin-bottom: 4px;
+}
+
+.expense-link {
+  padding: 0;
+}
+
+.bill-no-copy {
+  display: inline-block;
+  max-width: 100%;
+  color: #409eff;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.bill-no-copy:hover {
+  text-decoration: underline;
+}
+
+.expense-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.expense-dialog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.expense-ratio-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.expense-dialog-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.expense-dialog-note {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  line-height: 1.6;
+  font-size: 13px;
+}

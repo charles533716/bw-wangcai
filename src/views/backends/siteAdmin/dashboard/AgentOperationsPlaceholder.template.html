@@ -1,0 +1,293 @@
+<div class="agent-dashboard app-container" v-loading="loading && !isInitialLoading">
+  <div class="board-header">
+    <button type="button" class="board-btn board-btn--ghost" @click="openGuide">
+      <i class="el-icon-question"></i>
+      <span>看板说明</span>
+    </button>
+
+    <div class="board-header__right">
+
+      <div class="quick-range">
+        <button
+          v-for="item in quickRanges"
+          :key="item.value"
+          type="button"
+          class="quick-range__btn"
+          :class="{ 'is-active': activeRange === item.value }"
+          @click="switchRange(item.value)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+
+      <el-date-picker
+        v-model="selectedDateRange"
+        class="board-date-picker"
+        type="daterange"
+        unlink-panels
+        range-separator="~"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        format="yyyy-MM-dd"
+        value-format="yyyy-MM-dd"
+        :editable="false"
+        :clearable="false"
+        @change="onDateRangeChange"
+      />
+
+      <button
+        v-if="showExportButton"
+        type="button"
+        class="board-btn board-btn--primary"
+        style="display:none"
+        @click="handleExport"
+      >
+        <i class="el-icon-download"></i>
+        <span>导出数据</span>
+      </button>
+    </div>
+  </div>
+
+  <div v-if="isInitialLoading" class="dashboard-skeleton">
+    <div class="skeleton-line skeleton-tip"></div>
+
+    <section
+      v-for="(count, idx) in skeletonSectionCardCounts"
+      :key="`skeleton-${idx}`"
+      class="metric-section"
+    >
+      <div class="skeleton-line skeleton-title"></div>
+      <div class="metric-grid is-cols-4">
+        <article
+          v-for="cardIndex in count"
+          :key="`skeleton-card-${idx}-${cardIndex}`"
+          class="metric-card metric-card--skeleton"
+        >
+          <div class="skeleton-line skeleton-label"></div>
+          <div class="skeleton-line skeleton-value"></div>
+          <div class="skeleton-line skeleton-footer"></div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <template v-else>
+    <div class="board-tip">
+      <i class="el-icon-warning-outline"></i>
+      <span>
+        淡蓝底色卡片的数据，一般为总计数据，只有在获得新数据时会每天更新，不能通过日期筛选来更新，白底卡片数据会根据日期筛选而同步变化
+      </span>
+    </div>
+
+    <section
+      v-for="section in displaySections"
+      :key="section.__renderKey"
+      class="metric-section metric-section--reveal"
+      :style="{ animationDelay: section.__delay }"
+    >
+      <div class="metric-section__title">
+        <span class="metric-section__mark"></span>
+        <h2>{{ section.title }}</h2>
+      </div>
+
+      <div class="metric-grid" :class="`is-cols-${section.cols || 4}`">
+        <article
+          v-for="card in section.cards"
+          :key="card.key"
+          class="metric-card"
+          :class="{ 'is-blue-card': card.blueCard, 'is-clickable': card.detailType }"
+          @click="openExpenseDetail(card)"
+        >
+          <div class="metric-card__header">
+            <span class="metric-card__label">{{ card.label }}</span>
+            <span class="metric-card__actions">
+              <el-tooltip
+                v-if="card.help"
+                content="查看说明"
+                placement="top"
+                effect="dark"
+              >
+                <span class="metric-card__help-wrap" @click.stop.prevent="openMetricHelp(card.help)">
+                  <button
+                    type="button"
+                    class="metric-card__help"
+                    aria-label="查看说明"
+                  >
+                    ?
+                  </button>
+                </span>
+              </el-tooltip>
+              <span
+                class="metric-card__icon"
+                :class="{ 'is-risk': card.showRiskWarn }"
+                :style="{ color: card.iconColor, backgroundColor: card.iconBg }"
+              >
+                <i :class="card.showRiskWarn ? 'el-icon-warning' : card.icon"></i>
+              </span>
+            </span>
+          </div>
+
+          <div class="metric-card__value" :class="`is-${card.tone}`">
+            {{ card.value }}
+          </div>
+
+          <div class="metric-card__footer">
+            <span class="metric-card__trend-wrap">
+              <span class="metric-card__trend" :class="`is-${card.trendType}`">
+                <i v-if="card.trendType === 'up'" class="el-icon-top"></i>
+                <i v-else-if="card.trendType === 'down'" class="el-icon-bottom"></i>
+                {{ card.trendText }}
+              </span>
+              <span class="metric-card__compare">较上周期</span>
+            </span>
+            <span v-if="card.extra" class="metric-card__extra">{{ card.extra }}</span>
+            <span v-if="card.detailType" class="metric-card__detail-link" @click.stop="openExpenseDetail(card)">
+              点击查看详情
+            </span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </template>
+
+  <div v-if="showExpenseDetail" class="expense-detail-mask" @click.self="closeExpenseDetail">
+    <div class="expense-detail-dialog" v-loading="expenseDetailLoading">
+      <div class="expense-detail-header">
+        <h2>{{ expenseDetailTitle }}</h2>
+        <button type="button" class="expense-detail-close" @click="closeExpenseDetail">
+          <i class="el-icon-close"></i>
+        </button>
+      </div>
+
+      <div class="expense-detail-meta">
+        <span>流水类型：<strong>{{ expenseDetailFlowType }}</strong></span>
+        <span class="expense-detail-meta__divider">|</span>
+        <span>账期：<strong>{{ expenseDetailPeriod }}</strong></span>
+      </div>
+
+      <div class="expense-detail-table-wrap">
+        <table class="expense-detail-table">
+          <thead>
+            <tr>
+              <th v-for="column in expenseDetailColumns" :key="column.key">
+                {{ column.label }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in expenseDetailRows" :key="`${row.sourceType || 'row'}-${row.id}`">
+              <td v-for="column in expenseDetailColumns" :key="column.key">
+                <span :class="column.className">
+                  {{ formatExpenseCell(row, column) }}
+                </span>
+              </td>
+            </tr>
+            <tr v-if="!expenseDetailRows.length">
+              <td :colspan="expenseDetailColumns.length" class="expense-detail-empty">
+                暂无明细数据
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="expense-detail-total">
+        <span>金额合计</span>
+        <strong>{{ formatCurrencyFixed(expenseDetailTotalAmount) }}</strong>
+      </div>
+
+      <div class="expense-detail-tip">
+        <strong>提示：</strong>
+        {{ expenseDetailTip }}
+      </div>
+
+      <div class="expense-detail-footer">
+        <el-pagination
+          v-if="expenseDetailTotal > expenseDetailPageSize"
+          small
+          background
+          layout="prev, pager, next"
+          :current-page="expenseDetailPageNum"
+          :page-size="expenseDetailPageSize"
+          :total="expenseDetailTotal"
+          @current-change="handleExpenseDetailPageChange"
+        />
+        <button type="button" class="expense-detail-confirm" @click="closeExpenseDetail">
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showGuide" class="guide-mask" @click.self="closeGuide">
+    <div class="guide-dialog">
+      <div class="guide-header">
+        <div class="guide-header__title">
+          <span class="guide-header__icon"><i class="el-icon-question"></i></span>
+          <h2>代理看板说明页</h2>
+        </div>
+        <button type="button" class="guide-close" @click="closeGuide">
+          <i class="el-icon-close"></i>
+        </button>
+      </div>
+
+      <div class="guide-body">
+        <section
+          v-for="section in guideSections"
+          :key="section.key"
+          class="guide-section"
+          :class="`guide-section--${section.key}`"
+        >
+          <div class="guide-section__head">
+            <div>
+              <h3>{{ section.title }}</h3>
+              <p>{{ section.description }}</p>
+            </div>
+            <span class="guide-badge">{{ section.badge }}</span>
+          </div>
+
+          <div class="guide-table-wrap">
+            <table class="guide-table">
+              <thead>
+                <tr>
+                  <th>指标名称</th>
+                  <th>字段说明</th>
+                  <th>时间筛选</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in section.rows" :key="row.name">
+                  <td>{{ row.name }}</td>
+                  <td>{{ row.desc }}</td>
+                  <td :class="{ 'is-filterable': row.filterable }">{{ row.filter }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="section.tip" class="guide-tip" :class="`is-${section.tip.tone}`">
+            <i v-if="section.tip.tone === 'rose'" class="el-icon-warning-outline"></i>
+            <span>{{ section.tip.text }}</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="guide-footer"></div>
+    </div>
+  </div>
+
+  <div v-if="showMetricHelp" class="metric-help-mask" @click.self="closeMetricHelp">
+    <div class="metric-help-dialog">
+      <div class="metric-help-head">
+        <span>数据属性说明</span>
+        <strong>{{ metricHelp.title }}</strong>
+      </div>
+      <p class="metric-help-desc">{{ metricHelp.description }}</p>
+      <div class="metric-help-footer">
+        <button type="button" class="metric-help-confirm" @click="closeMetricHelp">
+          我知道了
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

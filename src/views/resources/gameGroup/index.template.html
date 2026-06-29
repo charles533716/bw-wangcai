@@ -1,0 +1,448 @@
+<div class="app-container">
+  <el-form ref="queryForm" :model="queryParams" :inline="true" v-show="showSearch" label-width="90px">
+    <el-form-item label="站点" prop="siteId">
+      <el-select v-model="queryParams.siteId" placeholder="请选择站点" clearable size="small" filterable>
+        <el-option v-for="site in siteOptions" :key="site.id" :label="site.nameZn + ' (' + site.code + ')'" :value="site.id" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="分组编码" prop="groupCode">
+      <el-input v-model="queryParams.groupCode" placeholder="请输入分组编码" clearable size="small" @keyup.enter.native="handleQuery" />
+    </el-form-item>
+    <el-form-item label="分组名称" prop="groupName">
+      <el-input v-model="queryParams.groupName" placeholder="请输入分组名称" clearable size="small" @keyup.enter.native="handleQuery" />
+    </el-form-item>
+    <el-form-item label="分组级别" prop="groupType">
+      <el-select v-model="queryParams.groupType" placeholder="请选择级别" clearable size="small">
+        <el-option label="一级分组" :value="1" />
+        <el-option label="二级分组" :value="2" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="场景" prop="scene">
+      <el-select v-model="queryParams.scene" placeholder="请选择场景" clearable size="small">
+        <el-option v-for="item in sceneOptions" :key="item.value" :label="item.label" :value="item.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="适配终端" prop="terminalScope">
+      <el-select v-model="queryParams.terminalScope" placeholder="请选择终端" clearable size="small">
+        <el-option v-for="item in terminalScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="热门分组" prop="isHotGroup">
+      <el-select v-model="queryParams.isHotGroup" placeholder="请选择" clearable size="small">
+        <el-option label="是" :value="1" />
+        <el-option label="否" :value="0" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="状态" prop="status">
+      <el-select v-model="queryParams.status" placeholder="请选择状态" clearable size="small">
+        <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+
+  <el-row :gutter="10" class="mb8">
+    <el-col :span="1.5">
+      <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['resources:gameGroup:add']">新增</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['resources:gameGroup:edit']">修改</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['resources:gameGroup:remove']">删除</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="warning" plain icon="el-icon-link" size="mini" :disabled="single" @click="handleBind" v-hasPermi="['resources:gameGroup:bind']">内容编排</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="info" plain icon="el-icon-share" size="mini" @click="handleTree">查看树</el-button>
+    </el-col>
+    <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
+  </el-row>
+
+  <el-table v-loading="loading" :data="groupList" @selection-change="handleSelectionChange">
+    <el-table-column type="selection" width="55" align="center" />
+    <el-table-column label="ID" align="center" prop="id" width="80" />
+    <el-table-column label="站点" align="center" prop="siteName" min-width="140" />
+    <el-table-column label="分组编码" align="center" prop="groupCode" min-width="120" />
+    <el-table-column label="分组名称" align="center" prop="groupName" min-width="140" />
+    <el-table-column label="级别" align="center" width="100">
+      <template slot-scope="scope">
+        <el-tag :type="scope.row.groupType === 1 ? 'success' : 'warning'">{{ scope.row.groupType === 1 ? '一级' : '二级' }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="父级分组" align="center" prop="parentGroupName" min-width="120" />
+    <el-table-column label="场景" align="center" width="90">
+      <template slot-scope="scope">{{ sceneLabel(scope.row.scene) }}</template>
+    </el-table-column>
+    <el-table-column label="适配终端" align="center" min-width="180">
+      <template slot-scope="scope">
+        <el-tag size="mini">{{ terminalScopeLabel(scope.row.terminalScope) }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="热门分组" align="center" width="100">
+      <template slot-scope="scope">
+        <el-tag :type="scope.row.isHotGroup === 1 ? 'danger' : 'info'" size="mini">{{ scope.row.isHotGroup === 1 ? '是' : '否' }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="展示样式" align="center" width="110">
+      <template slot-scope="scope">{{ displayStyleLabel(scope.row.displayStyle) }}</template>
+    </el-table-column>
+    <el-table-column label="图标" align="center" prop="icon" min-width="150" show-overflow-tooltip />
+    <el-table-column label="PC图标" align="center" prop="pcIcon" min-width="150" show-overflow-tooltip />
+    <el-table-column label="H5图标" align="center" prop="h5Icon" min-width="150" show-overflow-tooltip />
+    <el-table-column label="选中图标" align="center" prop="selectedIcon" min-width="150" show-overflow-tooltip />
+    <el-table-column label="已绑游戏" align="center" prop="bindGameCount" width="90" />
+    <el-table-column label="状态" align="center" width="90">
+      <template slot-scope="scope">
+        <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">{{ statusLabel(scope.row.status) }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="排序" align="center" prop="sort" width="80" />
+    <el-table-column label="备注" align="center" prop="remark" min-width="140" show-overflow-tooltip />
+    <el-table-column label="更新时间" align="center" width="170">
+      <template slot-scope="scope">{{ formatTime(scope.row.updateTime) }}</template>
+    </el-table-column>
+    <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="240" fixed="right">
+      <template slot-scope="scope">
+        <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['resources:gameGroup:edit']">修改</el-button>
+        <el-button size="mini" type="text" icon="el-icon-link" @click="handleBind(scope.row)" v-hasPermi="['resources:gameGroup:bind']">{{ scope.row.groupType === 1 ? '编排' : '绑定游戏' }}</el-button>
+        <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['resources:gameGroup:remove']">删除</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <pagination v-show="total > 0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="getList" />
+
+  <el-dialog :title="title" :visible.sync="open" width="980px" append-to-body>
+    <el-form ref="form" :model="form" :rules="rules" label-width="110px">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="站点" prop="siteId">
+            <el-select v-model="form.siteId" placeholder="请选择站点" filterable style="width: 100%" @change="handleFormSiteChange">
+              <el-option v-for="site in siteOptions" :key="site.id" :label="site.nameZn + ' (' + site.code + ')'" :value="site.id" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="分组级别" prop="groupType">
+            <el-select v-model="form.groupType" placeholder="请选择级别" style="width: 100%" @change="handleFormGroupTypeChange">
+              <el-option label="一级分组" :value="1" />
+              <el-option label="二级分组" :value="2" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="分组编码" prop="groupCode">
+            <el-input v-model="form.groupCode" placeholder="如：dz / pg_dz" maxlength="64" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="分组名称" prop="groupName">
+            <el-input v-model="form.groupName" placeholder="请输入分组名称" maxlength="128" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12" v-if="form.groupType === 2">
+          <el-form-item label="父级分组" prop="parentId">
+            <el-select v-model="form.parentId" placeholder="请选择父级分组" style="width: 100%" filterable>
+              <el-option v-for="item in parentGroupOptions" :key="item.id" :label="item.groupName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12" v-else>
+          <el-form-item label="父级分组">
+            <el-input value="一级分组固定为0" disabled />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="场景" prop="scene">
+            <el-select v-model="form.scene" placeholder="请选择场景" style="width: 100%">
+              <el-option v-for="item in sceneOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item label="适配终端" prop="terminalScope">
+        <el-radio-group v-model="form.terminalScope">
+          <el-radio v-for="item in terminalScopeOptions" :key="item.value" :label="item.value">{{ item.label }}</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="热门分组" prop="isHotGroup">
+            <el-switch
+              v-model="form.isHotGroup"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="是"
+              inactive-text="否"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="展示样式" prop="displayStyle">
+            <el-select v-model="form.displayStyle" placeholder="请选择展示样式" style="width: 100%">
+              <el-option v-for="item in displayStyleOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="图标URL" prop="icon">
+            <ImageUpload v-model="form.icon" :limit="1" :isShowTip="false" :fileType="imageFileTypes" />
+            <el-input v-model="form.icon" placeholder="上传后自动回填，可手动修改" maxlength="255" style="margin-top: 8px;" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="PC图标URL" prop="pcIcon">
+            <ImageUpload v-model="form.pcIcon" :limit="1" :isShowTip="false" :fileType="imageFileTypes" />
+            <el-input v-model="form.pcIcon" placeholder="PC端图标，可手动修改" maxlength="255" style="margin-top: 8px;" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="H5图标URL" prop="h5Icon">
+            <ImageUpload v-model="form.h5Icon" :limit="1" :isShowTip="false" :fileType="imageFileTypes" />
+            <el-input v-model="form.h5Icon" placeholder="H5端图标，可手动修改" maxlength="255" style="margin-top: 8px;" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12" v-if="form.groupType === 1">
+          <el-form-item label="选中图标URL" prop="selectedIcon">
+            <ImageUpload v-model="form.selectedIcon" :limit="1" :isShowTip="false" :fileType="imageFileTypes" />
+            <el-input v-model="form.selectedIcon" placeholder="一级分组选中态图标，可手动修改" maxlength="255" style="margin-top: 8px;" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12" v-else>
+          <el-form-item label="排序" prop="sort">
+            <el-input-number v-model="form.sort" :min="0" :max="9999" style="width: 100%" controls-position="right" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12" v-if="form.groupType === 1">
+          <el-form-item label="排序" prop="sort">
+            <el-input-number v-model="form.sort" :min="0" :max="9999" style="width: 100%" controls-position="right" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="状态" prop="status">
+            <el-radio-group v-model="form.status">
+              <el-radio v-for="item in statusOptions" :key="item.value" :label="item.value">{{ item.label }}</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item label="备注" prop="remark">
+        <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+      <el-button @click="cancel">取 消</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :title="bindGroupType === 1 ? '一级分组内容编排' : '分组绑定游戏'"
+    :visible.sync="bindOpen"
+    width="1180px"
+    top="5vh"
+    custom-class="game-bind-dialog"
+    append-to-body
+  >
+    <div style="margin-bottom: 12px; color: #909399;">
+      分组：{{ bindGroupName || '-' }}（ID: {{ bindGroupId || '-' }}）
+    </div>
+    <el-tabs v-model="bindActiveTab">
+      <el-tab-pane label="绑定游戏" name="game">
+        <el-form :inline="true" size="small" class="bind-game-filter" @submit.native.prevent>
+          <el-form-item label="厂商">
+            <el-select v-model="bindFactoryId" placeholder="请选择厂商" clearable filterable style="width: 220px" @change="loadBindGameCandidates">
+              <el-option v-for="factory in bindFactoryOptions" :key="factory.id" :label="factory.factoryName" :value="factory.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="bindGameKeyword"
+              placeholder="游戏名称/编码/厂商/线路"
+              clearable
+              style="width: 260px"
+              @keyup.enter.native="loadBindGameCandidates"
+              @clear="loadBindGameCandidates"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="loadBindGameCandidates">筛选</el-button>
+            <el-button icon="el-icon-refresh" @click="resetBindGameFilters">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <div class="bind-game-summary">
+          当前显示 {{ gameTransferData.length }} 条候选，接口命中 {{ bindGameTotal }} 条；如果没有找到游戏，请输入更精确的游戏名称或编码查询。
+        </div>
+        <div class="bind-game-boards" v-loading="bindGamesLoading">
+          <div class="bind-game-panel">
+            <div class="bind-game-panel-header">
+              <el-checkbox
+                :indeterminate="isCandidateIndeterminate()"
+                :value="isAllCandidatesChecked()"
+                @change="toggleAllCandidates"
+              >可选游戏</el-checkbox>
+              <span>{{ filteredCandidateGameList().length }}/{{ gameTransferData.length }}</span>
+            </div>
+            <div class="bind-game-panel-search">
+              <el-input v-model="bindAvailableKeyword" placeholder="名称/编码/厂商/线路" clearable size="mini" prefix-icon="el-icon-search" />
+            </div>
+            <div class="bind-game-list">
+              <div v-for="option in filteredCandidateGameList()" :key="option.key" class="bind-game-option">
+                <el-checkbox v-model="bindCandidateCheckedIds" :label="option.id" class="bind-game-check">&nbsp;</el-checkbox>
+                <div class="bind-game-content">
+                  <div class="bind-game-title">
+                    <span class="bind-game-name">{{ option.gameName || '-' }}</span>
+                    <span class="bind-game-id">ID: {{ option.id }}</span>
+                  </div>
+                  <div class="bind-game-meta">
+                    <span>编码：{{ option.gameCode || '-' }}</span>
+                    <span>厂商：{{ option.factoryName || '-' }}</span>
+                    <span>线路：{{ option.lineName || '-' }}</span>
+                  </div>
+                  <div class="bind-game-meta">
+                    <span>终端：{{ terminalScopeLabel(option.terminalScope) }}</span>
+                    <span>排序：{{ option.sort || 0 }}</span>
+                    <el-tag v-if="option.isHot === 1" type="danger" size="mini">热门</el-tag>
+                    <el-tag v-if="option.isNew === 1" type="success" size="mini">最新</el-tag>
+                    <el-tag v-if="option.isTop === 1" type="warning" size="mini">Top</el-tag>
+                  </div>
+                </div>
+                <el-button type="text" size="mini" @click="addBindGame(option)">添加</el-button>
+              </div>
+            </div>
+          </div>
+          <div class="bind-game-board-actions">
+            <el-button type="primary" icon="el-icon-arrow-right" size="mini" :disabled="bindCandidateCheckedIds.length === 0" @click="addCheckedBindGames" />
+            <el-button type="primary" icon="el-icon-arrow-left" size="mini" :disabled="bindRowCheckedKeys.length === 0" @click="removeCheckedBindGames" />
+          </div>
+          <div class="bind-game-panel">
+            <div class="bind-game-panel-header">
+              <el-checkbox
+                :indeterminate="isBoundIndeterminate()"
+                :value="isAllBoundChecked()"
+                @change="toggleAllBoundRows"
+              >已绑定游戏</el-checkbox>
+              <span>{{ filteredSelectedBindGameList().length }}/{{ bindGameRows.length }}</span>
+            </div>
+            <div class="bind-game-panel-search">
+              <el-input v-model="bindSelectedKeyword" placeholder="名称/编码/厂商/线路" clearable size="mini" prefix-icon="el-icon-search" />
+            </div>
+            <div class="bind-game-list">
+              <div v-for="row in filteredSelectedBindGameList()" :key="row.rowKey" class="bind-game-option">
+                <el-checkbox v-model="bindRowCheckedKeys" :label="row.rowKey" class="bind-game-check">&nbsp;</el-checkbox>
+                <div class="bind-game-content">
+                  <div class="bind-game-title">
+                    <span class="bind-game-name">{{ row.gameAlias || row.gameName || '-' }}</span>
+                    <span class="bind-game-id">ID: {{ row.gameId }}</span>
+                  </div>
+                  <div class="bind-game-meta">
+                    <span>编码：{{ row.gameCode || '-' }}</span>
+                    <span>厂商：{{ row.factoryName || '-' }}</span>
+                    <span>线路：{{ row.lineName || '-' }}</span>
+                  </div>
+                  <div class="bind-game-meta">
+                    <span>终端：{{ terminalScopeLabel(row.terminalScope) }}</span>
+                    <span>排序：{{ row.sort || 0 }}</span>
+                    <el-tag v-if="row.isHot === 1" type="danger" size="mini">热门</el-tag>
+                    <el-tag v-if="row.isNew === 1" type="success" size="mini">最新</el-tag>
+                    <el-tag v-if="row.isTop === 1" type="warning" size="mini">Top</el-tag>
+                  </div>
+                </div>
+                <el-button type="text" size="mini" @click="removeBindGame(row)">移除</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-table :data="selectedBindGameList()" border size="mini" class="bind-alias-table" max-height="260">
+          <el-table-column label="游戏ID" prop="gameId" width="90" align="center" />
+          <el-table-column label="游戏名称" prop="gameName" min-width="160" show-overflow-tooltip />
+          <el-table-column label="游戏编码" prop="gameCode" min-width="130" show-overflow-tooltip />
+          <el-table-column label="别名" min-width="220">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.gameAlias" placeholder="为空则使用原游戏名称" maxlength="128" clearable size="mini" />
+            </template>
+          </el-table-column>
+          <el-table-column label="显示排序" width="140" align="center">
+            <template slot-scope="scope">
+              <el-input-number
+                v-model="scope.row.sort"
+                :min="1"
+                :step="1"
+                :precision="0"
+                controls-position="right"
+                size="mini"
+                class="bind-sort-input"
+                @change="handleBindSortChange(scope.row)"
+              />
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+      <el-tab-pane v-if="bindGroupType === 1" label="挂载二级分组" name="subgroup">
+        <div style="margin-bottom: 10px; color: #909399;">
+          可将已有二级分组挂载到当前一级分组下；已挂载在其它一级分组下的二级分组会自动迁移。
+        </div>
+        <el-row :gutter="10" style="margin-bottom: 10px;">
+          <el-col :span="18">
+            <el-select
+              v-model="subGroupMoveIds"
+              multiple
+              filterable
+              collapse-tags
+              style="width: 100%;"
+              placeholder="请选择要挂载的二级分组"
+            >
+              <el-option
+                v-for="item in subGroupMoveOptions"
+                :key="item.id"
+                :label="subGroupOptionLabel(item)"
+                :value="item.id"
+              />
+            </el-select>
+          </el-col>
+          <el-col :span="6">
+            <el-button type="primary" style="width: 100%;" :loading="bindActionLoading" @click="submitBindSubGroups">批量挂载</el-button>
+          </el-col>
+        </el-row>
+        <el-table :data="bindChildGroupList" border size="mini" max-height="280">
+          <el-table-column label="二级分组ID" prop="id" width="100" align="center" />
+          <el-table-column label="分组编码" prop="groupCode" min-width="120" />
+          <el-table-column label="分组名称" prop="groupName" min-width="150" />
+          <el-table-column label="状态" width="90" align="center">
+            <template slot-scope="scope">
+              <el-tag :type="scope.row.status === 1 ? 'success' : 'info'" size="mini">{{ statusLabel(scope.row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" :loading="bindActionLoading" @click="handleBindPrimaryAction">
+        {{ bindActiveTab === 'subgroup' ? '批量挂载' : '保 存' }}
+      </el-button>
+      <el-button @click="bindOpen = false">取 消</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog title="分组树" :visible.sync="treeOpen" width="520px" append-to-body>
+    <el-tree :data="groupTree" node-key="id" :props="treeProps" default-expand-all />
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="treeOpen = false">关 闭</el-button>
+    </div>
+  </el-dialog>
+</div>

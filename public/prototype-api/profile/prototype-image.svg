@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="135" viewBox="0 0 240 135">
+  <rect width="240" height="135" fill="#f5f7fa"/>
+  <rect x="18" y="18" width="204" height="99" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
+  <circle cx="72" cy="58" r="16" fill="#93c5fd"/>
+  <path d="M42 97h156l-40-42-32 31-22-24-62 35z" fill="#60a5fa"/>
+  <text x="120" y="116" text-anchor="middle" font-family="Arial" font-size="12" fill="#475569">Prototype Image</text>
+</svg>

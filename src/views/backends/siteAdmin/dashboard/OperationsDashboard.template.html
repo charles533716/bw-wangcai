@@ -1,0 +1,165 @@
+<div class="ops-board app-container">
+  <div class="page-head">
+    <div class="page-head__left">
+      <span class="page-head__dot"></span>
+      <span class="page-head__title">运营数据看板</span>
+    </div>
+    <div class="page-head__right">
+      <el-select
+        v-if="scopeType === 'super'"
+        v-model="query.siteCode"
+        size="mini"
+        class="page-head__site"
+        @change="handleQuery"
+      >
+        <el-option
+          v-for="site in siteOptions"
+          :key="site.code"
+          :label="site.name"
+          :value="site.code"
+        />
+      </el-select>
+
+      <div class="range-switch">
+        <button
+          v-for="item in quickRanges"
+          :key="item.value"
+          type="button"
+          class="range-switch__btn"
+          :class="{ 'is-active': query.quickRange === item.value }"
+          @click="switchRange(item.value)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <section
+    v-for="section in dashboardData.sections"
+    :key="section.key"
+    class="metric-section"
+  >
+    <div class="metric-section__head">
+      <div class="metric-section__title-wrap">
+        <span class="metric-section__icon" :class="`is-${section.iconColor || 'blue'}`"></span>
+        <span class="metric-section__title">{{ section.title }}</span>
+      </div>
+    </div>
+
+    <div class="metric-grid" :style="gridStyle(section)">
+      <article v-for="card in section.cards" :key="card.label" class="metric-card">
+        <div class="metric-card__header">
+          <div class="metric-card__label">{{ card.label }}</div>
+          <span class="metric-card__icon" :class="`is-${card.color}`">
+            <i :class="card.icon"></i>
+          </span>
+        </div>
+
+        <div class="metric-card__value" :class="`is-${card.color}`">
+          {{ card.value }}
+        </div>
+
+        <div v-if="card.showCompare !== false" class="metric-card__footer">
+          <span class="metric-card__trend" :class="`is-${card.trendType}`">{{ card.trend }}</span>
+          <span class="metric-card__sub">{{ card.subLabel }}</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="bottom-grid">
+    <el-card shadow="never" class="panel-card trend-panel">
+      <div class="panel-card__head">
+        <div>
+          <div class="panel-card__title">收益趋势统计</div>
+          <div class="panel-card__desc">历史数据：总投注金额、总返彩金额与总盈利金额对比</div>
+        </div>
+        <div class="panel-card__actions">
+          <span class="mini-range">
+            <i class="el-icon-date"></i>
+            {{ trendRangeLabel }}
+          </span>
+        </div>
+      </div>
+
+      <div class="legend-row">
+        <span v-for="item in dashboardData.legends" :key="item.key" class="legend-row__item">
+          <i class="legend-row__dot" :style="{ backgroundColor: item.color }"></i>
+          {{ item.label }}
+        </span>
+      </div>
+
+      <div class="trend-chart">
+        <div class="trend-chart__axis">
+          <span v-for="(tick, index) in yTicks" :key="`${tick}-${index}`">{{ tick }}</span>
+        </div>
+
+        <div class="trend-chart__plot">
+          <div
+            v-for="line in 5"
+            :key="`grid-${line}`"
+            class="trend-chart__gridline"
+            :style="gridLineStyle(line)"
+          ></div>
+
+          <div class="trend-chart__bars" :style="trendBarsStyle">
+            <div v-for="(row, index) in normalizedTrendRows" :key="`${row.label}-${index}`" class="trend-col">
+              <div class="trend-col__body">
+                <div class="trend-col__bar" :style="{ height: row.barHeight + '%' }">
+                  <span v-if="row.barHeight > 0" class="trend-col__bar-label">{{ row.bar }}</span>
+                </div>
+              </div>
+              <div class="trend-col__label">{{ row.shortLabel }}</div>
+            </div>
+          </div>
+
+          <div v-if="isTrendEmpty" class="trend-empty">暂无数据</div>
+
+          <svg class="trend-chart__svg" viewBox="0 0 1000 280" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="trend-line trend-line--blue" :points="linePointsBlue" />
+            <polyline class="trend-line trend-line--pink" :points="linePointsPink" />
+            <g v-for="(pt, idx) in bluePoints" :key="`blue-${idx}`">
+              <circle :cx="pt.x" :cy="pt.y" r="4" class="trend-point trend-point--blue" />
+            </g>
+            <g v-for="(pt, idx) in pinkPoints" :key="`pink-${idx}`">
+              <circle :cx="pt.x" :cy="pt.y" r="4" class="trend-point trend-point--pink" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card shadow="never" class="panel-card rank-panel">
+      <div class="panel-card__head">
+        <div>
+          <div class="panel-card__title panel-card__title--rank">
+            <i class="el-icon-trophy"></i>
+            {{ dashboardData.rankingTitle }}
+          </div>
+          <div class="panel-card__desc">{{ dashboardData.rankingSubTitle }}</div>
+        </div>
+      </div>
+
+      <div class="rank-list">
+        <div v-if="!dashboardData.rankingRows || !dashboardData.rankingRows.length" class="rank-empty">
+          暂无数据
+        </div>
+        <div v-else v-for="(row, index) in dashboardData.rankingRows" :key="`${row.name}-${index}`" class="rank-item">
+          <div class="rank-item__head">
+            <span class="rank-item__name">{{ row.name }}</span>
+            <span class="rank-item__value">{{ row.amountText }}</span>
+          </div>
+          <div class="rank-item__track">
+            <div class="rank-item__fill" :style="{ width: row.percent + '%' }"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rank-footer">
+        <span class="rank-footer__label">{{ dashboardData.rankingFooterLabel }}</span>
+        <span class="rank-footer__value">{{ dashboardData.rankingFooterValue }}</span>
+      </div>
+    </el-card>
+  </div>
+</div>

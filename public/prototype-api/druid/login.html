@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Druid 数据源监控 - 演示占位</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+      overflow: hidden;
+    }
+    .head {
+      padding: 18px 22px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: #e5e7eb;
+    }
+    .cell {
+      background: #fff;
+      padding: 18px;
+    }
+    .label {
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 12px 16px;
+      border-top: 1px solid #eef2f7;
+      text-align: left;
+    }
+    th {
+      color: #6b7280;
+      font-weight: 600;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="head">Druid 数据源监控（演示占位）</div>
+      <div class="grid">
+        <div class="cell"><div class="label">活动连接</div><div class="value">12</div></div>
+        <div class="cell"><div class="label">峰值连接</div><div class="value">48</div></div>
+        <div class="cell"><div class="label">SQL 执行</div><div class="value">8,620</div></div>
+        <div class="cell"><div class="label">慢 SQL</div><div class="value">3</div></div>
+      </div>
+      <table class="table">
+        <thead>
+          <tr><th>数据源</th><th>URL</th><th>状态</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>prototype-master</td><td>jdbc:prototype://localhost/master</td><td>正常</td><td>本地演示数据，不连接真实数据库</td></tr>
+          <tr><td>prototype-site</td><td>jdbc:prototype://localhost/site</td><td>正常</td><td>用于站点后台演示</td></tr>
+          <tr><td>prototype-agent</td><td>jdbc:prototype://localhost/agent</td><td>正常</td><td>用于代理后台演示</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<div class="app-container risk-page">
+  <div class="risk-card">
+    <el-form
+      ref="recordQueryForm"
+      :model="recordQuery"
+      :inline="true"
+      size="small"
+      label-width="78px"
+      class="risk-query"
+    >
+      <el-form-item class="query-item query-item--sm" label="站点" prop="siteId">
+        <el-select v-model="recordQuery.siteId" class="query-control" placeholder="全部" clearable>
+          <el-option label="全部" value="" />
+          <el-option v-for="item in siteOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item class="query-item query-item--sm" label="预警动作" prop="mode">
+        <el-select v-model="recordQuery.mode" class="query-control" placeholder="全部" clearable>
+          <el-option label="全部" value="" />
+          <el-option v-for="item in modeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item class="query-item query-item--time" label="创建时间" prop="createTimeRange">
+        <el-date-picker
+          v-model="recordQuery.createTimeRange"
+          class="query-control"
+          type="datetimerange"
+          value-format="timestamp"
+          range-separator="至"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          :default-time="['00:00:00', '23:59:59']"
+          clearable
+        />
+      </el-form-item>
+      <el-form-item class="query-actions">
+        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleRecordQuery">查询</el-button>
+        <el-button type="info" size="mini" @click="resetRecordQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <div class="risk-toolbar">
+      <el-button type="warning" plain size="mini" icon="el-icon-download" @click="handleRecordExport">导出</el-button>
+    </div>
+
+    <el-table v-loading="recordLoading" :data="recordList" @row-dblclick="handleViewRecord">
+      <el-table-column label="ID" align="center" width="80">
+        <template slot-scope="scope">{{ getRecordField(scope.row, 'id') }}</template>
+      </el-table-column>
+      <el-table-column label="站点code/站点名称" align="center" min-width="200" show-overflow-tooltip>
+        <template slot-scope="scope">{{ getSiteDisplay(scope.row) }}</template>
+      </el-table-column>
+      <el-table-column label="业务类型" align="center" min-width="140">
+        <template slot-scope="scope">
+          {{ getTypeDisplay(getRecordField(scope.row, 'businessType', true)) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="上级代理ID/上级代理用户名" align="center" min-width="220" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <el-button
+            type="text"
+            size="mini"
+            class="user-link-btn"
+            :disabled="!hasAgent(scope.row)"
+            @click.stop="handleViewAgent(scope.row)"
+          >
+            {{ getAgentDisplay(scope.row) }}
+          </el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="用户ID/用户名" align="center" min-width="220" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <el-button
+            type="text"
+            size="mini"
+            class="user-link-btn"
+            :disabled="!hasUserId(scope.row)"
+            @click.stop="handleViewUser(scope.row)"
+          >
+            {{ getUserDisplay(scope.row) }}
+          </el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="规则ID" align="center" min-width="100">
+        <template slot-scope="scope">{{ getRecordField(scope.row, 'ruleId') }}</template>
+      </el-table-column>
+      <el-table-column label="关联订单号" align="center" min-width="190" show-overflow-tooltip>
+        <template slot-scope="scope">{{ getRecordField(scope.row, 'orderNo') }}</template>
+      </el-table-column>
+      <el-table-column label="预警动作" align="center" min-width="130">
+        <template slot-scope="scope">
+          {{ getModeDisplay(getRecordField(scope.row, 'mode', true)) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="风控原因" align="center" min-width="250" show-overflow-tooltip>
+        <template slot-scope="scope">{{ getRecordField(scope.row, 'riskReason') }}</template>
+      </el-table-column>
+      <el-table-column label="创建时间" align="center" min-width="180">
+        <template slot-scope="scope">{{ formatListTime(getRecordField(scope.row, 'createTime', true)) }}</template>
+      </el-table-column>
+      <el-table-column label="更新时间" align="center" min-width="180">
+        <template slot-scope="scope">{{ formatListTime(getRecordField(scope.row, 'updateTime', true)) }}</template>
+      </el-table-column>
+      <el-table-column label="操作人" align="center" min-width="140" show-overflow-tooltip>
+        <template slot-scope="scope">{{ getOperatorDisplay(scope.row) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" align="center" width="170" fixed="right">
+        <template slot-scope="scope">
+          <el-button type="text" size="mini" @click.stop="handleViewRecord(scope.row)">详情</el-button>
+          <el-button
+            type="text"
+            size="mini"
+            :disabled="!canChangeUserStatus(scope.row)"
+            @click.stop="handleChangeUserStatus(scope.row)"
+          >
+            {{ getUserActionLabel(scope.row) }}
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <pagination
+      v-show="recordTotal > 0"
+      :total="recordTotal"
+      :page.sync="recordQuery.pageNum"
+      :limit.sync="recordQuery.pageSize"
+      @pagination="getRecordList"
+    />
+  </div>
+
+  <el-dialog title="风控记录详情" :visible.sync="recordDialogOpen" width="760px" append-to-body>
+    <el-descriptions :column="2" border size="small">
+      <el-descriptions-item v-for="item in recordDetailEntries" :key="item.key" :label="item.label">
+        {{ item.value }}
+      </el-descriptions-item>
+    </el-descriptions>
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="recordDialogOpen = false">关 闭</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog title="用户详情" :visible.sync="userDialogOpen" width="760px" append-to-body>
+    <div v-loading="userDetailLoading">
+      <el-descriptions :column="2" border size="small">
+        <el-descriptions-item label="用户名">{{ userDetailSummary.userName }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ userDetailSummary.status }}</el-descriptions-item>
+        <el-descriptions-item label="归属站点">{{ userDetailSummary.siteInfo }}</el-descriptions-item>
+        <el-descriptions-item label="上级代理ID">{{ userDetailSummary.parentAgentId }}</el-descriptions-item>
+        <el-descriptions-item label="上级代理用户名">{{ userDetailSummary.parentAgentName }}</el-descriptions-item>
+        <el-descriptions-item label="余额">{{ userDetailSummary.balance }}</el-descriptions-item>
+        <el-descriptions-item label="邀请码">{{ userDetailSummary.inviteCode }}</el-descriptions-item>
+        <el-descriptions-item label="注册时间">{{ userDetailSummary.regTime }}</el-descriptions-item>
+        <el-descriptions-item label="注册IP">{{ userDetailSummary.regIp }}</el-descriptions-item>
+        <el-descriptions-item label="最后登录时间">{{ userDetailSummary.lastLoginTime }}</el-descriptions-item>
+        <el-descriptions-item label="最后登录IP">{{ userDetailSummary.lastLoginIp }}</el-descriptions-item>
+        <el-descriptions-item label="注册设备">{{ userDetailSummary.fromSource }}</el-descriptions-item>
+        <el-descriptions-item label="注册来源">{{ userDetailSummary.fromDomain }}</el-descriptions-item>
+      </el-descriptions>
+    </div>
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="userDialogOpen = false">关 闭</el-button>
+    </div>
+  </el-dialog>
+</div>

@@ -1,0 +1,200 @@
+<div class="app-container vip-page" v-loading="loading || saving">
+  <div class="vip-page__head">
+    <div class="title-wrap">
+      <div class="title-icon">
+        <i class="el-icon-trophy"></i>
+      </div>
+      <div>
+        <h2 class="page-title">会员VIP等级与返水设置</h2>
+        <p class="page-subtitle">统一配置VIP等级门槛及各等级对应的细分游戏返水比例</p>
+      </div>
+    </div>
+    <div class="head-actions">
+      <div class="site-selector">
+        <span class="site-selector__label">站点</span>
+        <el-select
+          v-model="selectedSiteCode"
+          size="small"
+          filterable
+          disabled
+          placeholder="请选择站点"
+          class="site-selector__select"
+          @change="handleSiteChange"
+        >
+          <el-option
+            v-for="site in siteOptions"
+            :key="site.code"
+            :label="site.label"
+            :value="site.code"
+          />
+        </el-select>
+      </div>
+
+      <el-button round icon="el-icon-plus" @click="handleAddLevel">新增等级</el-button>
+      <el-button type="primary" round icon="el-icon-check" :loading="saving" @click="handleSaveAll">
+        保存全部配置
+      </el-button>
+    </div>
+  </div>
+
+  <div class="tips-banner">
+    <div class="tips-banner__icon">
+      <i class="el-icon-info"></i>
+    </div>
+    <div class="tips-banner__content">
+      <div class="tips-title">配置说明</div>
+      <div class="tips-text">在此页面您可以设置每个VIP等级的晋升要求、礼金规则及对应游戏返水比例。</div>
+    </div>
+  </div>
+
+  <div class="vip-list">
+    <section
+      v-for="(vip, index) in vipLevels"
+      :key="vip.localKey"
+      class="vip-card"
+      :class="{ 'is-active': activeCardId === vip.localKey }"
+      @click="activeCardId = vip.localKey"
+    >
+      <div class="vip-card__top">
+        <div class="vip-level-badge">
+          <div class="vip-level-badge__icon">
+            <i class="el-icon-trophy"></i>
+          </div>
+          <div class="vip-level-badge__level">{{ vip.vipLevel }}</div>
+        </div>
+
+        <div class="vip-level-title">
+          <div class="vip-level-title__main">VIP {{ vip.vipLevel }}</div>
+          <div class="vip-level-title__sub">等级标识</div>
+        </div>
+
+        <div class="vip-main-form">
+          <div
+            v-for="field in configFields"
+            :key="`${vip.localKey}-${field.key}`"
+            class="form-item"
+          >
+            <div class="field-label">
+              <span class="label-dot" :style="{ backgroundColor: field.color }"></span>
+              <span>{{ field.label }}</span>
+            </div>
+            <el-input
+              v-model.number="vip[field.key]"
+              size="small"
+              type="number"
+              class="value-input"
+            >
+              <template v-if="field.unit" slot="append">{{ field.unit }}</template>
+            </el-input>
+          </div>
+        </div>
+
+        <div class="vip-benefit-form">
+          <div class="benefit-title">VIP 提款福利</div>
+          <div class="benefit-grid">
+            <div
+              v-for="field in benefitFields"
+              :key="`${vip.localKey}-${field.key}`"
+              class="form-item"
+            >
+              <div class="field-label">
+                <span class="label-dot label-dot--muted"></span>
+                <span>{{ field.label }}</span>
+              </div>
+              <el-input
+                v-model.number="vip[field.key]"
+                size="small"
+                type="number"
+                class="value-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <el-button
+          type="text"
+          class="delete-level"
+          icon="el-icon-delete"
+          :disabled="vipLevels.length === 1 || !isHighestVipLevel(vip)"
+          @click.stop="handleRemoveLevel(vip)"
+        ></el-button>
+      </div>
+
+      <div class="vip-card__retain">
+        <div class="retain-header">
+          <i class="el-icon-coin"></i>
+          <span>保级设置</span>
+        </div>
+        <div class="retain-grid">
+          <div
+            v-for="field in retainFields"
+            :key="`${vip.localKey}-${field.key}`"
+            class="retain-item"
+          >
+            <div class="retain-item__label">{{ field.label }}</div>
+            <el-input
+              v-model.number="vip[field.key]"
+              size="mini"
+              type="number"
+              class="retain-input"
+            >
+              <template v-if="field.unit" slot="append">{{ field.unit }}</template>
+            </el-input>
+          </div>
+        </div>
+      </div>
+
+      <div class="vip-card__bottom">
+        <div class="rebate-rate-row">
+          <div class="rebate-header">
+            <i class="el-icon-s-data"></i>
+            <span>游戏返水比例（%）</span>
+          </div>
+          <div class="rebate-grid">
+            <div
+              v-for="venue in venueTypes"
+              :key="`${vip.localKey}-${venue.key}`"
+              class="rebate-item"
+            >
+              <div class="rebate-name">
+                <span class="label-dot" :style="{ backgroundColor: venue.color }"></span>
+                <span>{{ venue.label }}</span>
+              </div>
+              <el-input
+                v-model="vip.rebateRates[venue.key]"
+                size="mini"
+                type="number"
+                step="0.01"
+                class="rebate-input"
+              >
+                <template slot="append">%</template>
+              </el-input>
+            </div>
+          </div>
+        </div>
+        <div class="rebate-turnover-row">
+          <div class="rebate-header">
+            <i class="el-icon-refresh"></i>
+            <span>返水流水倍数设置</span>
+          </div>
+          <el-input
+            v-model.number="vip.rebateTurnoverMultiple"
+            size="mini"
+            type="number"
+            min="0"
+            step="0.01"
+            class="rebate-turnover-input"
+          >
+            <template slot="append">倍</template>
+          </el-input>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="vip-page__foot">
+    <el-button type="primary" round icon="el-icon-plus" class="add-system-btn" @click="handleAddLevel">
+      新增 VIP 等级体系
+    </el-button>
+  </div>
+</div>

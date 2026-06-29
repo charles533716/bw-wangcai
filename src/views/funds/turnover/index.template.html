@@ -1,0 +1,171 @@
+<div v-loading="loading" class="turnover-setting-page app-container">
+  <section class="turnover-hero">
+    <div class="turnover-hero__content">
+      <div class="turnover-hero__badge">
+        <i class="el-icon-lock"></i>
+      </div>
+      <div>
+        <h1 class="turnover-hero__title">提现流水设置</h1>
+        <p class="turnover-hero__desc">配置不同游戏类别的盈利提现流水倍数，用于风控管理与提现审核。</p>
+      </div>
+    </div>
+    <div class="turnover-hero__actions">
+      <el-button class="hero-btn hero-btn--ghost" icon="el-icon-refresh-left" @click="handleReset">重置默认</el-button>
+      <el-button
+        class="hero-btn hero-btn--primary"
+        type="primary"
+        icon="el-icon-check"
+        :loading="saving"
+        v-hasPermi="['turnover:withdraw:edit', 'turnover:config:edit']"
+        @click="handleSave"
+      >
+        保存配置
+      </el-button>
+    </div>
+  </section>
+
+  <section class="rule-card">
+    <div class="rule-card__icon">
+      <i class="el-icon-info"></i>
+    </div>
+    <div class="rule-card__body">
+      <div class="rule-card__title">提现流水计算规则</div>
+      <div class="rule-card__line">* 实际游戏提现流水额度 = 提现流水基数 × 游戏流水倍数。</div>
+      <div class="rule-card__line">* 如果会员在多个类别中都有盈利，系统将根据各类别盈利比例加权计算总流水要求。</div>
+      <div class="rule-card__line">* 设置为 0 表示该类别盈利不计入提现流水考核。</div>
+    </div>
+  </section>
+
+  <section class="setting-panel setting-panel--warm">
+    <div class="setting-panel__header">
+      <div class="panel-mark">
+        <i class="el-icon-refresh-left"></i>
+      </div>
+      <div>
+        <div class="setting-panel__title">极低余额免打码</div>
+        <div class="setting-panel__desc">满足任一条件的情况下，用户进行了充值，系统将自动免除当前未完成的打码量限制。</div>
+      </div>
+    </div>
+
+    <div class="setting-grid">
+      <div class="setting-field">
+        <div class="field-label field-label--inline">
+          <span>指定百分比额度（相对于最后一次充值）</span>
+          <i class="el-icon-info"></i>
+        </div>
+        <div class="unit-input">
+          <el-input-number
+            v-model="form.percentageRate"
+            :controls="false"
+            :min="0"
+            :precision="2"
+            :step="0.1"
+          />
+          <span class="unit-input__suffix">%</span>
+        </div>
+        <div class="field-hint">余额低于最后一次充值金额的 {{ formatPercent(form.percentageRate) }}</div>
+      </div>
+
+      <div class="setting-field">
+        <div class="field-label field-label--inline">
+          <span>固定额度（绝对值）</span>
+          <i class="el-icon-info"></i>
+        </div>
+        <div class="unit-input">
+          <el-input-number
+            v-model="form.fixedAmount"
+            :controls="false"
+            :min="0"
+            :precision="2"
+            :step="1"
+          />
+          <span class="unit-input__suffix">CNY</span>
+        </div>
+        <div class="field-hint">且余额绝对值低于 {{ formatMoney(form.fixedAmount) }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="setting-panel setting-panel--slate">
+    <div class="base-inline">
+      <div class="setting-panel__header base-inline__header">
+        <div class="panel-mark panel-mark--base">
+          <i class="el-icon-tickets"></i>
+        </div>
+        <div>
+          <div class="setting-panel__title">提现流水基数</div>
+          <div class="setting-panel__desc">基础提现流水基数要求，所有游戏的实际流水将基于此基数进行倍数计算。</div>
+        </div>
+      </div>
+
+      <div class="base-inline__content">
+        <div class="base-panel__current">
+          <div class="field-label">当前基数</div>
+          <div class="base-panel__value">{{ formatMultiple(form.currentTurnoverBase) }}</div>
+        </div>
+
+        <div class="setting-field setting-field--compact base-inline__input">
+          <div class="field-label field-label--inline">
+            <span>设置提现流水基数</span>
+            <i class="el-icon-info"></i>
+          </div>
+          <div class="unit-input">
+            <el-input-number
+              v-model="form.turnoverBase"
+              :controls="false"
+              :min="0"
+              :precision="2"
+              :step="0.1"
+            />
+            <span class="unit-input__suffix">倍</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="venue-section">
+    <div class="venue-section__header">
+      <div>
+        <div class="venue-section__title">游戏流水倍数</div>
+        <div class="venue-section__desc">显示方式参照 VIP 游戏返水比例输入形式，按场馆逐项维护倍数。</div>
+      </div>
+    </div>
+
+    <div class="venue-grid">
+      <article
+        v-for="item in form.venueItems"
+        :key="item.venueType"
+        :class="['venue-card', `theme-${resolveTheme(item.theme)}`]"
+      >
+        <div class="venue-card__top">
+          <div class="venue-card__badge">{{ item.shortLabel }}</div>
+          <div class="venue-card__actual">
+            <span>实际流水</span>
+            <strong>{{ formatMultiple(computeActualTurnover(item.turnoverMultiple)) }}</strong>
+          </div>
+        </div>
+
+        <div class="venue-card__title">{{ item.venueLabel }}</div>
+        <div class="venue-card__desc">{{ item.description }}</div>
+
+        <div class="field-label">游戏流水倍数</div>
+        <div class="unit-input unit-input--card">
+          <el-input-number
+            v-model="item.turnoverMultiple"
+            :controls="false"
+            :min="0"
+            :precision="2"
+            :step="0.1"
+          />
+          <span class="unit-input__suffix">倍</span>
+        </div>
+
+        <div class="venue-card__calc">
+          <span>计算：{{ formatMultiple(form.turnoverBase) }} × {{ formatMultiple(item.turnoverMultiple) }}</span>
+          <strong>= {{ formatMultiple(computeActualTurnover(item.turnoverMultiple)) }}</strong>
+        </div>
+      </article>
+    </div>
+  </section>
+</div>

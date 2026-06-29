@@ -1,0 +1,494 @@
+.deposit-withdraw-fee-page {
+  background: #f5f8fc;
+  min-height: calc(100vh - 84px);
+  padding: 18px 24px 28px;
+}
+
+.config-panel,
+.toolbar-panel {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(31, 48, 75, 0.06);
+}
+
+.config-panel {
+  display: grid;
+  grid-template-columns: 280px 1fr auto;
+  grid-gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.panel-title,
+.toolbar-title,
+.table-heading__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-icon,
+.toolbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.panel-icon {
+  background: #f2f6fc;
+  color: #8da3c3;
+  font-size: 18px;
+}
+
+.panel-heading,
+.toolbar-title span {
+  color: #1f2f46;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.panel-subtitle {
+  color: #8090aa;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.panel-switch {
+  justify-self: end;
+}
+
+.config-controls {
+  grid-column: 1 / span 3;
+  display: grid;
+  grid-template-columns: minmax(240px, 520px) minmax(220px, 1fr) auto;
+  grid-gap: 10px;
+  align-items: center;
+}
+
+.config-controls.is-template-mode .control-main {
+  grid-column: 1 / span 2;
+}
+
+.control-main,
+.control-template {
+  width: 100%;
+}
+
+.control-mode,
+.template-actions {
+  justify-self: end;
+}
+
+.template-actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.toolbar-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 24px;
+}
+
+.toolbar-icon {
+  width: 48px;
+  height: 48px;
+  background: #1f63ff;
+  color: #fff;
+  font-size: 22px;
+  box-shadow: 0 10px 20px rgba(31, 99, 255, 0.25);
+}
+
+.table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 22px 0 12px;
+  color: #253858;
+  font-weight: 700;
+}
+
+.table-heading__title i {
+  color: #1f63ff;
+}
+
+.fee-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.channel-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  min-height: 86px;
+}
+
+.channel-name {
+  color: #22334d;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.channel-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8a9bb8;
+  font-size: 12px;
+}
+
+.channel-meta span {
+  background: #eef3fa;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.channel-coin {
+  color: #7185a8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.protocol-switch {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #dce6f2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.protocol-switch__item {
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-bottom: 1px solid #edf2f8;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+
+.protocol-switch__item:last-child {
+  border-bottom: 0;
+}
+
+.protocol-switch__item.is-protocol-trc20 {
+  color: #008878;
+}
+
+.protocol-switch__item.is-protocol-bep20 {
+  color: #d06000;
+}
+
+.protocol-switch__item.is-protocol-erc20 {
+  color: #5045ff;
+}
+
+.protocol-switch__item.is-active {
+  color: #fff;
+}
+
+.protocol-switch__item.is-active.is-protocol-trc20 {
+  background: #1bb9aa;
+}
+
+.protocol-switch__item.is-active.is-protocol-bep20 {
+  background: #ff980f;
+}
+
+.protocol-switch__item.is-active.is-protocol-erc20 {
+  background: #6258ff;
+}
+
+.amount-range-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.amount-range {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 34px;
+  padding: 0 14px;
+  background: #f7f9fc;
+  border-radius: 4px;
+  color: #26384f;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.fee-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.fee-card {
+  width: 100%;
+  max-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid #d9e7ff;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.fee-card--third {
+  border-color: #d9e2ef;
+  color: #26384f;
+}
+
+.fee-card--site {
+  border-color: #b8f1d8;
+  color: #008a61;
+}
+
+.fee-card--member {
+  border-color: #bdd7ff;
+  color: #0956ff;
+}
+
+.fee-card__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.fee-card__header span {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: #eef8ff;
+  color: #007a88;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fee-card__main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fee-card__main ::v-deep .el-input-number {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.fee-value-with-unit {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 4px;
+}
+
+.fee-value-with-unit ::v-deep .el-input-number {
+  min-width: 0;
+}
+
+.fee-unit-tag {
+  flex: 0 0 28px;
+  height: 28px;
+  line-height: 26px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: #fff;
+  color: currentColor;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fee-card__main ::v-deep .el-input__inner {
+  height: 30px;
+  border-color: currentColor;
+  color: currentColor;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fee-mode-select {
+  flex: 0 0 64px;
+}
+
+.fee-mode-select ::v-deep .el-input__inner {
+  height: 28px;
+  padding-left: 8px;
+  padding-right: 24px;
+  border-color: #d7e2ef;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fee-card__min {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fee-card__min ::v-deep .el-input-number {
+  width: 72px;
+}
+
+.fee-card__min ::v-deep .el-input__inner {
+  height: 24px;
+  padding: 0 6px;
+  border-color: currentColor;
+  color: currentColor;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fee-card__min.is-readonly {
+  color: inherit;
+}
+
+.readonly-fee-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+  line-height: 30px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.readonly-fee-mode {
+  flex: 0 0 64px;
+  height: 28px;
+  line-height: 28px;
+  border: 1px solid #d7e2ef;
+  border-radius: 4px;
+  background: #f7f9fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fee-card.is-protocol-trc20 .fee-card__header span {
+  background: #e8fbf7;
+  color: #008878;
+}
+
+.fee-card.is-protocol-trc20 {
+  border-color: #008878;
+  color: #008878;
+}
+
+.fee-card.is-protocol-bep20 .fee-card__header span {
+  background: #fff4e8;
+  color: #d06000;
+}
+
+.fee-card.is-protocol-bep20 {
+  border-color: #ff8a2b;
+  color: #d06000;
+}
+
+.fee-card.is-protocol-erc20 .fee-card__header span {
+  background: #f0efff;
+  color: #5045ff;
+}
+
+.fee-card.is-protocol-erc20 {
+  border-color: #6258ff;
+  color: #5045ff;
+}
+
+.number-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.number-field ::v-deep .el-input-number {
+  width: 92px;
+}
+
+.number-field ::v-deep .el-input__inner {
+  border: none;
+  background: #f7f9fc;
+  color: #26384f;
+  font-weight: 700;
+  text-align: center;
+}
+
+.highlight-green ::v-deep .el-input__inner {
+  color: #00a676;
+}
+
+.highlight-cyan ::v-deep .el-input__inner {
+  color: #0099c8;
+}
+
+.readonly-number {
+  color: #7390ff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.readonly-number.muted {
+  color: #4e5f78;
+}
+
+.readonly-number.purple {
+  color: #8b85ff;
+}
+
+.unit {
+  color: #2f7dff;
+  margin-left: 4px;
+}
+
+.currency {
+  color: #8ba0bf;
+  font-weight: 700;
+}
+
+.settlement-select {
+  width: 112px;
+}
+
+@media (max-width: 1180px) {
+  .config-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-switch,
+  .control-mode,
+  .template-actions {
+    justify-self: start;
+  }
+
+  .config-controls {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+  }
+}

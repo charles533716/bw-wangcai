@@ -1,0 +1,621 @@
+<div class="app-container withdraw-review-page">
+  <div class="freeze-filter-panel" :class="{ active: isFrozenFilterActive }">
+    <div class="freeze-filter-entry">
+      <div class="freeze-icon">
+        <i class="el-icon-lock" />
+      </div>
+      <div class="freeze-info">
+        <span>冻结订单筛选</span>
+        <b v-if="frozenCountLoading"><i class="el-icon-loading" /> 加载中</b>
+        <b v-else>{{ frozenCount }} <em>笔当前冻结</em></b>
+      </div>
+      <el-button size="mini" plain :type="isFrozenFilterActive ? 'warning' : 'primary'" @click="handleFrozenFilter">
+        {{ isFrozenFilterActive ? "取消筛选" : "点击筛选" }}
+      </el-button>
+    </div>
+    <div class="freeze-filter-tip">由于账户异常或风险，被锁定的出款订单属于“冻结”状态。</div>
+  </div>
+
+  <el-form ref="queryForm" :model="queryParams" :inline="true" label-width="90px" class="query-card">
+    <el-form-item label="单号" prop="code">
+      <el-input v-model="queryParams.code" placeholder="请输入单号" clearable class="query-control" />
+    </el-form-item>
+    <el-form-item label="账号类型" prop="accountType">
+      <el-select v-model="queryParams.accountType" placeholder="全部类型" clearable class="query-control">
+        <el-option label="全部类型" value="" />
+        <el-option label="站点管理员" value="SITE_ADMIN" />
+        <el-option label="代理" value="AGENT" />
+        <el-option label="会员" value="MEMBER" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="账号名称" prop="memberName">
+      <el-input v-model="queryParams.memberName" placeholder="请输入账号名称" clearable class="query-control" />
+    </el-form-item>
+    <el-form-item label="风控标签" prop="riskTagId">
+      <el-select
+        v-model="queryParams.riskTagId"
+        placeholder="全部风控标签"
+        clearable
+        filterable
+        class="query-control"
+        :loading="riskTagOptionsLoading"
+        @visible-change="handleRiskTagSelectVisible"
+      >
+        <el-option label="全部风控标签" value="" />
+        <el-option
+          v-for="tag in riskTagOptions"
+          :key="getRiskTagKey(tag)"
+          :label="getRiskTagName(tag)"
+          :value="getRiskTagIdentity(tag)"
+        >
+          <span class="risk-tag-option__name">{{ getRiskTagName(tag) }}</span>
+          <span class="risk-tag-option__type">{{ getRiskTagTypeLabel(tag) }}</span>
+        </el-option>
+      </el-select>
+    </el-form-item>
+    <el-form-item label="取款类型" prop="withdrawType">
+      <el-select v-model="queryParams.withdrawType" placeholder="请选择取款类型" clearable class="query-control">
+        <el-option label="银行卡" value="BANK" />
+        <el-option label="支付宝" value="ALIPAY" />
+        <el-option label="微信" value="WECHAT" />
+        <el-option label="USDT" value="USDT" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="用户状态" prop="userStatus">
+      <el-select v-model="queryParams.userStatus" placeholder="全部用户状态" clearable class="query-control">
+        <el-option v-for="option in userStatusOptions" :key="option.value || 'ALL_USER_STATUS'" :label="option.label" :value="option.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="平台状态" prop="platformStatus">
+      <el-select v-model="queryParams.platformStatus" placeholder="全部平台状态" clearable class="query-control">
+        <el-option v-for="option in platformStatusOptions" :key="option.value || 'ALL_PLATFORM_STATUS'" :label="option.label" :value="option.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="三方状态" prop="thirdPartyStatus">
+      <el-select v-model="queryParams.thirdPartyStatus" placeholder="全部三方状态" clearable class="query-control">
+        <el-option v-for="option in thirdPartyStatusOptions" :key="option.value || 'ALL_THIRD_PARTY_STATUS'" :label="option.label" :value="option.value" />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="创建时间">
+      <el-date-picker
+        v-model="dateRange"
+        type="daterange"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        value-format="yyyy-MM-dd"
+        class="date-control"
+      />
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+
+  <el-table v-loading="loading" :data="withdrawList" class="withdraw-table" border>
+    <el-table-column label="单号" prop="code" align="center" width="190" fixed="left" show-overflow-tooltip />
+    <el-table-column label="账号类型" align="center" width="100" fixed="left">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getAccountTypeTag(scope.row.accountType)">
+          {{ scope.row.accountTypeLabel || formatAccountType(scope.row.accountType) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="账号名称" align="center" width="130" fixed="left" show-overflow-tooltip>
+      <template slot-scope="scope">{{ scope.row.accountNameDisplay || scope.row.memberName || '-' }}</template>
+    </el-table-column>
+    <el-table-column label="风控标签" align="left" width="230">
+      <template slot-scope="scope">
+        <div class="withdraw-risk-tags withdraw-risk-tags--table">
+          <template v-if="getRecordRiskTags(scope.row).length">
+            <el-tag
+              v-for="tag in getVisibleRiskTags(scope.row)"
+              :key="getRiskTagKey(tag)"
+              :type="getRiskTagElementType(tag)"
+              effect="plain"
+              size="mini"
+              class="withdraw-risk-tag"
+            >
+              {{ getRiskTagName(tag) }}
+            </el-tag>
+            <el-popover
+              v-if="getHiddenRiskTags(scope.row).length"
+              placement="bottom-start"
+              width="260"
+              trigger="click"
+            >
+              <div class="withdraw-risk-tag-more">
+                <div class="withdraw-risk-tag-more__title">所有风控标签（{{ getRecordRiskTags(scope.row).length }}）</div>
+                <div class="withdraw-risk-tag-more__list">
+                  <el-tag
+                    v-for="tag in getRecordRiskTags(scope.row)"
+                    :key="`all-${getRiskTagKey(tag)}`"
+                    :type="getRiskTagElementType(tag)"
+                    effect="plain"
+                    size="mini"
+                    class="withdraw-risk-tag"
+                  >
+                    {{ getRiskTagName(tag) }}
+                  </el-tag>
+                </div>
+              </div>
+              <el-button slot="reference" type="text" size="mini" class="risk-tag-more-trigger" @click.stop>
+                +{{ getHiddenRiskTags(scope.row).length }} 更多
+              </el-button>
+            </el-popover>
+          </template>
+          <span v-else class="risk-tag-empty">-</span>
+        </div>
+      </template>
+    </el-table-column>
+    <el-table-column label="等级" prop="accountLevelLabel" align="center" width="110" />
+    <el-table-column label="注册日期" prop="registerTime" align="center" width="160" />
+    <el-table-column label="取款类型" align="center" width="110">
+      <template slot-scope="scope">{{ formatWithdrawType(scope.row.withdrawType) }}</template>
+    </el-table-column>
+    <el-table-column label="取款金额" align="center" width="130">
+      <template slot-scope="scope">
+        <span class="amount-negative">{{ formatAmountWithUnit(scope.row.amount, getAmountCurrency(scope.row)) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="实际到账" align="center" width="130">
+      <template slot-scope="scope">
+        <span class="amount-negative">{{ formatAmountWithUnit(scope.row.actualAmount, getAmountCurrency(scope.row)) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="手续费" align="center" width="110">
+      <template slot-scope="scope">{{ formatAmountWithUnit(scope.row.feeAmount, 'CNY') }}</template>
+    </el-table-column>
+    <el-table-column label="银行名称" align="center" width="170" show-overflow-tooltip>
+      <template slot-scope="scope">{{ scope.row.displayBankName || scope.row.bankName || '-' }}</template>
+    </el-table-column>
+    <el-table-column label="账户姓名" prop="accountName" align="center" width="120" show-overflow-tooltip />
+    <el-table-column label="银行账号" align="center" width="210" show-overflow-tooltip>
+      <template slot-scope="scope">{{ scope.row.displayAccountNumber || scope.row.accountNumber || '-' }}</template>
+    </el-table-column>
+    <el-table-column label="平台类型" prop="platformType" align="center" width="100" />
+    <el-table-column label="用户状态" align="center" width="120">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getUserStatusTagType(scope.row)">{{ formatUserStatus(scope.row) }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="平台状态" align="center" width="120">
+      <template slot-scope="scope">
+        <el-tag v-if="formatPlatformStatusForRow(scope.row) !== '-'" size="mini" :type="getPlatformStatusTagForRow(scope.row)">
+          {{ formatPlatformStatusForRow(scope.row) }}
+        </el-tag>
+        <span v-else>-</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="三方状态" align="center" width="120">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getThirdPartyStatusTagType(scope.row)">{{ formatThirdPartyStatus(scope.row) }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="操作备注" align="center" min-width="240" show-overflow-tooltip>
+      <template slot-scope="scope">
+        <div class="operation-remark">{{ formatOperationRemark(scope.row) }}</div>
+      </template>
+    </el-table-column>
+    <el-table-column label="创建时间" prop="createTime" align="center" width="160" />
+    <el-table-column label="操作" align="center" width="170" fixed="right">
+      <template slot-scope="scope">
+        <el-button size="mini" type="text" icon="el-icon-view" @click="handleView(scope.row)">查看</el-button>
+        <el-button
+          v-if="isPlatformPending(scope.row)"
+          size="mini"
+          type="text"
+          icon="el-icon-check"
+          v-hasPermi="['funds:withdraw:approve']"
+          @click="handleAudit(scope.row)"
+        >审核</el-button>
+        <el-dropdown v-else-if="isPlatformChangeVisible(scope.row)" trigger="click" @command="handlePlatformCommand(scope.row, $event)">
+          <el-button size="mini" type="text">
+            状态更改<i class="el-icon-arrow-down el-icon--right" />
+          </el-button>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item command="resubmit" :disabled="!canResubmitWithdraw(scope.row)">重新发起</el-dropdown-item>
+            <el-dropdown-item command="reject" :disabled="!canRejectByStatusChange(scope.row)">拒绝</el-dropdown-item>
+            <el-dropdown-item command="pass" :disabled="!canPassByStatusChange(scope.row)">审核通过</el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <pagination
+    v-show="total > 0"
+    :total="total"
+    :page.sync="queryParams.pageNum"
+    :limit.sync="queryParams.pageSize"
+    @pagination="getList"
+  />
+
+  <el-dialog :visible.sync="viewOpen" width="880px" append-to-body custom-class="withdraw-detail-dialog" @closed="riskDetailsOpen = false">
+    <div slot="title" class="dialog-title">
+      <i class="el-icon-circle-check" />
+      <span>取款审核 - {{ viewForm.code || '-' }}</span>
+    </div>
+    <div v-loading="detailLoading" class="detail-body">
+      <div class="account-card">
+        <div class="avatar">{{ getAccountAvatar(viewForm) }}</div>
+        <div class="account-meta">
+          <div class="tag-row">
+            <el-tag size="mini" :type="getAccountTypeTag(viewForm.accountType)">{{ viewForm.accountTypeLabel || '-' }}</el-tag>
+            <el-tag size="mini" type="warning">{{ viewForm.accountLevelLabel || '-' }}</el-tag>
+          </div>
+          <div class="account-name">账号名称：<b>{{ viewForm.accountNameDisplay || viewForm.memberName || '-' }}</b></div>
+          <div class="muted">注册日期：{{ formatDate(viewForm.registerTime) }}</div>
+        </div>
+        <div v-if="isMemberDetail" class="account-risk-tags" v-loading="viewRiskTagLoading">
+          <div class="account-risk-tags__head">
+            <span><i class="el-icon-price-tag" />风控标签</span>
+          </div>
+          <div class="account-risk-tags__body">
+            <template v-if="viewMemberRiskTags.length">
+              <el-tag
+                v-for="tag in viewMemberRiskTags"
+                :key="getRiskTagKey(tag)"
+                size="mini"
+                closable
+                :type="getRiskTagElementType(tag)"
+                effect="plain"
+                class="withdraw-risk-tag"
+                @close="handleRemoveDialogRiskTag('view', tag)"
+              >
+                {{ getRiskTagName(tag) }}
+              </el-tag>
+            </template>
+            <span v-else class="risk-tag-empty">未加风控标签</span>
+            <el-popover
+              v-model="viewRiskTagPickerVisible"
+              placement="bottom-start"
+              width="280"
+              trigger="click"
+              @show="handleRiskTagPickerShow"
+            >
+              <div class="withdraw-risk-tag-picker" v-loading="riskTagOptionsLoading">
+                <el-input
+                  v-model.trim="viewRiskTagKeyword"
+                  size="mini"
+                  clearable
+                  prefix-icon="el-icon-search"
+                  placeholder="搜索标签名称"
+                />
+                <div class="withdraw-risk-tag-picker__list">
+                  <button
+                    v-for="tag in getAvailableRiskTags('view', viewRiskTagKeyword)"
+                    :key="getRiskTagKey(tag)"
+                    type="button"
+                    class="withdraw-risk-tag-option"
+                    :disabled="riskTagSaving"
+                    @click="handleAddDialogRiskTag('view', tag)"
+                  >
+                    <span>{{ getRiskTagName(tag) }}</span>
+                    <em>{{ getRiskTagTypeLabel(tag) }}</em>
+                  </button>
+                  <div
+                    v-if="!getAvailableRiskTags('view', viewRiskTagKeyword).length && !riskTagOptionsLoading"
+                    class="withdraw-risk-tag-picker__empty"
+                  >
+                    暂无可用标签
+                  </div>
+                </div>
+              </div>
+              <el-button slot="reference" type="text" size="mini" class="risk-tag-add-button">
+                <i class="el-icon-plus" />添加
+              </el-button>
+            </el-popover>
+          </div>
+        </div>
+        <div class="balance-pill" v-if="viewForm.accountType !== 'MEMBER'">
+          <span>可用余额</span>
+          <b>{{ formatAmount(viewForm.withdrawableBalance || viewForm.accountBalance) }}</b>
+          <em>CNY</em>
+        </div>
+      </div>
+
+      <div v-if="viewForm.accountType === 'MEMBER'" class="summary-grid three">
+        <div class="summary-card blue">
+          <span>账户总余额</span>
+          <b>{{ formatAmount(viewForm.accountBalance) }}</b>
+          <em>CNY</em>
+        </div>
+        <div class="summary-card green">
+          <span>可提现余额</span>
+          <b>{{ formatAmount(viewForm.withdrawableBalance) }}</b>
+          <em>CNY</em>
+        </div>
+        <div class="summary-card orange">
+          <span>锁定余额</span>
+          <b>{{ formatAmount(viewForm.lockedBalance) }}</b>
+          <em>CNY</em>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="section-title metric-title">
+          <span>
+            <i class="el-icon-data-analysis" />
+            账户报表数据统计
+            <em>（默认隐藏，获取数据需调用多张报表）</em>
+          </span>
+          <el-button
+            size="mini"
+            type="primary"
+            plain
+            icon="el-icon-view"
+            :loading="metricsAllLoading"
+            @click="loadAllMetrics"
+          >一键显示全部数据</el-button>
+        </div>
+        <div v-if="isMemberDetail" class="metric-grid member-metric-grid">
+          <div
+            v-for="item in memberMetricItems"
+            :key="item.key"
+            class="metric-card"
+            :class="{ loaded: getMetricState(item.key).loaded, error: getMetricState(item.key).error }"
+            @click="loadMetric(item.key)"
+          >
+            <span>{{ item.label }}</span>
+            <b v-if="getMetricState(item.key).loading"><i class="el-icon-loading" /> 计算中</b>
+            <b v-else-if="getMetricState(item.key).loaded" class="metric-value">
+              {{ getMetricState(item.key).displayValue }}
+              <em v-if="getMetricState(item.key).unit">{{ getMetricState(item.key).unit }}</em>
+            </b>
+            <b v-else-if="getMetricState(item.key).error" class="metric-error"><i class="el-icon-refresh" /> 重新显示</b>
+            <b v-else><i class="el-icon-view" /> 点击显示</b>
+          </div>
+        </div>
+        <template v-else>
+          <div class="metric-grid agent-site-metric-grid">
+            <div
+              v-for="item in agentSitePrimaryMetricItems"
+              :key="item.key"
+              class="metric-card"
+              :class="{ loaded: getMetricState(item.key).loaded, error: getMetricState(item.key).error }"
+              @click="loadMetric(item.key)"
+            >
+              <span>{{ item.label }}</span>
+              <b v-if="getMetricState(item.key).loading"><i class="el-icon-loading" /> 计算中</b>
+              <b v-else-if="getMetricState(item.key).loaded" class="metric-value">
+                {{ getMetricState(item.key).displayValue }}
+                <em v-if="getMetricState(item.key).unit">{{ getMetricState(item.key).unit }}</em>
+              </b>
+              <b v-else-if="getMetricState(item.key).error" class="metric-error"><i class="el-icon-refresh" /> 重新显示</b>
+              <b v-else><i class="el-icon-view" /> 点击显示</b>
+            </div>
+          </div>
+          <div class="agent-site-recent-box">
+            <div class="recent-title"><i class="el-icon-data-line" />近三个月收支指标（转账 / 提现）</div>
+            <div class="metric-grid agent-site-recent-grid">
+              <div
+                v-for="item in agentSiteRecentMetricItems"
+                :key="item.key"
+                class="metric-card recent"
+                :class="{ loaded: getMetricState(item.key).loaded, error: getMetricState(item.key).error }"
+                @click="loadMetric(item.key)"
+              >
+                <span>{{ item.label }}</span>
+                <b v-if="getMetricState(item.key).loading"><i class="el-icon-loading" /> 计算中</b>
+                <b v-else-if="getMetricState(item.key).loaded" class="metric-value">
+                  {{ getMetricState(item.key).displayValue }}
+                  <em v-if="getMetricState(item.key).unit">{{ getMetricState(item.key).unit }}</em>
+                </b>
+                <b v-else-if="getMetricState(item.key).error" class="metric-error"><i class="el-icon-refresh" /> 重新显示</b>
+                <b v-else><i class="el-icon-view" /> 点击显示</b>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="amount-row">
+        <div><span>取款类型</span><b>{{ formatWithdrawType(viewForm.withdrawType) }}</b></div>
+        <div><span>人民币金额</span><b class="amount-negative">{{ formatAmount(viewForm.amountCny) }}</b></div>
+        <div><span>取款金额</span><b class="amount-negative">{{ formatAmount(viewForm.amount) }}</b></div>
+        <div><span>实际到账</span><b class="amount-negative">{{ formatAmount(viewForm.actualAmount) }}</b></div>
+        <div><span>手续费</span><b>{{ formatAmount(viewForm.feeAmount) }}</b></div>
+        <div><span>资金池</span><b class="pool">{{ formatAmount(viewForm.fundPoolBalance) }}</b></div>
+      </div>
+
+      <div class="warning-row">
+        <div class="warning-card danger">
+          <b>风险记录</b>
+          <span v-if="getRiskRecordCount(viewForm) > 0">
+            该会员共有
+            <button
+              type="button"
+              class="risk-count-link"
+              title="点击查看所有已触发的风控策略详情"
+              @click.stop="openRiskDetails"
+            >
+              {{ getRiskRecordCount(viewForm) }}
+            </button>
+            条风险预警
+          </span>
+          <span v-else>该会员暂无风险预警</span>
+        </div>
+        <div
+          class="warning-card warn abnormal-card"
+          :class="{ clickable: abnormalWithdrawList.length > 0 }"
+          @click="toggleAbnormalOrders"
+        >
+          <div class="warning-card-head">
+            <b>异常订单（近三个月）</b>
+            <i v-if="abnormalWithdrawList.length" :class="abnormalExpanded ? 'el-icon-arrow-up' : 'el-icon-arrow-right'" />
+          </div>
+          <span>{{ abnormalWithdrawSummary }}</span>
+          <div v-if="abnormalExpanded && abnormalWithdrawList.length" class="abnormal-order-list">
+            <div v-for="order in abnormalWithdrawList" :key="order.id" class="abnormal-order-item">
+              <div class="abnormal-order-title">
+                <b>{{ order.code || '-' }}</b>
+                <el-tag size="mini" :type="getStatusTagType(order.status)">{{ formatStatus(order.status) }}</el-tag>
+                <el-tag v-if="formatPlatformStatusForRow(order) !== '-'" size="mini" :type="getPlatformStatusTagForRow(order)">
+                  {{ formatPlatformStatusForRow(order) }}
+                </el-tag>
+              </div>
+              <div class="abnormal-order-meta">
+                <span>金额：{{ formatAmountWithUnit(order.amount, order.currency || 'CNY') }}</span>
+                <span>时间：{{ formatDate(order.createTime) }}</span>
+              </div>
+              <p>{{ formatAbnormalOrderRemark(order) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="section-title"><i class="el-icon-s-operation" />操作流程及操作备注历史 ({{ operationLogs.length }})</div>
+        <div v-if="operationLogs.length" class="operation-log-list">
+          <div v-for="log in operationLogs" :key="log.id || log.operateTime" class="operation-log-item">
+            <el-tag size="mini">{{ formatOperationAction(log.action) }}</el-tag>
+            <span>{{ log.operatorName || '-' }}</span>
+            <em>{{ log.operateTime || '-' }}</em>
+            <p>{{ log.remark || '无备注' }}</p>
+          </div>
+        </div>
+        <div v-else class="empty-log">该订单暂无任何后台操作流程记录</div>
+      </div>
+    </div>
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="viewOpen = false">关闭已阅</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="riskDetailsOpen"
+    width="620px"
+    append-to-body
+    custom-class="risk-details-dialog"
+  >
+    <div slot="title" class="dialog-title">
+      <i class="el-icon-warning-outline" />
+      <span>全部已触发风控预警策略</span>
+    </div>
+    <div class="risk-details-head">
+      <span>会员账号：{{ viewForm.accountNameDisplay || viewForm.memberName || '-' }}</span>
+      <span>关联订单：{{ viewForm.code || viewForm.id || '-' }}</span>
+    </div>
+    <div v-if="getRiskRecordList(viewForm).length" class="risk-details-list">
+      <div v-for="(record, index) in getRiskRecordList(viewForm)" :key="getRiskRecordKey(record, index)" class="risk-details-item">
+        <div class="risk-details-title">
+          <span>{{ index + 1 }}. [风险预警] {{ getRiskRecordName(record) }}</span>
+          <el-tag size="mini" :type="getRiskRecordLevelTag(record)">{{ getRiskRecordLevel(record) }}</el-tag>
+        </div>
+        <div class="risk-details-desc">{{ getRiskRecordDescription(record) }}</div>
+        <div class="risk-details-meta">
+          <span v-if="getRiskRecordField(record, ['ruleId']) !== '-'">规则ID：{{ getRiskRecordField(record, ['ruleId']) }}</span>
+          <span v-if="getRiskRecordField(record, ['orderNo', 'orderCode', 'bizNo']) !== '-'">订单号：{{ getRiskRecordField(record, ['orderNo', 'orderCode', 'bizNo']) }}</span>
+          <span v-if="getRiskRecordField(record, ['createTime', 'triggerTime', 'time']) !== '-'">时间：{{ getRiskRecordField(record, ['createTime', 'triggerTime', 'time']) }}</span>
+        </div>
+      </div>
+    </div>
+    <el-empty v-else description="暂无风险预警记录" />
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="riskDetailsOpen = false">我知道了，返回</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog :visible.sync="auditOpen" width="820px" append-to-body custom-class="withdraw-audit-dialog">
+    <div slot="title" class="dialog-title">
+      <i class="el-icon-circle-check" />
+      <span>取款审核 - {{ auditForm.code || '-' }}</span>
+    </div>
+    <div v-loading="auditLoading" class="audit-body">
+      <div v-if="isAuditMember" class="audit-account-card">
+        <div class="audit-account-info">
+          <div class="tag-row">
+            <el-tag size="mini" :type="getAccountTypeTag(auditForm.accountType)">{{ auditForm.accountTypeLabel || '会员' }}</el-tag>
+            <el-tag size="mini" type="warning">{{ auditForm.accountLevelLabel || '-' }}</el-tag>
+          </div>
+          <div class="account-name">账号名称：<b>{{ auditForm.accountNameDisplay || auditForm.memberName || '-' }}</b></div>
+          <div class="muted">注册日期：{{ formatDate(auditForm.registerTime) }}</div>
+        </div>
+        <div class="account-risk-tags account-risk-tags--audit" v-loading="auditRiskTagLoading">
+          <div class="account-risk-tags__head">
+            <span><i class="el-icon-price-tag" />风控标签</span>
+          </div>
+          <div class="account-risk-tags__body">
+            <template v-if="auditMemberRiskTags.length">
+              <el-tag
+                v-for="tag in auditMemberRiskTags"
+                :key="getRiskTagKey(tag)"
+                size="mini"
+                closable
+                :type="getRiskTagElementType(tag)"
+                effect="plain"
+                class="withdraw-risk-tag"
+                @close="handleRemoveDialogRiskTag('audit', tag)"
+              >
+                {{ getRiskTagName(tag) }}
+              </el-tag>
+            </template>
+            <span v-else class="risk-tag-empty">未加风控标签</span>
+            <el-popover
+              v-model="auditRiskTagPickerVisible"
+              placement="bottom-start"
+              width="280"
+              trigger="click"
+              @show="handleRiskTagPickerShow"
+            >
+              <div class="withdraw-risk-tag-picker" v-loading="riskTagOptionsLoading">
+                <el-input
+                  v-model.trim="auditRiskTagKeyword"
+                  size="mini"
+                  clearable
+                  prefix-icon="el-icon-search"
+                  placeholder="搜索标签名称"
+                />
+                <div class="withdraw-risk-tag-picker__list">
+                  <button
+                    v-for="tag in getAvailableRiskTags('audit', auditRiskTagKeyword)"
+                    :key="getRiskTagKey(tag)"
+                    type="button"
+                    class="withdraw-risk-tag-option"
+                    :disabled="riskTagSaving"
+                    @click="handleAddDialogRiskTag('audit', tag)"
+                  >
+                    <span>{{ getRiskTagName(tag) }}</span>
+                    <em>{{ getRiskTagTypeLabel(tag) }}</em>
+                  </button>
+                  <div
+                    v-if="!getAvailableRiskTags('audit', auditRiskTagKeyword).length && !riskTagOptionsLoading"
+                    class="withdraw-risk-tag-picker__empty"
+                  >
+                    暂无可用标签
+                  </div>
+                </div>
+              </div>
+              <el-button slot="reference" type="text" size="mini" class="risk-tag-add-button">
+                <i class="el-icon-plus" />添加
+              </el-button>
+            </el-popover>
+          </div>
+        </div>
+      </div>
+      <div class="amount-row audit">
+        <div><span>取款类型</span><b>{{ formatWithdrawType(auditForm.withdrawType) }}</b></div>
+        <div><span>人民币金额</span><b class="amount-negative">{{ formatAmount(auditForm.amountCny) }}</b></div>
+        <div><span>取款金额</span><b class="amount-negative">{{ formatAmount(auditForm.amount) }}</b></div>
+        <div><span>实际到账</span><b class="amount-negative">{{ formatAmount(auditForm.actualAmount) }}</b></div>
+        <div><span>手续费</span><b>{{ formatAmount(auditForm.feeAmount) }}</b></div>
+        <div><span>资金池</span><b class="pool">{{ formatAmount(auditForm.fundPoolBalance) }}</b></div>
+      </div>
+      <div class="remark-title"><i class="el-icon-chat-line-square" />添加审核备注 <span>（选填）</span></div>
+      <el-input
+        v-model="auditRemark"
+        type="textarea"
+        :rows="5"
+        placeholder="请输入详细的审核备注信息（可选择填入并记录入对账流，例如：已核实通过、异地登录风险挂起、打码量不足等）..."
+      />
+    </div>
+    <div slot="footer" class="dialog-footer audit-footer">
+      <el-button @click="auditOpen = false">取消</el-button>
+      <el-button type="warning" :loading="auditSubmitLoading" @click="submitAudit('freeze')">冻结</el-button>
+      <el-button type="danger" :loading="auditSubmitLoading" @click="submitAudit('reject')">拒绝</el-button>
+      <el-button type="success" :loading="auditSubmitLoading" @click="submitAudit('approve')">通过</el-button>
+    </div>
+  </el-dialog>
+</div>

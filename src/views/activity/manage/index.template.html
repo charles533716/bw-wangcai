@@ -1,0 +1,262 @@
+<div class="activity-page app-container">
+  <template v-if="isEditMode">
+    <section class="editor-panel">
+      <div>
+        <div class="editor-panel__eyebrow">活动管理</div>
+        <h1 class="editor-panel__title">{{ isCommonEditMode ? '编辑通用活动' : '编辑活动' }}</h1>
+        <p class="editor-panel__subtitle">{{ isCommonEditMode ? '维护通用活动基础信息、展示图片和上下架状态。' : '维护活动信息、奖励档位和规则配置。' }}</p>
+      </div>
+      <el-button icon="el-icon-back" @click="exitEditMode">返回活动列表</el-button>
+    </section>
+
+    <activity-common-form
+      v-if="isCommonEditMode"
+      :key="'common-edit-' + routeActivityId"
+      mode="edit"
+      :activity-id="routeActivityId"
+      :meta="meta"
+      @success="handleEditSuccess"
+      @cancel="exitEditMode"
+    />
+
+    <activity-form
+      v-else
+      :key="'edit-' + routeActivityId + '-' + routeActivityType"
+      mode="edit"
+      :activity-id="routeActivityId"
+      :initial-activity-type="routeActivityType"
+      :meta="meta"
+      @success="handleEditSuccess"
+      @cancel="exitEditMode"
+    />
+  </template>
+
+  <template v-else>
+    <section ref="pageHeader" class="page-header">
+      <h1 ref="pageTitle" class="page-title">活动列表</h1>
+    </section>
+
+    <section class="filter-card">
+      <el-form ref="queryForm" :model="queryParams" class="filter-form" @submit.native.prevent>
+        <div class="filter-row">
+          <div class="filter-fields">
+            <el-form-item class="filter-field filter-field--name" prop="activityName">
+              <el-input
+                v-model="queryParams.activityName"
+                clearable
+                placeholder="活动名称"
+                prefix-icon="el-icon-search"
+                @keyup.enter.native="handleQuery"
+              />
+            </el-form-item>
+
+            <div class="filter-inline">
+              <span class="filter-inline__label">活动类型:</span>
+              <el-form-item class="filter-inline__control" prop="activityType">
+                <el-select v-model="queryParams.activityType" clearable placeholder="全部" style="width: 100%">
+                  <el-option
+                    v-for="item in activityTypeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </div>
+
+            <div class="filter-inline">
+              <span class="filter-inline__label">站点:</span>
+              <el-form-item class="filter-inline__control" prop="siteCode">
+                <el-select
+                  v-model="queryParams.siteCode"
+                  :disabled="isSiteReadonly"
+                  :clearable="!isSiteReadonly"
+                  placeholder="全部"
+                  style="width: 100%"
+                >
+                  <el-option label="全部" value="" />
+                  <el-option
+                    v-for="item in siteOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </div>
+
+            <div class="filter-inline filter-inline--date">
+              <span class="filter-inline__label">查询日期</span>
+              <el-form-item class="filter-inline__control">
+                <el-date-picker
+                  v-model="queryDateRange"
+                  type="daterange"
+                  range-separator="~"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="yyyy-MM-dd"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <el-button type="primary" class="filter-action filter-action--primary" @click="handleQuery">查询</el-button>
+            <el-button class="filter-action filter-action--refresh" icon="el-icon-refresh" circle @click="resetQuery" />
+          </div>
+        </div>
+
+      </el-form>
+    </section>
+
+    <div class="list-toolbar">
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        class="list-toolbar__button list-toolbar__button--common"
+        v-hasPermi="['activity:manage:add']"
+        @click="handleAddCommon"
+      >新增通用活动</el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        class="list-toolbar__button"
+        v-hasPermi="['activity:manage:add']"
+        @click="handleAdd"
+      >新增活动</el-button>
+    </div>
+
+    <section ref="tableCard" class="table-card">
+      <el-table
+        v-loading="loading"
+        :data="activityList"
+        empty-text="没有查到结果"
+        class="activity-table"
+      >
+        <el-table-column label="时间" align="center" prop="createTime" min-width="182">
+          <template slot-scope="scope">
+            <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="站点" align="center" min-width="120">
+          <template slot-scope="scope">
+            <span>{{ scope.row.siteName || scope.row.siteCode || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="活动编码" align="center" prop="activityCode" min-width="188">
+          <template slot-scope="scope">
+            <span class="table-code">{{ scope.row.activityCode || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="活动名称" align="center" prop="activityName" min-width="180">
+          <template slot-scope="scope">
+            <span class="activity-name">{{ scope.row.activityName || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="活动类型" align="center" prop="activityType" min-width="160">
+          <template slot-scope="scope">
+            <span class="type-pill">{{ activityTypeLabel(scope.row.activityType) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="开始时间" align="center" prop="activityBeginTime" min-width="120">
+          <template slot-scope="scope">
+            <span>{{ parseTime(scope.row.activityBeginTime, '{y}-{m}-{d}') || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="结束时间" align="center" prop="activityEndTime" min-width="120">
+          <template slot-scope="scope">
+            <span>{{ formatEndTime(scope.row.activityEndTime) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="活动排序" align="center" prop="activitySort" min-width="96" />
+        <el-table-column label="热门排序" align="center" prop="hotSort" min-width="96">
+          <template slot-scope="scope">
+            <span class="hot-sort">{{ scope.row.hotSort == null ? '-' : scope.row.hotSort }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="当前状态" align="center" prop="status" min-width="118">
+          <template slot-scope="scope">
+            <span :class="['status-text', getStatusMeta(scope.row.status).className]">
+              {{ getStatusMeta(scope.row.status).text }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="活动设置" align="center" min-width="132" fixed="right" class-name="activity-settings-column">
+          <template slot-scope="scope">
+            <div class="activity-settings">
+              <span class="action-slot action-slot--config">
+                <el-button
+                  type="text"
+                  class="primary-link"
+                  v-hasPermi="['activity:manage:edit']"
+                  @click="handleConfig(scope.row)"
+                >设置</el-button>
+              </span>
+              <span class="action-slot action-slot--delete">
+                <el-button
+                  type="text"
+                  class="danger-link"
+                  v-hasPermi="['activity:manage:edit']"
+                  @click="handleDelete(scope.row)"
+                >删除</el-button>
+              </span>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="table-card__pagination">
+        <pagination
+          v-show="total > 0"
+          :total="total"
+          :page.sync="queryParams.pageNum"
+          :limit.sync="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </div>
+    </section>
+
+    <el-dialog
+      title="新增活动"
+      :visible.sync="createDialogVisible"
+      :width="createDialogWidth"
+      :style="createDialogStyle"
+      :top="createDialogTop"
+      custom-class="activity-manage-dialog"
+      append-to-body
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
+      <activity-form
+        v-if="createDialogVisible"
+        :key="'create-' + createDialogKey"
+        mode="create"
+        :meta="meta"
+        @success="handleCreateSuccess"
+        @cancel="createDialogVisible = false"
+      />
+    </el-dialog>
+
+    <el-dialog
+      title="新增通用活动"
+      :visible.sync="createCommonDialogVisible"
+      :width="createDialogWidth"
+      :style="createDialogStyle"
+      :top="createDialogTop"
+      custom-class="activity-manage-dialog"
+      append-to-body
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
+      <activity-common-form
+        v-if="createCommonDialogVisible"
+        :key="'common-create-' + createDialogKey"
+        mode="create"
+        :meta="meta"
+        @success="handleCreateSuccess"
+        @cancel="createCommonDialogVisible = false"
+      />
+    </el-dialog>
+  </template>
+</div>

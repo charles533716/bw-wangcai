@@ -1,0 +1,287 @@
+<div class="app-container">
+  <el-form :model="queryParams" ref="queryForm" :inline="true" label-width="80px">
+    <el-form-item label="代理账号" prop="name">
+      <el-input
+        v-model="queryParams.name"
+        placeholder="请输入代理账号"
+        clearable
+        @keyup.enter.native="handleQuery"
+      />
+    </el-form-item>
+    <el-form-item label="代理状态" prop="agentStatus">
+      <el-select v-model="queryParams.agentStatus" placeholder="代理状态" clearable>
+        <el-option label="正常" :value="1" />
+        <el-option label="停用" :value="0" />
+      </el-select>
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+
+  <el-row :gutter="10" class="mb8">
+    <el-col :span="1.5">
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        @click="handleAdd"
+        v-hasPermi="['member:agent:add']"
+      >新增代理</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button
+        type="success"
+        icon="el-icon-edit"
+        :disabled="single"
+        @click="handleUpdate"
+        v-hasPermi="['member:agent:edit']"
+      >修改</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button
+        type="warning"
+        icon="el-icon-lock"
+        :disabled="single"
+        @click="handleResetPwd"
+        v-hasPermi="['member:agent:resetPwd']"
+      >修改密码</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button
+        type="info"
+        icon="el-icon-tickets"
+        @click="advanceRecordOpen = true"
+      >代理预支记录</el-button>
+    </el-col>
+  </el-row>
+
+  <el-table v-loading="loading" :data="agentList" @selection-change="handleSelectionChange">
+    <el-table-column type="selection" width="55" align="center" />
+    <el-table-column label="代理ID" align="center" prop="id" />
+    <el-table-column label="代理账号" align="center" prop="name" />
+    <el-table-column label="代理模型" align="center" width="140">
+      <template slot-scope="scope">
+        <el-tag :type="getAgentModeType(scope.row)">{{ getAgentModeLabel(scope.row) }}</el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="星级级别" align="center" prop="starLevel">
+      <template slot-scope="scope">
+        <span v-if="isStarAgent(scope.row)">
+          {{ formatStarLevel(scope.row.starLevel) }}
+        </span>
+        <span v-else>-</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="层级级别" align="center" prop="agentLevel">
+      <template slot-scope="scope">
+        <span v-if="isMultiAgent(scope.row)">
+          {{ formatAgentLevel(scope.row.agentLevel) }}
+        </span>
+        <span v-else>-</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="站点编码" align="center" prop="siteCode" />
+    <el-table-column label="代理状态" align="center" prop="agentStatus">
+      <template slot-scope="scope">
+        <el-tag :type="scope.row.agentStatus === 1 ? 'success' : 'danger'">
+          {{ scope.row.agentStatus === 1 ? '正常' : '停用' }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="下属代理" align="center" prop="subAgentCount" />
+    <el-table-column label="下属会员" align="center" prop="subMemberCount" />
+    <el-table-column label="佣金方案" align="center" prop="commissionPlanName">
+      <template slot-scope="scope">
+        <span>{{ scope.row.commissionPlanName || '未设置' }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="最后登录" align="center" prop="lastLoginTime" width="180">
+      <template slot-scope="scope">
+        <span>{{ parseTime(scope.row.lastLoginTime, '{y}-{m}-{d} {h}:{i}') }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="320">
+      <template slot-scope="scope">
+        <el-button
+          size="mini"
+          type="text"
+          icon="el-icon-s-custom"
+          @click="handleEnterAgentAdmin(scope.row)"
+        >进入代理后台</el-button>
+        <el-button
+          size="mini"
+          type="text"
+          icon="el-icon-edit"
+          @click="handleUpdate(scope.row)"
+          v-hasPermi="['member:agent:edit']"
+        >修改</el-button>
+        <el-button
+          size="mini"
+          type="text"
+          icon="el-icon-lock"
+          @click="handleResetPwd(scope.row)"
+          v-hasPermi="['member:agent:resetPwd']"
+        >修改密码</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <pagination
+    v-show="total > 0"
+    :total="Number(total)"
+    :page.sync="queryParams.pageNum"
+    :limit.sync="queryParams.pageSize"
+    @pagination="getList"
+  />
+
+  <el-dialog :title="title" :visible.sync="open" width="640px" append-to-body @close="cancel">
+    <el-form ref="form" :model="form" :rules="rules" label-width="110px">
+      <input
+        type="text"
+        autocomplete="username"
+        style="position: absolute; left: -9999px; width: 0; height: 0; opacity: 0;"
+      />
+      <input
+        type="password"
+        autocomplete="current-password"
+        style="position: absolute; left: -9999px; width: 0; height: 0; opacity: 0;"
+      />
+      <el-form-item label="代理账号" prop="name">
+        <el-input
+          v-model="form.name"
+          placeholder="请输入代理账号"
+          :disabled="!!form.id"
+          autocomplete="off"
+          name="agent-create-account"
+        />
+      </el-form-item>
+
+      <el-form-item v-if="!form.id" label="密码" prop="password">
+        <el-input
+          v-model="form.password"
+          placeholder="请输入密码"
+          type="password"
+          show-password
+          autocomplete="new-password"
+          name="agent-create-password"
+        />
+      </el-form-item>
+
+      <el-form-item v-if="!hideCommissionPlanField" label="佣金方案" prop="commissionPlanId">
+        <el-input
+          v-if="form.id"
+          :value="commissionPlanDisplayName"
+          disabled
+          placeholder="未设置"
+        />
+        <el-select
+          v-else
+          v-model="form.commissionPlanId"
+          placeholder="请选择佣金方案"
+          style="width: 100%"
+          clearable
+          filterable
+          @change="handleCommissionPlanChange"
+        >
+          <el-option
+            v-for="plan in availableCommissionOptions"
+            :key="plan.id"
+            :label="plan.planName + '（' + plan.commTypeName + '）'"
+            :value="plan.id"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-if="isMultiModel" label="层级级别" prop="agentLevel">
+        <el-select
+          v-model="form.agentLevel"
+          placeholder="请选择层级级别"
+          style="width: 100%"
+          :disabled="form.id && isOriginalMultiModel"
+        >
+          <el-option v-for="level in availableMultiLevels" :key="level" :label="level + '层代理'" :value="level" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="isStarModel" label="星级级别" prop="starLevel">
+        <el-select v-model="form.starLevel" placeholder="请选择星级级别" style="width: 100%">
+          <el-option
+            v-for="level in starLevelOptions"
+            :key="level"
+            :label="level + '星代理'"
+            :value="level"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="showCommissionRate" label="返佣比例">
+        <span>{{ currentCommissionRateText }}</span>
+        <!--<span v-if="siteProfitShareRate !== null" style="margin-left: 12px; color: #909399;">
+          站点上限：{{ siteProfitShareRateText }}，代理返佣必须低于站点返佣
+        </span>-->
+        <span v-if="currentMultiLevelRateInvalid" style="margin-left: 12px; color: #f56c6c;">
+          当前层级已超过站点上限
+        </span>
+      </el-form-item>
+
+      <el-form-item v-if="isMultiModel" label="上级代理" prop="agentCode">
+        <el-input v-if="isCurrentAgent" :value="currentAgentLabel" disabled />
+        <el-select
+          v-else
+          v-model="form.agentCode"
+          placeholder="可选，留空表示顶级代理"
+          clearable
+          filterable
+          style="width: 100%"
+          :disabled="form.id && isOriginalMultiModel"
+        >
+          <el-option
+            v-for="agent in multiLevelParentOptions"
+            :key="agent.id"
+            :label="agent.name + '（' + formatParentAgentLevel(agent.agentLevel) + '）'"
+            :value="agent.id"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="代理状态" prop="agentStatus">
+        <el-radio-group v-model="form.agentStatus">
+          <el-radio :label="1">正常</el-radio>
+          <el-radio :label="0">停用</el-radio>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item label="代理备注" prop="agentRemark">
+        <el-input v-model="form.agentRemark" type="textarea" placeholder="请输入代理备注" :rows="3" />
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+      <el-button @click="cancel">取 消</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog title="修改密码" :visible.sync="resetPwdOpen" width="500px" append-to-body>
+    <el-form ref="resetPwdForm" :model="resetPwdForm" :rules="resetPwdRules" label-width="100px">
+      <el-form-item label="代理账号">
+        <el-input v-model="resetPwdForm.name" disabled />
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword">
+        <el-input v-model="resetPwdForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+      </el-form-item>
+      <el-form-item label="确认密码" prop="confirmPassword">
+        <el-input v-model="resetPwdForm.confirmPassword" type="password" placeholder="请确认新密码" show-password />
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="submitResetPwd">确 定</el-button>
+      <el-button @click="resetPwdOpen = false">取 消</el-button>
+    </div>
+  </el-dialog>
+  <agent-advance-records-dialog
+    :visible.sync="advanceRecordOpen"
+    scope="site"
+    :site-code="currentSiteCode"
+    site-name="演示总站"
+  />
+</div>

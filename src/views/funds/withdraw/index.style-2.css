@@ -1,0 +1,34 @@
+.withdraw-danger-message-box {
+  width: 620px;
+}
+
+.withdraw-danger-message-box .el-message-box__content {
+  padding: 22px 28px 10px;
+}
+
+.withdraw-danger-confirm {
+  text-align: center;
+}
+
+.withdraw-danger-confirm .danger-title {
+  margin-bottom: 12px;
+  color: #ff1744;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.withdraw-danger-confirm p {
+  margin: 0 0 18px;
+  color: #66758f;
+  line-height: 1.6;
+}
+
+.withdraw-danger-confirm .danger-box {
+  padding: 18px;
+  color: #ff1744;
+  line-height: 1.8;
+  text-align: left;
+  background: #fff1f3;
+  border: 1px solid #ff8aa2;
+  border-radius: 8px;
+}

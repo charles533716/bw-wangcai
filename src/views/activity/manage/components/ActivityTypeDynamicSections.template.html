@@ -1,0 +1,291 @@
+<div class="activity-dynamic-sections">
+  <template v-if="currentTypeKey === '签到'">
+    <section class="activity-section activity-section--signin">
+      <div class="section-heading">
+        <h3 class="section-heading__title">签到 - 活动设置</h3>
+      </div>
+      <div class="section-caption">副标题：有效投注达标后即可签到，领取对应奖励</div>
+
+      <div class="activity-grid activity-grid--triple signin-base-grid">
+        <el-form-item label="统计周期">
+          <div class="fixed-select-label">每日累计</div>
+        </el-form-item>
+        <el-form-item label="同一档位可重复签到">
+          <div class="fixed-select-label">否（每日仅签一次）</div>
+        </el-form-item>
+        <el-form-item label="签到方式">
+          <div class="fixed-select-label">固定自然周</div>
+        </el-form-item>
+        <el-form-item label="活动天数（天）">
+          <div class="fixed-select-label">7</div>
+        </el-form-item>
+        <el-form-item label="满签奖励">
+          <el-select v-model="form.fullSignFlg" placeholder="请选择满签奖励" style="width: 100%">
+            <el-option v-for="item in fullSignFlgOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="适用游戏类型">
+          <el-select v-model="form.venueType" :disabled="isEdit" placeholder="请选择适用游戏类型" style="width: 100%">
+            <el-option v-for="item in gameTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </div>
+    </section>
+
+    <section class="activity-section activity-section--first">
+      <div class="signin-tier-heading">
+        <h3 class="section-heading__title">奖励档位定义</h3>
+        <el-button type="primary" plain size="mini" icon="el-icon-plus" @click="handleAddRewardItem">添加档位</el-button>
+      </div>
+      <div class="signin-tier-board" :style="signinGridStyle">
+        <div class="signin-tier-cell signin-tier-cell--head signin-tier-cell--date">日期</div>
+        <div v-for="(item, index) in form.rewardItems" :key="'head-' + index" class="signin-tier-cell signin-tier-cell--head">
+          <div class="signin-tier-th-label">每日有效投注额</div>
+          <el-input-number
+            :value="item.targetValidBetAmount"
+            :precision="0"
+            :min="0"
+            :controls="false"
+            class="signin-tier-input"
+            @input="setSigninTierBet(item, $event)"
+          >
+          </el-input-number>
+          <el-button
+            v-if="form.rewardItems.length > 1 && index === form.rewardItems.length - 1"
+            type="text"
+            icon="el-icon-close"
+            class="signin-tier-remove"
+            @click="handleRemoveRewardItem(index)"
+          />
+        </div>
+
+        <template v-for="weekday in signinWeekdays">
+          <div :key="'label-' + weekday.value" class="signin-tier-cell signin-tier-cell--label">
+            <span>{{ weekday.label }}</span>
+          </div>
+          <div v-for="(item, index) in form.rewardItems" :key="'day-' + weekday.value + '-' + index" class="signin-tier-cell">
+            <el-input-number
+              :value="getSigninWeekdayReward(item, weekday.value)"
+              :precision="0"
+              :min="0"
+              :controls="false"
+              class="signin-tier-input"
+              @input="setSigninWeekdayReward(item, weekday.value, $event)"
+            />
+          </div>
+        </template>
+
+        <template v-if="String(form.fullSignFlg) === '1'">
+          <div class="signin-tier-cell signin-tier-cell--label signin-tier-cell--full">
+            <span>满签奖励</span>
+          </div>
+          <div v-for="(item, index) in form.rewardItems" :key="'full-' + index" class="signin-tier-cell signin-tier-cell--full">
+            <el-input-number
+              :value="getSigninFullReward(item)"
+              :precision="0"
+              :min="0"
+              :controls="false"
+              class="signin-tier-input"
+              @input="setSigninFullReward(item, $event)"
+            />
+          </div>
+        </template>
+      </div>
+    </section>
+  </template>
+
+  <section v-else-if="hasBaseSection" class="activity-section">
+    <div class="section-heading">
+      <h3 class="section-heading__title">{{ currentSchema.typeKey }} - 活动设置</h3>
+    </div>
+    <div v-if="shouldShowBaseConfig" class="section-caption">{{ currentSchema.baseCaption }}</div>
+
+    <div v-if="currentSchema.baseFields.length" class="activity-grid activity-grid--triple">
+      <el-form-item
+        v-for="field in resolvedBaseFields"
+        :key="field.key"
+        :label="field.label"
+        class="dynamic-form-item"
+      >
+        <el-select
+          v-if="field.type === 'select'"
+          :value="getBaseFieldValue(field)"
+          :placeholder="field.placeholder || ('请选择' + field.label)"
+          style="width: 100%"
+          @input="setBaseFieldValue(field, $event)"
+        >
+          <el-option
+            v-for="item in field.options"
+            :key="String(item.value) + item.label"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+
+        <el-input-number
+          v-else
+          :value="getBaseFieldValue(field)"
+          :precision="field.precision"
+          :min="0"
+          :controls="false"
+          class="field-number"
+          @input="setBaseFieldValue(field, $event)"
+        />
+
+        <div v-if="field.tip" class="field-tip">{{ field.tip }}</div>
+      </el-form-item>
+    </div>
+
+    <el-form-item v-if="currentSchema.showGameTypes" :label="currentSchema.gameTypeLabel" class="game-type-item">
+      <el-checkbox-group v-model="form.gameTypes" class="game-type-group">
+        <el-checkbox-button v-for="item in gameTypeOptions" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox-button>
+      </el-checkbox-group>
+    </el-form-item>
+  </section>
+
+  <section v-else class="activity-section activity-section--first activity-section--intro">
+    <div class="section-heading section-heading--loose">
+      <h3 class="section-heading__title">{{ currentSchema.typeKey }} - 活动设置</h3>
+    </div>
+  </section>
+
+  <section v-if="currentTypeKey !== '签到'" :class="['activity-section', { 'activity-section--first': hasBaseSection, 'activity-section--after-intro': !hasBaseSection }]">
+    <div class="section-heading" :class="{ 'section-heading--reward': !hasBaseSection }">
+      <h3 class="section-heading__title">奖励档位</h3>
+    </div>
+
+    <div v-if="currentSchema.rewardNotice" class="reward-notice">
+      <i class="el-icon-info reward-notice__icon" />
+      <span>{{ currentSchema.rewardNotice }}</span>
+    </div>
+
+    <div class="reward-board">
+      <div class="reward-board__head" :style="rewardGridStyle">
+        <span
+          v-for="column in currentSchema.rewardColumns"
+          :key="column.key"
+          :class="['reward-board__head-cell', { 'is-center': isCenteredRewardColumn(column) }]"
+        >{{ column.label }}</span>
+      </div>
+
+      <div v-for="(item, index) in form.rewardItems" :key="index" class="reward-board__row" :style="rewardGridStyle">
+        <template v-for="column in currentSchema.rewardColumns">
+          <el-input
+            v-if="column.type === 'input'"
+            :key="column.key"
+            :value="getRewardFieldValue(item, column)"
+            :maxlength="column.maxlength || 50"
+            :placeholder="column.placeholder || '请输入内容'"
+            @input="setRewardFieldValue(item, column, $event)"
+          />
+
+          <div v-else-if="column.type === 'staticText'" :key="column.key" class="reward-board__text-cell">
+            {{ getRewardStaticText(item, column) }}
+          </div>
+
+          <div v-else-if="column.type === 'number'" :key="column.key" class="reward-board__number">
+            <span v-if="column.prefix" class="reward-board__symbol">{{ column.prefix }}</span>
+            <el-input-number
+              :value="getRewardFieldValue(item, column)"
+              :precision="column.precision"
+              :min="resolveRewardNumberMin(column)"
+              :controls="false"
+              :class="['field-number', { 'field-number--small': currentSchema.typeKey === '新人礼' }]"
+              @input="setRewardFieldValue(item, column, $event)"
+            />
+            <span v-if="column.suffix" class="reward-board__suffix">{{ column.suffix }}</span>
+          </div>
+
+          <div v-else-if="column.type === 'conditionDisplay'" :key="column.key" class="reward-board__condition-cell">
+            <div v-for="(line, lineIndex) in buildNewcomerConditionLines(item)" :key="lineIndex" class="condition-line">
+              <template v-for="(segment, segmentIndex) in line">
+                <span
+                  v-if="segment.type === 'text'"
+                  :key="lineIndex + '-' + segmentIndex + '-text'"
+                  class="condition-line__text"
+                >
+                  {{ segment.text }}
+                </span>
+                <el-input-number
+                  v-else
+                  :key="lineIndex + '-' + segmentIndex + '-input'"
+                  :value="getExtraConfigValue(item, segment.key, 0)"
+                  :precision="segment.precision || 0"
+                  :min="resolvePositiveMin(segment.precision)"
+                  :controls="false"
+                  class="condition-line__input"
+                  :style="{ width: (segment.width || 72) + 'px' }"
+                  @input="setExtraConfigValue(item, segment.key, $event)"
+                />
+              </template>
+            </div>
+          </div>
+
+          <div v-else-if="column.type === 'switch'" :key="column.key" class="reward-board__switch-cell">
+            <el-switch :value="getRewardFieldValue(item, column)" @input="setRewardFieldValue(item, column, $event)" />
+          </div>
+
+          <div v-else-if="column.type === 'action'" :key="column.key" class="reward-board__action-cell">
+            <el-button v-if="canRemoveRewardItem(index)" type="text" class="reward-board__delete" icon="el-icon-delete" @click="handleRemoveRewardItem(index)" />
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div v-if="currentTypeKey === '新人礼'" class="reward-board__footer">
+      <el-button type="text" class="reward-board__add" icon="el-icon-plus" @click="handleAddNewcomerRewardItem('1')">
+        新增首充奖励
+      </el-button>
+      <el-button type="text" class="reward-board__add" icon="el-icon-plus" @click="handleAddNewcomerRewardItem('5')">
+        新增累充奖励
+      </el-button>
+    </div>
+
+    <div v-else-if="canAddRewardItem" class="reward-board__footer">
+      <el-button type="text" class="reward-board__add" icon="el-icon-plus" @click="handleAddRewardItem">
+        {{ currentSchema.addButtonText }}
+      </el-button>
+    </div>
+  </section>
+
+  <section v-if="currentTypeKey !== '签到' && resolvedRuleOptions.length" class="activity-section">
+    <div class="section-heading">
+      <h3 class="section-heading__title">规则开关</h3>
+    </div>
+
+    <div class="switch-panel">
+      <div v-for="item in resolvedRuleOptions" :key="item.key" class="switch-item">
+        <div>
+          <div class="switch-item__label">{{ item.label }}</div>
+          <div class="switch-item__desc">{{ item.description }}</div>
+        </div>
+        <el-switch v-model="form.ruleSwitches[item.key]" />
+      </div>
+    </div>
+  </section>
+
+  <section class="activity-section activity-section--editor">
+    <div class="section-heading section-heading--editor">
+      <h3 class="section-heading__title">活动文案编辑</h3>
+    </div>
+
+    <el-form-item prop="activityDetail" class="activity-detail-form-item">
+      <template slot="label">
+        <span class="activity-detail-label">
+          <span>活动文案</span>
+          <span class="section-heading__tag">前台展示内容</span>
+        </span>
+      </template>
+      <div class="activity-detail-panel">
+        <el-input
+          v-model="form.activityDetail"
+          type="textarea"
+          :rows="12"
+          resize="vertical"
+          :placeholder="currentSchema.editorPlaceholder"
+          class="activity-detail-textarea"
+        />
+      </div>
+    </el-form-item>
+  </section>
+</div>

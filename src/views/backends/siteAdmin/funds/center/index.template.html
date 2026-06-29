@@ -1,0 +1,644 @@
+<div
+  v-loading="loading"
+  element-loading-text="数据加载中..."
+  class="finance-center-page app-container"
+>
+  <div class="fc-toolbar">
+    <div class="fc-toolbar__title">财务中心</div>
+    <el-input
+      v-model="searchKeyword"
+      class="fc-toolbar__search"
+      size="small"
+      clearable
+      prefix-icon="el-icon-search"
+      placeholder="搜索用户或站点..."
+    />
+    <el-button :loading="loading" size="small" icon="el-icon-refresh" @click="reloadAll">刷新</el-button>
+  </div>
+
+  <div class="fc-top-grid">
+    <section class="fc-hero-card">
+      <div class="fc-hero-card__label">
+        <i class="el-icon-wallet"></i>
+        当前可用额度（CNY）
+      </div>
+      <div class="fc-hero-card__amount">{{ summaryAmountText }}</div>
+      <div class="fc-hero-card__meta">
+        <span v-if="!isAgentViewer">资金池额度：{{ fundPoolAmountText }}</span>
+        <span v-if="financePanel.siteCode && financePanel.siteCode !== 'ALL'">站点：{{ financePanel.siteCode }}</span>
+      </div>
+
+      <div class="fc-action-row">
+        <button
+          class="fc-action-btn is-primary"
+          type="button"
+          :disabled="!canOperateFinanceActions"
+          @click="openQuickRechargeDialog"
+        >
+          <i class="el-icon-lightning"></i>
+          快速充值
+        </button>
+        <button
+          class="fc-action-btn"
+          type="button"
+          :disabled="!canOperateFinanceActions"
+          @click="openWithdrawDialog"
+        >
+          <i class="el-icon-bottom"></i>
+          余额提现
+        </button>
+        <button
+          class="fc-action-btn"
+          type="button"
+          :disabled="!canOperateFinanceActions"
+          @click="openTransferDialog"
+        >
+          <i class="el-icon-sort"></i>
+          内部转账
+        </button>
+        <button
+          class="fc-action-btn is-danger"
+          type="button"
+          :disabled="!canOperateFinanceActions"
+          @click="openRedPacketDialog"
+        >
+          <i class="el-icon-present"></i>
+          发放红包
+        </button>
+      </div>
+    </section>
+
+    <section class="fc-settlement-card">
+      <div class="fc-settlement-card__title">
+        <i class="el-icon-bank-card"></i>
+        提现账号
+      </div>
+
+      <div class="fc-settlement-item">
+        <div class="fc-settlement-item__head">
+          <div class="fc-settlement-item__label">USDT（{{ financePanel.settlement.usdt.network || 'TRC20' }}）</div>
+          <button
+            class="fc-link-btn"
+            type="button"
+            :disabled="!canOperateFinanceActions"
+            @click="openSettlementDialog('usdt')"
+          >更换</button>
+        </div>
+        <div class="fc-settlement-item__value is-address">
+          {{ financePanel.settlement.usdt.address || '未设置USDT地址' }}
+        </div>
+        <div class="fc-settlement-item__sub">链路协议：{{ financePanel.settlement.usdt.network || 'TRC20' }}</div>
+      </div>
+
+      <div class="fc-settlement-tip">{{ financePanel.settlement.hintText || '提现申请将在 2 小时内处理完成，请留意到账情况' }}</div>
+    </section>
+  </div>
+
+  <section class="fc-record-card">
+    <div class="fc-record-card__head">
+      <div class="fc-record-card__title-wrap">
+        <span class="fc-record-card__dot"></span>
+        <span class="fc-record-card__title">近期收支明细</span>
+      </div>
+      <div class="fc-record-card__actions">
+        <div class="fc-record-date-filter">
+          <span class="fc-record-date-label">创建时间</span>
+          <el-date-picker
+            v-model="recordDateRange"
+            class="fc-record-date-range"
+            size="small"
+            type="datetimerange"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            range-separator="-"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            :default-time="['00:00:00', '23:59:59']"
+            @change="handleRecordDateRangeChange"
+          />
+        </div>
+        <el-popover
+          v-if="showBizTypeFilter"
+          v-model="filterPopoverVisible"
+          placement="bottom-end"
+          width="240"
+          trigger="click"
+          popper-class="fc-filter-popover"
+        >
+          <div class="fc-filter-popover__title">业务类型</div>
+          <el-checkbox-group v-model="draftBizTypes" class="fc-filter-popover__group">
+            <el-checkbox v-for="item in activeBizTypeOptions" :key="item.value" :label="item.value">
+              {{ item.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+          <div class="fc-filter-popover__actions">
+            <el-button size="mini" @click="handleResetBizTypes">重置</el-button>
+            <el-button type="primary" size="mini" @click="handleApplyBizTypes">确定</el-button>
+          </div>
+          <el-button slot="reference" plain size="small" icon="el-icon-filter">
+            筛选
+          </el-button>
+        </el-popover>
+        <el-button
+          type="primary"
+          plain
+          size="small"
+          icon="el-icon-download"
+          :loading="exportLoading"
+          @click="handleExport"
+        >
+          导出报表
+        </el-button>
+        <button class="fc-icon-btn" type="button" @click="handleRefreshRecords" :disabled="recordsLoading">
+          <i class="el-icon-refresh"></i>
+        </button>
+      </div>
+    </div>
+
+    <el-table
+      v-loading="recordsLoading"
+      :data="displayRecords"
+      class="fc-record-table"
+      :header-cell-style="recordTableHeaderStyle"
+    >
+      <el-table-column :label="isSiteViewer ? '流水编号' : '流水单号'" min-width="160">
+        <template slot-scope="scope">
+          <span class="fc-record-code">{{ scope.row.transactionId || '--' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column :label="recordNameColumnLabel" min-width="140">
+        <template slot-scope="scope">
+          <span class="fc-target-text">{{ scope.row.name || '--' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="业务类型" min-width="130">
+        <template slot-scope="scope">
+          <span :class="typeBadgeClass(scope.row.transactionTypeName)">{{ scope.row.transactionTypeName || '--' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="主体变动额度" min-width="140" align="right">
+        <template slot-scope="scope">
+          <span :class="moneyChangeClass(scope.row.primaryAmountDirection || scope.row.amountDirection)">
+            {{ scope.row.primaryAmountText || scope.row.amountText || '--' }}
+          </span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="关联方名称" min-width="150">
+        <template slot-scope="scope">
+          <span class="fc-target-text">{{ scope.row.counterpartyName || '--' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="时间" min-width="170">
+        <template slot-scope="scope">
+          {{ formatDateTime(scope.row.time) || '--' }}
+        </template>
+      </el-table-column>
+
+      <el-table-column label="操作" width="130" align="center">
+        <template slot-scope="scope">
+          <el-button type="text" class="fc-detail-link" @click="handleShowDetail(scope.row)">查看详情</el-button>
+        </template>
+      </el-table-column>
+
+      <template slot="empty">
+        <div class="fc-empty">暂无数据</div>
+      </template>
+    </el-table>
+
+    <pagination
+      v-show="recordPager.total > 0"
+      :total="recordPager.total"
+      :page.sync="recordPager.pageNum"
+      :limit.sync="recordPager.pageSize"
+      :page-sizes="[10, 20, 30, 50]"
+      layout="total, sizes, prev, pager, next, jumper"
+      @pagination="handleRecordPageChange"
+    />
+  </section>
+
+  <el-dialog
+    title="流水明细详情"
+    :visible.sync="detailDialog.visible"
+    width="680px"
+    custom-class="fc-detail-dialog"
+    append-to-body
+  >
+    <div v-loading="detailDialog.loading" class="fc-detail-grid">
+      <div v-for="item in detailItems" :key="item.label" class="fc-detail-item" :class="{ 'is-wide': item.wide }">
+        <div class="fc-detail-label">{{ item.label }}</div>
+        <div class="fc-detail-value" :class="item.className">{{ item.value }}</div>
+      </div>
+    </div>
+    <div slot="footer">
+      <el-button @click="detailDialog.visible = false">关闭</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="settlementDialog.visible"
+    custom-class="fc-dialog fc-dialog--compact"
+    :append-to-body="true"
+    :close-on-click-modal="false"
+    width="560px"
+  >
+    <div slot="title" class="fc-dialog-title">编辑结算信息</div>
+    <div class="fc-dialog-body">
+      <div class="fc-form-label">修改地址</div>
+      <el-input
+        v-model.trim="settlementDialog.value"
+        class="fc-dialog-input"
+        placeholder="请输入USDT地址"
+      />
+
+      <div class="fc-form-label mt-20">链路协议</div>
+      <el-select v-model="settlementDialog.network" class="fc-dialog-input" placeholder="请选择协议">
+        <el-option label="TRC20" value="TRC20" />
+        <el-option label="ERC20" value="ERC20" />
+        <el-option label="BEP20" value="BEP20" />
+      </el-select>
+
+      <div class="fc-password-hint mt-24">
+        <i class="el-icon-lock"></i>
+        <span>验证 6 位资金密码</span>
+      </div>
+      <div class="fc-password-notice" @click="handleNoFundPasswordHint">
+        {{ financePanel.settlement.fundPasswordConfigured ? '当前代理/站点管理员提现暂不校验资金密码' : '当前代理/站点管理员提现暂不校验资金密码' }}
+      </div>
+
+      <el-button
+        type="primary"
+        class="fc-dialog-submit"
+        :loading="savingSettlement"
+        @click="submitSettlementEdit"
+      >
+        确认保存修改
+      </el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="quickRechargeDialog.visible"
+    custom-class="fc-dialog fc-dialog--large"
+    :append-to-body="true"
+    :close-on-click-modal="false"
+    width="680px"
+  >
+    <div slot="title" class="fc-dialog-title fc-dialog-title--icon">
+      <span class="fc-dialog-icon blue"><i class="el-icon-lightning"></i></span>
+      <span>
+        <strong>快速充值</strong>
+        <em>QUICK RECHARGE</em>
+      </span>
+    </div>
+    <div class="fc-dialog-body">
+      <div class="fc-form-label">选择充值渠道</div>
+      <div v-if="rechargeChannels.length" class="fc-segment-grid">
+        <button
+          v-for="item in rechargeChannels"
+          :key="item.id"
+          type="button"
+          class="fc-segment-card"
+          :class="{ 'is-active': quickRechargeDialog.channelId === item.id }"
+          @click="setQuickRechargeChannel(item.id)"
+        >
+          <img
+            v-if="item.iconUrl"
+            class="fc-segment-card__image"
+            :src="item.iconUrl"
+            :alt="item.label"
+          />
+          <i v-else :class="item.iconClass"></i>
+          <span class="fc-segment-card__label">{{ item.label }}</span>
+        </button>
+      </div>
+      <div v-else class="fc-inline-tip">暂无可用充值通道</div>
+
+      <template v-if="showQuickRechargeProtocol">
+        <div class="fc-form-label mt-20">选择协议</div>
+        <el-select
+          v-model="quickRechargeDialog.protocol"
+          class="fc-dialog-input"
+          placeholder="请选择协议"
+        >
+          <el-option
+            v-for="protocol in quickRechargeSupportedProtocols"
+            :key="protocol"
+            :label="getProtocolDisplayName(protocol)"
+            :value="protocol"
+          />
+        </el-select>
+      </template>
+
+      <div class="fc-form-label mt-24">充值金额（{{ quickRechargeAmountLabelUnit }}）</div>
+      <div class="fc-amount-input-wrap">
+        <input v-model.trim="quickRechargeDialog.amount" type="number" min="0" step="0.01" placeholder="0.00" />
+        <span>{{ quickRechargeAmountInputSuffix }}</span>
+      </div>
+      <div v-if="quickRechargeCurrentChannel" class="fc-inline-tip">单笔限额：<b>{{ quickRechargeAmountRangeText }}</b></div>
+      <div v-if="quickRechargeFixedAmounts.length" class="fc-amount-quick-list">
+        <button
+          v-for="amount in quickRechargeFixedAmounts"
+          :key="`qr-amount-${amount}`"
+          type="button"
+          @click="quickRechargeDialog.amount = String(amount)"
+        >
+          {{ amount }}
+        </button>
+      </div>
+      <div v-if="quickRechargeDialog.amount && quickRechargeFeeText" class="fc-inline-tip">手续费：<b>{{ quickRechargeFeeText }}</b></div>
+      <div v-if="quickRechargeDialog.amount" class="fc-inline-tip">预计到账：<b>{{ quickRechargeActualAmountText }}</b></div>
+      <div v-if="showQuickRechargeProtocol" class="fc-inline-tip">交易所或钱包转账需额外收取矿工手续费，请留意。</div>
+
+      <el-button
+        type="primary"
+        class="fc-dialog-submit"
+        :loading="quickRechargeDialog.submitting"
+        :disabled="quickRechargeDialog.loadingChannels || !rechargeChannels.length"
+        @click="submitQuickRecharge"
+      >
+        下一步
+      </el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="withdrawDialog.visible"
+    custom-class="fc-dialog fc-dialog--large"
+    :append-to-body="true"
+    :close-on-click-modal="false"
+    width="720px"
+  >
+    <div slot="title" class="fc-dialog-title fc-dialog-title--icon">
+      <span class="fc-dialog-icon red"><i class="el-icon-bottom"></i></span>
+      <span>
+        <strong>余额提现</strong>
+        <em>WITHDRAW FUNDS</em>
+      </span>
+    </div>
+    <div class="fc-dialog-body">
+      <div class="fc-segment-toggle">
+        <button
+          type="button"
+          :class="{ 'is-active': withdrawDialog.channel === 'usdt' }"
+          @click="setWithdrawChannel('usdt')"
+        >USDT提现</button>
+        <button
+          type="button"
+          :class="{ 'is-active': withdrawDialog.channel === 'alipay' }"
+          @click="setWithdrawChannel('alipay')"
+        >支付宝提现</button>
+      </div>
+      <div v-if="withdrawDialog.loadingConfig" class="fc-inline-tip">正在加载提现配置...</div>
+      <div v-else-if="!withdrawCurrentChannel" class="fc-inline-tip">当前暂无可用提现通道，请联系管理员配置</div>
+
+      <div class="fc-withdraw-card">
+        <div class="fc-withdraw-card__head">
+          <span>提现至</span>
+          <span class="fc-chip">{{ withdrawTargetChipLabel }}</span>
+        </div>
+        <div class="fc-withdraw-card__account">
+          {{ withdrawTargetAccountText }}
+        </div>
+        <div class="fc-withdraw-card__bank">{{ withdrawTargetSubText }}</div>
+      </div>
+
+      <template v-if="withdrawDialog.channel === 'alipay'">
+        <div class="fc-form-label mt-20">支付宝账号</div>
+        <el-input
+          v-model.trim="withdrawDialog.alipayAccountNo"
+          class="fc-dialog-input"
+          maxlength="128"
+          placeholder="请输入支付宝账号"
+        />
+        <div class="fc-form-label mt-20">支付宝姓名</div>
+        <el-input
+          v-model.trim="withdrawDialog.alipayAccountName"
+          class="fc-dialog-input"
+          maxlength="64"
+          placeholder="请输入支付宝真实姓名"
+        />
+      </template>
+
+      <div class="fc-form-label mt-24">提现金额（CNY）</div>
+      <div class="fc-amount-input-wrap">
+        <input
+          v-model.trim="withdrawDialog.amount"
+          type="number"
+          min="0"
+          :step="withdrawDialog.channel === 'alipay' ? '1' : '0.01'"
+          placeholder="0.00"
+        />
+        <span>元</span>
+      </div>
+      <div v-if="withdrawDialog.channel === 'usdt'" class="fc-inline-tip">USDT通道按人民币输入，系统将按汇率自动换算。</div>
+      <div class="fc-inline-tip">当前可用余额：<b>{{ summaryAmountText }}</b></div>
+      <div v-if="withdrawCurrentChannel" class="fc-inline-tip">单笔限额：<b>{{ withdrawAmountRangeText }}</b></div>
+      <div v-if="withdrawPreview.valid" class="fc-inline-tip">手续费：<b>{{ withdrawPreview.feeText }}</b></div>
+      <div v-if="withdrawPreview.valid" class="fc-inline-tip">预计到账：<b>{{ withdrawPreview.actualText }}</b></div>
+      <div v-if="withdrawDialog.timeNotice" class="fc-inline-tip">{{ withdrawDialog.timeNotice }}</div>
+
+      <el-button
+        type="primary"
+        class="fc-dialog-submit is-dark"
+        :loading="withdrawDialog.submitting"
+        :disabled="withdrawDialog.loadingConfig || !withdrawCurrentChannel"
+        @click="submitWithdraw"
+      >确认提现</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="transferDialog.visible"
+    custom-class="fc-dialog fc-dialog--large"
+    :append-to-body="true"
+    :close-on-click-modal="false"
+    width="680px"
+  >
+    <div slot="title" class="fc-dialog-title fc-dialog-title--icon">
+      <span class="fc-dialog-icon purple"><i class="el-icon-sort"></i></span>
+      <span>
+        <strong>内部转账</strong>
+        <em>INTERNAL TRANSFER</em>
+      </span>
+    </div>
+    <div class="fc-dialog-body">
+      <div class="fc-segment-toggle">
+        <button
+          type="button"
+          :class="{ 'is-active': transferDialog.targetType === 'member' }"
+          @click="setTransferTargetType('member')"
+        >转账给会员</button>
+        <button
+          type="button"
+          :class="{ 'is-active': transferDialog.targetType === 'agent' }"
+          @click="setTransferTargetType('agent')"
+        >转账给代理</button>
+      </div>
+
+      <div class="fc-form-label mt-24">目标账号 / ID</div>
+      <div class="fc-target-search-wrap">
+        <el-input
+          v-model.trim="transferDialog.targetAccount"
+          class="fc-dialog-input"
+          placeholder="请输入目标账号或ID"
+          maxlength="255"
+        />
+        <i class="el-icon-search"></i>
+      </div>
+
+      <div class="fc-form-label mt-24">转账金额（CNY）</div>
+      <div class="fc-amount-input-wrap">
+        <input
+          v-model.trim="transferDialog.amount"
+          type="text"
+          inputmode="decimal"
+          maxlength="16"
+          placeholder="0.00"
+        />
+        <span>元</span>
+      </div>
+      <div class="fc-inline-tip">当前可用余额：<b>{{ summaryAmountText }}</b></div>
+
+      <template v-if="transferDialog.targetType === 'member'">
+        <div class="fc-form-label mt-20">流水倍数</div>
+        <div class="fc-amount-input-wrap">
+          <input
+            v-model.trim="transferDialog.turnoverMultiple"
+            type="text"
+            inputmode="decimal"
+            maxlength="6"
+            placeholder="1"
+          />
+          <span>倍</span>
+        </div>
+      </template>
+
+      <el-button type="primary" class="fc-dialog-submit" :loading="submittingTransfer" @click="submitTransfer">下一步</el-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog
+    :visible.sync="redPacketDialog.visible"
+    custom-class="fc-dialog fc-dialog--large"
+    :append-to-body="true"
+    :close-on-click-modal="false"
+    width="620px"
+  >
+    <div slot="title" class="fc-dialog-title fc-dialog-title--icon">
+      <span class="fc-dialog-icon red"><i class="el-icon-present"></i></span>
+      <span>
+        <strong>发放会员红包</strong>
+        <em>DIRECT MEMBER RED PACKET</em>
+      </span>
+    </div>
+    <div class="fc-dialog-body">
+      <div class="fc-redpacket-balance">
+        <span>当前可用额度：</span>
+        <strong>{{ summaryAmountText }}</strong>
+      </div>
+
+      <div class="fc-form-label mt-20">指定会员 ID / 账号</div>
+      <el-select
+        v-model="redPacketDialog.form.targetMember"
+        class="fc-dialog-input"
+        filterable
+        remote
+        clearable
+        reserve-keyword
+        placeholder="输入会员账号或ID"
+        :remote-method="remoteRedPacketMemberSearch"
+        :loading="redPacketDialog.memberLoading"
+      >
+        <el-option
+          v-for="item in redPacketDialog.memberOptions"
+          :key="item.targetId"
+          :label="redPacketMemberLabel(item)"
+          :value="String(item.targetId)"
+        />
+      </el-select>
+
+      <div class="fc-form-label mt-20">单会员红包金额（CNY）</div>
+      <div class="fc-amount-input-wrap">
+        <input
+          v-model.trim="redPacketDialog.form.amount"
+          type="text"
+          inputmode="decimal"
+          maxlength="16"
+          placeholder="0.00"
+        />
+        <span>元</span>
+      </div>
+
+      <div class="fc-form-label mt-20">提现所需流水倍数（倍）</div>
+      <div class="fc-amount-input-wrap">
+        <input
+          v-model.trim="redPacketDialog.form.turnoverMultiple"
+          type="text"
+          inputmode="decimal"
+          maxlength="6"
+          placeholder="1"
+        />
+        <span>倍</span>
+      </div>
+      <div class="fc-inline-tip">输入 0 表示无流水限制，默认 1 倍。</div>
+
+      <div class="fc-form-label mt-20">发放时间</div>
+      <div class="fc-segment-toggle">
+        <button
+          type="button"
+          :class="{ 'is-active': redPacketDialog.form.issueMode === 'now' }"
+          @click="redPacketDialog.form.issueMode = 'now'"
+        >立即发放</button>
+        <button
+          type="button"
+          :class="{ 'is-active': redPacketDialog.form.issueMode === 'scheduled' }"
+          @click="redPacketDialog.form.issueMode = 'scheduled'"
+        >指定时间发放</button>
+      </div>
+      <el-date-picker
+        v-if="redPacketDialog.form.issueMode === 'scheduled'"
+        v-model="redPacketDialog.form.availableTime"
+        class="fc-dialog-input mt-12"
+        type="datetime"
+        value-format="yyyy-MM-dd HH:mm:ss"
+        placeholder="请选择发放时间"
+      />
+
+      <div class="fc-form-label mt-20">红包有效期</div>
+      <div class="fc-segment-toggle">
+        <button
+          type="button"
+          :class="{ 'is-active': redPacketDialog.form.validity === '24h' }"
+          @click="redPacketDialog.form.validity = '24h'"
+        >24小时</button>
+        <button
+          type="button"
+          :class="{ 'is-active': redPacketDialog.form.validity === '7d' }"
+          @click="redPacketDialog.form.validity = '7d'"
+        >7天</button>
+      </div>
+
+      <div class="fc-form-label mt-20">备注</div>
+      <el-input
+        v-model.trim="redPacketDialog.form.remark"
+        class="fc-dialog-input"
+        type="textarea"
+        :rows="3"
+        maxlength="500"
+        show-word-limit
+        placeholder="请输入备注（选填）"
+      />
+
+      <el-button
+        type="primary"
+        class="fc-dialog-submit is-red"
+        :loading="redPacketDialog.submitting"
+        @click="submitRedPacket"
+      >确认派发红包</el-button>
+    </div>
+  </el-dialog>
+</div>

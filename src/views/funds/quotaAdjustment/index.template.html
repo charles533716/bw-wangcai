@@ -1,0 +1,339 @@
+<div class="app-container quota-adjustment-page">
+  <div class="page-heading">
+    <h2>额度增减</h2>
+    <el-button
+      type="primary"
+      plain
+      size="small"
+      icon="el-icon-download"
+      :loading="exportLoading"
+      @click="handleExport"
+      v-hasPermi="['funds:quotaAdjustment:export']"
+    >
+      导出
+    </el-button>
+  </div>
+
+  <section class="adjust-grid">
+    <div class="adjust-card adjust-card--site">
+      <div class="adjust-card__head">
+        <span class="adjust-card__icon"><i class="el-icon-office-building"></i></span>
+        <span class="adjust-card__tag">站点额度</span>
+      </div>
+      <h3>站点额度增减</h3>
+      <p>充值同步增加资金池</p>
+      <el-form :model="siteForm" label-position="top" size="small">
+        <el-form-item label="选择站点">
+          <el-select
+            v-model="siteForm.siteCode"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            placeholder="请输入站点名称或编码"
+            :remote-method="remoteSiteSearch"
+            :loading="siteLoading"
+            @change="handleSiteTargetChange"
+          >
+            <el-option
+              v-for="item in siteOptions"
+              :key="item.siteCode"
+              :label="targetLabel(item)"
+              :value="item.siteCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="调整金额">
+          <el-input-number
+            v-model="siteForm.amount"
+            :min="-maxAdjustAmount"
+            :max="maxAdjustAmount"
+            :precision="2"
+            :step="0.01"
+            controls-position="right"
+            placeholder="正数为增，负数为减"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model.trim="siteForm.remark" maxlength="200" show-word-limit placeholder="操作备注..." />
+        </el-form-item>
+        <el-button
+          type="primary"
+          icon="el-icon-top-right"
+          class="adjust-card__submit"
+          :loading="siteSubmitting"
+          @click="submitSiteAdjust"
+          v-hasPermi="['funds:quotaAdjustment:adjust']"
+        >
+          确认调整（同步资金池）
+        </el-button>
+      </el-form>
+    </div>
+
+    <div class="adjust-card adjust-card--agent">
+      <div class="adjust-card__head">
+        <span class="adjust-card__icon"><i class="el-icon-user"></i></span>
+        <span class="adjust-card__tag">代理额度</span>
+      </div>
+      <h3>代理额度增减</h3>
+      <p>调整代理账户额度，并同步所属站点资金池</p>
+      <el-form :model="agentForm" label-position="top" size="small">
+        <el-form-item label="所属站点">
+          <el-select
+            v-model="agentForm.siteCode"
+            filterable
+            clearable
+            placeholder="全部站点"
+            @change="handleAgentSiteChange"
+          >
+            <el-option label="全部站点" value="" />
+            <el-option
+              v-for="item in siteOptions"
+              :key="item.siteCode"
+              :label="targetLabel(item)"
+              :value="item.siteCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="代理名/ID">
+          <el-select
+            v-model="agentForm.targetId"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            placeholder="手动输入姓名或ID"
+            :remote-method="remoteAgentSearch"
+            :loading="agentLoading"
+            @change="handleAgentTargetChange"
+          >
+            <el-option
+              v-for="item in agentOptions"
+              :key="item.targetId"
+              :label="targetLabel(item)"
+              :value="item.targetId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="调整金额">
+          <el-input-number
+            v-model="agentForm.amount"
+            :min="-maxAdjustAmount"
+            :max="maxAdjustAmount"
+            :precision="2"
+            :step="0.01"
+            controls-position="right"
+            placeholder="正数为增，负数为减"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model.trim="agentForm.remark" maxlength="200" show-word-limit placeholder="操作备注..." />
+        </el-form-item>
+        <el-button
+          type="primary"
+          icon="el-icon-sort"
+          class="adjust-card__submit"
+          :loading="agentSubmitting"
+          @click="submitAgentAdjust"
+          v-hasPermi="['funds:quotaAdjustment:adjust']"
+        >
+          确认调整
+        </el-button>
+      </el-form>
+    </div>
+
+    <div class="adjust-card adjust-card--member">
+      <div class="adjust-card__head">
+        <span class="adjust-card__icon"><i class="el-icon-user-solid"></i></span>
+        <span class="adjust-card__tag">会员额度</span>
+      </div>
+      <h3>会员额度增减</h3>
+      <p>总站直接干预会员账户额度</p>
+      <el-form :model="memberForm" label-position="top" size="small">
+        <el-form-item label="所属站点">
+          <el-select
+            v-model="memberForm.siteCode"
+            filterable
+            clearable
+            placeholder="全部站点"
+            @change="handleMemberSiteChange"
+          >
+            <el-option label="全部站点" value="" />
+            <el-option
+              v-for="item in siteOptions"
+              :key="item.siteCode"
+              :label="targetLabel(item)"
+              :value="item.siteCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="会员名/ID">
+          <el-select
+            v-model="memberForm.targetId"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            placeholder="手动输入姓名或ID"
+            :remote-method="remoteMemberSearch"
+            :loading="memberLoading"
+            @change="handleMemberTargetChange"
+          >
+            <el-option
+              v-for="item in memberOptions"
+              :key="item.targetId"
+              :label="targetLabel(item)"
+              :value="item.targetId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="调整金额">
+          <el-input-number
+            v-model="memberForm.amount"
+            :min="-maxAdjustAmount"
+            :max="maxAdjustAmount"
+            :precision="2"
+            :step="0.01"
+            controls-position="right"
+            placeholder="正数为增，负数为减"
+            @change="syncMemberTurnoverMultiple"
+          />
+        </el-form-item>
+        <el-form-item v-if="isMemberDecrease" label="优先扣除" class="deduct-priority-item">
+          <el-radio-group v-model="memberForm.deductPriority" size="small">
+            <el-radio :label="deductPriorityWithdrawableFirst">可提现金额</el-radio>
+            <el-radio :label="deductPriorityLockedFirst">锁定金额</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="提现流水倍数">
+          <el-input-number
+            v-model="memberForm.withdrawTurnoverMultiple"
+            :min="isMemberIncrease ? 1 : 0"
+            :max="999"
+            :precision="2"
+            :step="0.1"
+            :disabled="!isMemberIncrease"
+            controls-position="right"
+          />
+          <div class="field-tip">
+            加额时可输入，最低 1 倍；减额时固定为 0 倍，不产生新增提现流水。
+          </div>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model.trim="memberForm.remark" maxlength="200" show-word-limit placeholder="操作备注..." />
+        </el-form-item>
+        <el-button
+          type="primary"
+          icon="el-icon-sort"
+          class="adjust-card__submit"
+          :loading="memberSubmitting"
+          @click="submitMemberAdjust"
+          v-hasPermi="['funds:quotaAdjustment:adjust']"
+        >
+          确认调整
+        </el-button>
+      </el-form>
+    </div>
+  </section>
+
+  <section class="record-panel">
+    <div class="record-panel__head">
+      <div class="section-title">
+        <i class="el-icon-time"></i>
+        <span>全站额度变更记录</span>
+      </div>
+      <el-form :inline="true" size="small" :model="recordQuery" class="record-filter">
+        <el-form-item>
+          <el-input
+            v-model.trim="recordQuery.keyword"
+            clearable
+            prefix-icon="el-icon-search"
+            placeholder="搜索单号/目标..."
+            class="record-keyword"
+            @keyup.enter.native="handleRecordQuery"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-select v-model="recordQuery.targetType" clearable placeholder="全部类型" class="record-type">
+            <el-option label="站点额度" :value="0" />
+            <el-option label="代理额度" :value="1" />
+            <el-option label="会员额度" :value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="el-icon-search" @click="handleRecordQuery">查询</el-button>
+          <el-button icon="el-icon-refresh" @click="resetRecordQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <el-table
+      v-loading="recordLoading"
+      :data="records"
+      border
+      stripe
+      size="small"
+      class="record-table"
+      empty-text="暂无额度变更记录"
+      :show-summary="records.length > 0"
+      :summary-method="getRecordSummary"
+    >
+      <el-table-column label="流水单号" prop="recordNo" min-width="175" fixed show-overflow-tooltip />
+      <el-table-column label="操作目标" min-width="150" show-overflow-tooltip>
+        <template slot-scope="{ row }">
+          <div class="target-cell">
+            <strong>{{ row.targetName || '-' }}</strong>
+            <span>{{ row.siteName || row.siteCode || '-' }}</span>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="业务类型" prop="targetTypeText" width="105" align="center">
+        <template slot-scope="{ row }">
+          <el-tag size="mini" :type="targetTagType(row.targetType)">{{ row.targetTypeText || targetTypeName(row.targetType) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="变动金额" prop="signedAmount" min-width="120" align="right">
+        <template slot-scope="{ row }">
+          <span :class="amountClass(row.signedAmount)">{{ signedMoney(row.signedAmount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="变动后余额" prop="balanceAfter" min-width="125" align="right">
+        <template slot-scope="{ row }">{{ formatMoney(row.balanceAfter) }}</template>
+      </el-table-column>
+      <el-table-column label="资金池变动" min-width="170" align="right">
+        <template slot-scope="{ row }">
+          <span v-if="hasFundPool(row)">{{ formatMoney(row.fundPoolBefore) }} → {{ formatMoney(row.fundPoolAfter) }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="会员锁定/可提现" min-width="190" align="right">
+        <template slot-scope="{ row }">
+          <div v-if="row.targetType === 2" class="balance-mini">
+            <span>锁 {{ formatMoney(row.lockedBefore) }} → {{ formatMoney(row.lockedAfter) }}</span>
+            <span>提 {{ formatMoney(row.withdrawableBefore) }} → {{ formatMoney(row.withdrawableAfter) }}</span>
+          </div>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="会员提现流水" min-width="170" align="right">
+        <template slot-scope="{ row }">
+          <div v-if="row.targetType === 2 && hasMemberTurnoverRecord(row)" class="balance-mini">
+            <span>{{ formatTurnoverMultiple(row.withdrawTurnoverMultiple) }} 倍</span>
+            <span>新增 {{ formatMoney(row.withdrawTurnoverAmount) }}</span>
+          </div>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作者" prop="operatorName" width="105" align="center" show-overflow-tooltip />
+      <el-table-column label="时间" prop="createTime" width="165" align="center" />
+      <el-table-column label="备注" prop="remark" min-width="180" show-overflow-tooltip />
+    </el-table>
+    <pagination
+      v-show="recordTotal > 0"
+      :total="recordTotal"
+      :page.sync="recordQuery.pageNum"
+      :limit.sync="recordQuery.pageSize"
+      @pagination="loadRecords"
+    />
+  </section>
+</div>

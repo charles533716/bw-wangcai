@@ -1,0 +1,337 @@
+<div class="withdraw-channel-page">
+  <el-form
+    :model="queryParams"
+    ref="queryForm"
+    :inline="true"
+    v-show="showSearch"
+    label-width="80px"
+    class="withdraw-channel-search"
+  >
+    <el-form-item label="取款类型" prop="withdrawType">
+      <el-select v-model="queryParams.withdrawType" placeholder="请选择取款类型" clearable size="small">
+        <el-option
+          v-for="item in withdrawTypeOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="取款币种" prop="withdrawCoin">
+      <el-select v-model="queryParams.withdrawCoin" placeholder="请选择取款币种" clearable size="small">
+        <el-option
+          v-for="item in withdrawCoinOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item label="状态" prop="status">
+      <el-select v-model="queryParams.status" placeholder="请选择状态" clearable size="small">
+        <el-option
+          v-for="item in statusOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+
+  <el-row :gutter="10" class="mb8 withdraw-channel-toolbar">
+    <el-col :span="1.5">
+      <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd">新增</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate">修改</el-button>
+    </el-col>
+    <el-col :span="1.5">
+      <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete">删除</el-button>
+    </el-col>
+    <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
+  </el-row>
+
+  <el-table
+    v-loading="loading"
+    :data="withdrawChannelList"
+    class="withdraw-channel-table"
+    @selection-change="handleSelectionChange"
+  >
+    <el-table-column type="selection" width="48" align="center" />
+    <el-table-column label="ID" align="center" prop="id" width="70" />
+    <el-table-column label="取款类型" align="center" prop="withdrawType" width="110">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getTypeTag(scope.row.withdrawType)">
+          {{ getOptionLabel(withdrawTypeOptions, scope.row.withdrawType) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="取款币种" align="center" prop="withdrawCoin" width="110">
+      <template slot-scope="scope">
+        <el-tag size="mini" :type="getCoinTag(scope.row.withdrawCoin)">
+          {{ getOptionLabel(withdrawCoinOptions, scope.row.withdrawCoin) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="上游服务商" align="center" prop="providerName" width="120" />
+    <el-table-column label="上游通道编码" align="center" prop="providerWayCode" width="130" />
+    <el-table-column label="取款汇率" align="center" prop="exchangeRate" width="100" />
+    <el-table-column label="单笔上限" align="center" prop="singleMaxAmount" width="110" />
+    <el-table-column label="每日限额" align="center" prop="dailyLimit" width="110" />
+    <el-table-column label="手续费模式" align="center" prop="feeMode" width="120">
+      <template slot-scope="scope">
+        <span>{{ formatFeeMode(scope.row.feeMode) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="协议手续费" align="center" min-width="220">
+      <template slot-scope="scope">
+        <span>{{ formatProtocolFeeSummary(scope.row) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="支持平台" align="center" width="150">
+      <template slot-scope="scope">
+        <span>{{ formatPlatforms(scope.row.supportedPlatforms) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="状态" align="center" prop="status" width="90">
+      <template slot-scope="scope">
+        <el-tag :type="scope.row.status === '1' ? 'success' : 'danger'" size="mini">
+          {{ scope.row.status === '1' ? '启用' : '停用' }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
+    <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="150">
+      <template slot-scope="scope">
+        <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)">修改</el-button>
+        <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)">删除</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <pagination
+    v-show="total > 0"
+    :total="total"
+    :page.sync="queryParams.pageNum"
+    :limit.sync="queryParams.pageSize"
+    @pagination="getList"
+  />
+
+  <el-dialog :title="title" :visible.sync="open" width="1080px" append-to-body>
+    <el-form ref="form" :model="form" :rules="rules" label-width="112px">
+      <section class="form-section">
+        <div class="form-section__title">基础信息</div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="取款类型" prop="withdrawType">
+              <el-select v-model="form.withdrawType" placeholder="请选择取款类型" @change="handleWithdrawTypeChange">
+                <el-option
+                  v-for="item in withdrawTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="取款币种" prop="withdrawCoin">
+              <el-select v-model="form.withdrawCoin" placeholder="请选择取款币种" @change="handleWithdrawCoinChange">
+                <el-option
+                  v-for="item in withdrawCoinOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="上游服务商" prop="providerName">
+              <el-select v-model="form.providerName" placeholder="请选择上游服务商">
+                <el-option
+                  v-for="item in providerOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="上游通道编码" prop="providerWayCode">
+              <el-input v-model="form.providerWayCode" placeholder="请输入上游通道编码" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="取款汇率" prop="exchangeRate">
+              <el-input v-model="form.exchangeRate" placeholder="请输入取款汇率" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio label="1">启用</el-radio>
+                <el-radio label="0">停用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </section>
+
+      <section v-if="isDigitalWithdrawCoin(form.withdrawCoin)" class="form-section">
+        <div class="form-section__title">
+          取款网络
+          <el-button type="primary" plain size="mini" icon="el-icon-plus" @click="addWithdrawNetwork">新增网络</el-button>
+        </div>
+        <div class="network-editor">
+          <div class="network-editor__row network-editor__head">
+            <span>网络名称</span>
+            <span>网络代码</span>
+            <span>代币标准</span>
+            <span>取款资产</span>
+            <span>合约地址</span>
+            <span>状态</span>
+            <span>操作</span>
+          </div>
+          <div
+            v-for="(item, index) in form.withdrawNetworks"
+            :key="'withdraw-network-' + index"
+            class="network-editor__row"
+            :class="{ 'is-editing': item.editing }"
+          >
+            <el-input v-model="item.networkName" placeholder="如 TRON" :readonly="!item.editing" />
+            <el-input v-model="item.networkCode" placeholder="如 tron" :readonly="!item.editing" />
+            <el-input v-model="item.tokenStandard" placeholder="如 TRC-20" :readonly="!item.editing" />
+            <el-input v-model="item.asset" placeholder="如 USDT" :readonly="!item.editing" />
+            <el-input v-model="item.contractAddress" placeholder="请输入合约地址" :readonly="!item.editing">
+              <i slot="suffix" class="el-input__icon el-icon-document-copy"></i>
+            </el-input>
+            <div class="network-status-cell">
+              <el-switch v-model="item.enabled" :disabled="!item.editing" active-color="#13ce66" inactive-color="#ff9f1a" />
+              <span :class="['network-status-text', item.enabled ? 'is-enabled' : 'is-maintain']">
+                {{ item.enabled ? '启用' : '维护中' }}
+              </span>
+            </div>
+            <div class="network-action-cell">
+              <el-button type="text" @click="toggleWithdrawNetworkEdit(item)">
+                {{ item.editing ? '完成' : '编辑' }}
+              </el-button>
+              <el-button
+                type="text"
+                class="network-action-cell__delete"
+                :disabled="form.withdrawNetworks.length <= 1"
+                @click="removeWithdrawNetwork(index)"
+              >删除</el-button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section__title">取款限额与手续费</div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="单笔上限" prop="singleMaxAmount">
+              <el-input v-model="form.singleMaxAmount" placeholder="请输入单笔上限" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="每日限额" prop="dailyLimit">
+              <el-input v-model="form.dailyLimit" placeholder="请输入每日限额" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="手续费模式" prop="feeMode">
+          <el-radio-group v-model="form.feeMode">
+            <el-radio label="tiered_rate">按档位费率</el-radio>
+            <el-radio label="fixed_fee">固定手续费</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.feeMode === 'tiered_rate'" label="费率档位">
+          <div class="fee-rate-editor">
+            <div class="fee-rate-row fee-rate-header">
+              <span class="fee-col">最小金额</span>
+              <span class="fee-col">最大金额</span>
+              <span class="fee-col">费率(%)</span>
+              <span class="fee-col fee-col-action">操作</span>
+            </div>
+            <div v-for="(item, index) in form.feeRates" :key="'withdraw-fee-rate-' + index" class="fee-rate-row">
+              <el-input-number v-model="item.min" :min="0" :precision="2" :controls="false" class="fee-col" />
+              <el-input-number v-model="item.max" :min="0" :precision="2" :controls="false" class="fee-col" />
+              <el-input-number v-model="item.rate" :min="0" :precision="4" :step="0.1" :controls="false" class="fee-col" />
+              <div class="fee-col fee-col-action">
+                <el-button type="text" icon="el-icon-delete" @click="removeFeeRateRow(index)" :disabled="form.feeRates.length === 1">删除</el-button>
+              </div>
+            </div>
+            <el-button type="primary" plain size="mini" icon="el-icon-plus" @click="addFeeRateRow">新增档位</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="form.feeMode === 'fixed_fee'" label="固定手续费">
+          <el-input-number v-model="form.fixedFee" :min="0" :precision="2" :step="0.1" />
+          <span class="fee-unit"> {{ getFixedFeeUnit(form.withdrawCoin) }}</span>
+        </el-form-item>
+        <el-form-item label="最低提现额度">
+          <el-input-number v-model="form.minWithdrawAmount" :min="0" :precision="2" :step="1" />
+          <span class="fee-unit"> CNY</span>
+        </el-form-item>
+      </section>
+
+      <section class="form-section">
+        <div class="condition-setting">
+          <div class="condition-setting__left">
+            <span class="condition-setting__title">使用条件设置</span>
+            <span class="condition-setting__state">关闭</span>
+            <el-switch v-model="form.conditionEnabled" />
+            <span :class="['condition-setting__state', { 'is-active': form.conditionEnabled }]">启用</span>
+          </div>
+          <div class="condition-setting__right">
+            <span class="condition-setting__label">VIP等级限制</span>
+            <el-select
+              v-model="form.vipLimit"
+              :disabled="!form.conditionEnabled"
+              placeholder="请选择VIP等级"
+              style="width: 260px;"
+            >
+              <el-option v-for="item in vipOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section__title">支持的站点</div>
+        <el-form-item label="支持平台">
+          <el-checkbox-group v-model="form.selectedPlatforms">
+            <el-checkbox v-for="item in platformOptions" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="支持站点">
+          <el-select
+            v-model="form.selectedSiteCodes"
+            multiple
+            filterable
+            clearable
+            placeholder="不选择则支持全部站点"
+            style="width: 100%;"
+          >
+            <el-option v-for="site in siteOptions" :key="site.siteCode" :label="site.label" :value="site.siteCode" />
+          </el-select>
+        </el-form-item>
+      </section>
+
+      <el-form-item label="备注">
+        <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+      <el-button @click="cancel">取 消</el-button>
+    </div>
+  </el-dialog>
+</div>

@@ -1,0 +1,283 @@
+.deposit-audit-page {
+  padding: 16px;
+  background: #f5f8fc;
+}
+
+.filter-card,
+.toolbar-card {
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.filter-card ::v-deep .el-form-item {
+  width: 220px;
+  margin-right: 14px;
+}
+
+.filter-card ::v-deep .el-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filter-card ::v-deep .el-form-item__content,
+.filter-card ::v-deep .el-select,
+.filter-card ::v-deep .el-date-editor {
+  width: 100%;
+}
+
+.query-actions {
+  padding-top: 0;
+}
+
+.query-actions ::v-deep .el-form-item__content {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-card ::v-deep .el-card__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeout-config {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeout-label {
+  color: #d97706;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+.timeout-config ::v-deep .el-input-number {
+  width: 72px;
+}
+
+.deposit-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.deposit-table ::v-deep th {
+  background: #111827;
+  color: #fff;
+}
+
+.amount-credit {
+  color: #059669;
+  font-weight: 700;
+}
+
+.amount-fee,
+.danger {
+  color: #f43f5e;
+  font-weight: 700;
+}
+
+.success-action {
+  color: #10b981;
+}
+
+.remark-button {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dark-dialog-title,
+.linked-title,
+.approve-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.deposit-detail-panel {
+  background: #fff;
+}
+
+.deposit-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 112px;
+  padding: 28px 32px;
+  color: #fff;
+  background: #111827;
+}
+
+.deposit-detail-body {
+  padding: 28px 32px 20px;
+}
+
+.deposit-detail-footer {
+  padding: 0 32px 32px;
+}
+
+.deposit-detail-footer .el-button {
+  width: 100%;
+  height: 44px;
+  color: #fff;
+  background: #111827;
+  border-color: #111827;
+  border-radius: 10px;
+}
+
+.detail-close {
+  border: 0;
+  color: #cbd5e1;
+  background: transparent;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.dark-dialog-title .title-icon {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.dark-dialog-title small,
+.linked-title small,
+.approve-title small {
+  letter-spacing: 1px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 40px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item span {
+  color: #8da0ba;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-item strong {
+  color: #1f2937;
+}
+
+.detail-item.highlight strong {
+  color: #4f46e5;
+}
+
+.detail-item.success strong {
+  color: #059669;
+}
+
+.detail-item.danger strong {
+  color: #e11d48;
+}
+
+.detail-item.boxed {
+  grid-column: 1 / -1;
+}
+
+.detail-item.boxed strong {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.deposit-approve-dialog ::v-deep .el-dialog__header,
+.linked-order-dialog ::v-deep .el-dialog__header {
+  padding: 28px 32px;
+  color: #fff;
+}
+
+.deposit-approve-dialog ::v-deep .el-dialog__header {
+  background: #059669;
+}
+
+.linked-order-dialog ::v-deep .el-dialog__header {
+  background: #2563eb;
+}
+
+.approve-title .title-icon,
+.linked-title .title-icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.approve-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+}
+
+.approve-summary div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.approve-summary div:last-child {
+  margin-bottom: 0;
+}
+
+.approve-summary span {
+  color: #8da0ba;
+  font-weight: 700;
+}
+
+.order-amount {
+  font-size: 22px;
+  font-style: italic;
+}
+
+.split-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.split-footer .el-button {
+  width: 100%;
+}
+
+.sync-box {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.sync-title {
+  color: #1d4ed8;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
