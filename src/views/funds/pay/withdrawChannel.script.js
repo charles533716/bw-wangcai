@@ -128,6 +128,13 @@ function normalizeNetwork(item, editing = false) {
   };
 }
 
+function normalizeNetworkKey(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[-_\s]/g, "");
+}
+
 function seedRows() {
   return [
     {
@@ -231,6 +238,12 @@ export default {
         status: null
       },
       form: {},
+      withdrawNetworkDialog: {
+        visible: false,
+        title: "",
+        index: -1,
+        form: normalizeNetwork({}, false)
+      },
       rules: {
         withdrawType: [{ required: true, message: "取款类型不能为空", trigger: "change" }],
         withdrawCoin: [{ required: true, message: "取款币种不能为空", trigger: "change" }],
@@ -336,6 +349,30 @@ export default {
     getFixedFeeUnit(coin) {
       return this.isDigitalWithdrawCoin(coin) ? String(coin || "U") : "CNY";
     },
+    getNetworkIconKey(item) {
+      const values = [item && item.networkName, item && item.networkCode, item && item.tokenStandard]
+        .map(normalizeNetworkKey);
+      if (values.some(value => value === "TRON" || value === "TRC20")) return "trc20";
+      if (values.some(value => value === "BSC" || value === "BNB" || value === "BNBSMARTCHAIN" || value === "BEP20")) return "bsc";
+      if (values.some(value => value === "ETH" || value === "ETHEREUM" || value === "ERC20")) return "eth";
+      if (values.some(value => value === "NEXUS")) return "nexus";
+      if (values.some(value => value === "EB" || value === "EBPAY")) return "eb";
+      return "default";
+    },
+    getNetworkIconLabel(item) {
+      const labels = {
+        trc20: "T",
+        bsc: "B",
+        eth: "E",
+        nexus: "N",
+        eb: "EB",
+        default: "P"
+      };
+      return labels[this.getNetworkIconKey(item)] || labels.default;
+    },
+    getNetworkIconClass(item) {
+      return "is-" + this.getNetworkIconKey(item);
+    },
     handleWithdrawTypeChange(value) {
       if (value === "usdt") {
         this.form.withdrawCoin = "USDT";
@@ -366,14 +403,35 @@ export default {
     },
     addWithdrawNetwork() {
       const preset = createNetworks(this.form.withdrawCoin)[0] || normalizeNetwork({}, true);
-      this.form.withdrawNetworks.push({ ...preset, editing: true });
+      this.openWithdrawNetworkDialog(preset, -1);
     },
     removeWithdrawNetwork(index) {
       if (this.form.withdrawNetworks.length <= 1) return;
       this.form.withdrawNetworks.splice(index, 1);
     },
-    toggleWithdrawNetworkEdit(item) {
-      item.editing = !item.editing;
+    openWithdrawNetworkDialog(item, index) {
+      this.withdrawNetworkDialog.index = typeof index === "number" ? index : -1;
+      this.withdrawNetworkDialog.title = this.withdrawNetworkDialog.index >= 0 ? "修改取款网络" : "新增取款网络";
+      this.withdrawNetworkDialog.form = normalizeNetwork(item, false);
+      this.withdrawNetworkDialog.visible = true;
+    },
+    submitWithdrawNetworkDialog() {
+      const network = normalizeNetwork(this.withdrawNetworkDialog.form, false);
+      if (!network.networkName || !network.networkCode || !network.tokenStandard) {
+        this.$modal.msgWarning("请填写网络名称、网络代码和代币标准");
+        return;
+      }
+      if (this.withdrawNetworkDialog.index >= 0) {
+        this.$set(this.form.withdrawNetworks, this.withdrawNetworkDialog.index, network);
+      } else {
+        this.form.withdrawNetworks.push(network);
+      }
+      this.cancelWithdrawNetworkDialog();
+    },
+    cancelWithdrawNetworkDialog() {
+      this.withdrawNetworkDialog.visible = false;
+      this.withdrawNetworkDialog.index = -1;
+      this.withdrawNetworkDialog.form = normalizeNetwork({}, false);
     },
     addFeeRateRow() {
       this.form.feeRates.push({ min: null, max: null, rate: null });

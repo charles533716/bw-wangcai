@@ -464,6 +464,12 @@ export default {
         status: "1"
       },
       form: createDefaultForm(),
+      rechargeNetworkDialog: {
+        visible: false,
+        title: "",
+        index: -1,
+        form: normalizeRechargeNetwork("TRC20", false)
+      },
       rules: {
         payType: [{ required: true, message: "存款类型不能为空", trigger: "change" }],
         payCoin: [{ required: true, message: "存款币种不能为空", trigger: "change" }],
@@ -599,6 +605,30 @@ export default {
         .map(item => `${item.tokenStandard || item.networkName || item.networkCode}: ${this.formatFeeMode(item.feeMode)}`)
         .join(" / ");
     },
+    getNetworkIconKey(item) {
+      const values = [item && item.networkName, item && item.networkCode, item && item.tokenStandard]
+        .map(normalizeNetworkKey);
+      if (values.some(value => value === "TRON" || value === "TRC20")) return "trc20";
+      if (values.some(value => value === "BSC" || value === "BNB" || value === "BNBSMARTCHAIN" || value === "BEP20")) return "bsc";
+      if (values.some(value => value === "ETH" || value === "ETHEREUM" || value === "ERC20")) return "eth";
+      if (values.some(value => value === "NEXUS")) return "nexus";
+      if (values.some(value => value === "EB" || value === "EBPAY")) return "eb";
+      return "default";
+    },
+    getNetworkIconLabel(item) {
+      const labels = {
+        trc20: "T",
+        bsc: "B",
+        eth: "E",
+        nexus: "N",
+        eb: "EB",
+        default: "P"
+      };
+      return labels[this.getNetworkIconKey(item)] || labels.default;
+    },
+    getNetworkIconClass(item) {
+      return "is-" + this.getNetworkIconKey(item);
+    },
     filterRows(rows) {
       return rows.filter(row => {
         if (this.queryParams.payType && row.payType !== this.queryParams.payType) return false;
@@ -671,15 +701,38 @@ export default {
       item.networkCode = found ? found.value : item.networkName;
       this.syncProtocolsFromNetworks();
     },
-    toggleRechargeNetworkEdit(item) {
-      item.editing = !item.editing;
-      this.syncProtocolsFromNetworks();
+    createRechargeNetworkDialogForm(item) {
+      return normalizeRechargeNetwork(item, false);
+    },
+    openRechargeNetworkDialog(item, index) {
+      this.rechargeNetworkDialog.index = typeof index === "number" ? index : -1;
+      this.rechargeNetworkDialog.title = this.rechargeNetworkDialog.index >= 0 ? "修改充值网络" : "新增充值网络";
+      this.rechargeNetworkDialog.form = this.createRechargeNetworkDialogForm(item);
+      this.rechargeNetworkDialog.visible = true;
     },
     addRechargeNetwork() {
       const coin = String(this.form.payCoin || "").toUpperCase();
       const fallback = coin === "USDT" ? "TRC20" : (coin || "NETWORK");
-      this.form.rechargeNetworks.push(normalizeRechargeNetwork(fallback, true));
+      this.openRechargeNetworkDialog(fallback, -1);
+    },
+    submitRechargeNetworkDialog() {
+      const network = normalizeRechargeNetwork(this.rechargeNetworkDialog.form, false);
+      if (!network.networkName || !network.networkCode || !network.tokenStandard) {
+        this.$modal.msgWarning("请填写网络名称、网络代码和代币标准");
+        return;
+      }
+      if (this.rechargeNetworkDialog.index >= 0) {
+        this.$set(this.form.rechargeNetworks, this.rechargeNetworkDialog.index, network);
+      } else {
+        this.form.rechargeNetworks.push(network);
+      }
       this.syncProtocolsFromNetworks();
+      this.cancelRechargeNetworkDialog();
+    },
+    cancelRechargeNetworkDialog() {
+      this.rechargeNetworkDialog.visible = false;
+      this.rechargeNetworkDialog.index = -1;
+      this.rechargeNetworkDialog.form = normalizeRechargeNetwork("TRC20", false);
     },
     removeRechargeNetwork(index) {
       if (this.form.rechargeNetworks.length <= 1) return;
