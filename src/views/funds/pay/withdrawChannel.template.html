@@ -208,7 +208,8 @@
           >
             <span class="network-index-cell">{{ index + 1 }}</span>
             <span :class="['network-protocol-icon', getNetworkIconClass(item)]">
-              {{ getNetworkIconLabel(item) }}
+              <img v-if="item.protocolIcon" :src="resolveNetworkIconSrc(item.protocolIcon)" alt="协议icon" />
+              <template v-else>{{ getNetworkIconLabel(item) }}</template>
             </span>
             <span class="network-text-cell">{{ item.networkName || '-' }}</span>
             <span class="network-text-cell">{{ item.networkCode || '-' }}</span>
@@ -217,7 +218,7 @@
             <span class="network-address-cell">{{ item.contractAddress || '-' }}</span>
             <div class="network-status-cell">
               <span :class="['network-status-text', item.enabled ? 'is-enabled' : 'is-maintain']">
-                {{ item.enabled ? '启用' : '维护中' }}
+                {{ item.enabled ? '启用' : '停用' }}
               </span>
             </div>
             <div class="network-action-cell">
@@ -347,6 +348,9 @@
       <el-form-item label="网络名称">
         <el-input v-model="withdrawNetworkDialog.form.networkName" placeholder="如 TRON" />
       </el-form-item>
+      <el-form-item label="协议icon">
+        <image-upload v-model="withdrawNetworkDialog.form.protocolIcon" :limit="1" :replace-on-exceed="true" />
+      </el-form-item>
       <el-form-item label="网络代码">
         <el-input v-model="withdrawNetworkDialog.form.networkCode" placeholder="如 tron" />
       </el-form-item>
@@ -363,7 +367,7 @@
         <el-switch
           v-model="withdrawNetworkDialog.form.enabled"
           active-text="启用"
-          inactive-text="维护中"
+          inactive-text="停用"
           active-color="#13ce66"
           inactive-color="#ff9f1a"
         />

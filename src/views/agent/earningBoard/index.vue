@@ -5,7 +5,7 @@
         <h2>代理收益看板</h2>
         <p>按代理维度汇总代理后台首页核心经营指标，帮助总控对比不同站点和上级代理下的收益表现。</p>
       </div>
-      <el-button type="warning" icon="el-icon-download" @click="handleExport">导出演示数据</el-button>
+      <el-button type="warning" icon="el-icon-download" @click="handleExport">导出数据</el-button>
     </div>
 
     <el-form :inline="true" :model="filters" label-width="86px" class="earning-filter">
@@ -28,16 +28,7 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="所属周期">
-        <el-input
-          v-model.trim="filters.period"
-          clearable
-          placeholder="如 2026-06"
-          style="width: 180px"
-          @keyup.enter.native="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="统计时间">
+      <el-form-item label="查询时间">
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -81,6 +72,11 @@
           </span>
         </template>
       </el-table-column>
+      <el-table-column label="账期范围" min-width="190" align="center">
+        <template slot-scope="scope">
+          {{ formatAccountPeriod(scope.row) }}
+        </template>
+      </el-table-column>
     </el-table>
 
     <pagination
@@ -100,16 +96,29 @@ import {
   listAgentEarningRows
 } from '@/utils/agentAdvance'
 
+const formatDate = date => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getRecentSevenDayRange = () => {
+  const end = new Date()
+  const start = new Date(end)
+  start.setDate(end.getDate() - 6)
+  return [formatDate(start), formatDate(end)]
+}
+
 export default {
   name: 'AgentEarningBoardPage',
   data() {
     return {
       rows: [],
-      dateRange: [],
+      dateRange: getRecentSevenDayRange(),
       filters: {
         siteFilter: '',
-        agentKeyword: '',
-        period: ''
+        agentKeyword: ''
       },
       pager: {
         pageNum: 1,
@@ -162,9 +171,7 @@ export default {
     buildParams() {
       return {
         ...this.filters,
-        scope: 'master',
-        startTime: this.dateRange && this.dateRange[0],
-        endTime: this.dateRange && this.dateRange[1]
+        scope: 'master'
       }
     },
     loadRows() {
@@ -177,10 +184,9 @@ export default {
     handleReset() {
       this.filters = {
         siteFilter: '',
-        agentKeyword: '',
-        period: ''
+        agentKeyword: ''
       }
-      this.dateRange = []
+      this.dateRange = getRecentSevenDayRange()
       this.pager.pageNum = 1
       this.loadRows()
     },
@@ -197,20 +203,31 @@ export default {
       }
       return this.money(value)
     },
+    getAccountPeriodRange() {
+      if (!Array.isArray(this.dateRange) || this.dateRange.length < 2 || !this.dateRange[0] || !this.dateRange[1]) {
+        return '-'
+      }
+      return `${this.dateRange[0]} 至 ${this.dateRange[1]}`
+    },
+    formatAccountPeriod() {
+      return this.getAccountPeriodRange()
+    },
     handleExport() {
       const headers = [
         '所属站点',
         '代理编号',
         '代理账号',
         '上级代理',
-        ...this.earningColumns.map(column => column.label)
+        ...this.earningColumns.map(column => column.label),
+        '账期范围'
       ]
       const lines = [headers.join(',')].concat(this.rows.map(row => [
         row.siteName,
         row.agentCode,
         row.agentName,
         row.parentAgentCode === '-' ? '无上级代理' : `${row.parentAgentCode} / ${row.parentAgentName}`,
-        ...this.earningColumns.map(column => this.formatCell(row, column))
+        ...this.earningColumns.map(column => this.formatCell(row, column)),
+        this.formatAccountPeriod(row)
       ].map(item => `"${String(item || '').replace(/"/g, '""')}"`).join(',')))
       const blob = new Blob([`\ufeff${lines.join('\n')}`], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')

@@ -100,6 +100,7 @@ const normalizeRechargeNetwork = (item = {}, editing = false) => {
     networkName: item.networkName || preset.networkName || "",
     networkCode: item.networkCode || preset.networkCode || "",
     tokenStandard: item.tokenStandard || preset.tokenStandard || "",
+    protocolIcon: item.protocolIcon || item.icon || preset.protocolIcon || "",
     asset: item.asset || preset.asset || "USDT",
     contractAddress: item.contractAddress || preset.contractAddress || item.address || "",
     feeMode: item.feeMode || "tiered_rate",
@@ -628,6 +629,13 @@ export default {
     },
     getNetworkIconClass(item) {
       return "is-" + this.getNetworkIconKey(item);
+    },
+    resolveNetworkIconSrc(value) {
+      const url = String(value || "");
+      if (!url || /^(https?:)?\/\//.test(url) || /^(data|blob):/.test(url)) return url;
+      if (url.startsWith(process.env.VUE_APP_BASE_API)) return url;
+      if (url.startsWith("/")) return `${process.env.VUE_APP_BASE_API}${url}`;
+      return url;
     },
     filterRows(rows) {
       return rows.filter(row => {

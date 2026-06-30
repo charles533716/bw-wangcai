@@ -121,6 +121,7 @@ function normalizeNetwork(item, editing = false) {
     networkName: item && item.networkName || "",
     networkCode: item && item.networkCode || "",
     tokenStandard: item && item.tokenStandard || item && item.protocol || "",
+    protocolIcon: item && (item.protocolIcon || item.icon) || "",
     asset: item && item.asset || "",
     contractAddress: item && item.contractAddress || "",
     enabled: item && item.enabled !== undefined ? !!item.enabled : true,
@@ -372,6 +373,13 @@ export default {
     },
     getNetworkIconClass(item) {
       return "is-" + this.getNetworkIconKey(item);
+    },
+    resolveNetworkIconSrc(value) {
+      const url = String(value || "");
+      if (!url || /^(https?:)?\/\//.test(url) || /^(data|blob):/.test(url)) return url;
+      if (url.startsWith(process.env.VUE_APP_BASE_API)) return url;
+      if (url.startsWith("/")) return `${process.env.VUE_APP_BASE_API}${url}`;
+      return url;
     },
     handleWithdrawTypeChange(value) {
       if (value === "usdt") {

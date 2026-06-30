@@ -151,6 +151,13 @@
   background: #64748b;
 }
 
+.network-protocol-icon img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .network-text-cell,
 .network-address-cell {
   color: #303133;
