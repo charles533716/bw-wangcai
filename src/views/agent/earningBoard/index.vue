@@ -28,15 +28,13 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="查询时间">
+      <el-form-item label="查询日期">
         <el-date-picker
-          v-model="dateRange"
-          type="daterange"
+          v-model="queryDate"
+          type="date"
           value-format="yyyy-MM-dd"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          style="width: 240px"
+          placeholder="请选择日期"
+          style="width: 180px"
         />
       </el-form-item>
       <el-form-item>
@@ -110,11 +108,14 @@ const getRecentSevenDayRange = () => {
   return [formatDate(start), formatDate(end)]
 }
 
+const getTodayDate = () => formatDate(new Date())
+
 export default {
   name: 'AgentEarningBoardPage',
   data() {
     return {
       rows: [],
+      queryDate: getTodayDate(),
       dateRange: getRecentSevenDayRange(),
       filters: {
         siteFilter: '',
@@ -186,6 +187,7 @@ export default {
         siteFilter: '',
         agentKeyword: ''
       }
+      this.queryDate = getTodayDate()
       this.dateRange = getRecentSevenDayRange()
       this.pager.pageNum = 1
       this.loadRows()
