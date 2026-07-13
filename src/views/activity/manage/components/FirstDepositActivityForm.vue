@@ -733,8 +733,8 @@ export default {
 
 .first-config-meta {
   display: grid;
-  grid-template-columns: 260px 260px 220px 220px;
-  gap: 26px;
+  grid-template-columns: 335px 260px 270px 220px;
+  gap: 12px;
 }
 
 .first-time-row {
@@ -751,7 +751,18 @@ export default {
 .first-status-switch {
   display: inline-flex;
   align-items: center;
+  min-width: 118px;
   min-height: 40px;
+  white-space: nowrap;
+}
+
+.first-status-switch ::v-deep .el-switch__label,
+.first-status-switch ::v-deep .el-switch__core {
+  flex: 0 0 auto;
+}
+
+.first-status-switch ::v-deep .el-switch__label {
+  white-space: nowrap;
 }
 
 .site-select {
