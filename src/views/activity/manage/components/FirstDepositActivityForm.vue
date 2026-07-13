@@ -733,8 +733,25 @@ export default {
 
 .first-config-meta {
   display: grid;
-  grid-template-columns: 335px 260px 270px 220px;
-  gap: 12px;
+  grid-template-columns: 280px 210px 220px 180px;
+  gap: 10px;
+}
+
+.first-config-meta ::v-deep .el-form-item {
+  display: flex;
+  align-items: center;
+}
+
+.first-config-meta ::v-deep .el-form-item__label {
+  flex: 0 0 auto;
+  width: auto !important;
+  padding-right: 12px;
+}
+
+.first-config-meta ::v-deep .el-form-item__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0 !important;
 }
 
 .first-time-row {
