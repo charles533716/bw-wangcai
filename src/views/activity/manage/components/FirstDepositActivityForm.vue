@@ -735,6 +735,7 @@ export default {
   display: grid;
   grid-template-columns: 280px 210px 220px 180px;
   gap: 10px;
+  margin-left: 27px;
 }
 
 .first-config-meta ::v-deep .el-form-item {
