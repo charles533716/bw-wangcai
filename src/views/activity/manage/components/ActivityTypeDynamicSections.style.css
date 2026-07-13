@@ -67,6 +67,23 @@
   gap: 8px;
 }
 
+.activity-detail-editor {
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.activity-detail-editor ::v-deep .ql-toolbar {
+  border: none;
+  border-bottom: 1px solid #e4ebf5;
+}
+
+.activity-detail-editor ::v-deep .ql-container {
+  border: none;
+  font-size: 14px;
+}
+
 .section-caption {
   margin-bottom: 14px;
   font-size: 12px;
@@ -394,10 +411,10 @@
 }
 
 .activity-dynamic-sections ::v-deep .el-form-item__label {
-  padding-bottom: 8px;
+  padding: 0 16px 0 0;
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 42px;
   color: #5b6881;
 }
 
@@ -462,5 +479,18 @@
   .section-heading--editor {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .activity-dynamic-sections ::v-deep .el-form-item__label {
+    float: none;
+    display: block;
+    width: auto !important;
+    padding: 0 0 8px;
+    text-align: left;
+    line-height: 1.35;
+  }
+
+  .activity-dynamic-sections ::v-deep .el-form-item__content {
+    margin-left: 0 !important;
   }
 }

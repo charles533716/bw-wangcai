@@ -172,7 +172,7 @@ export default {
     // 是否显示提示
     showTip() {
       return this.isShowTip && (this.fileType || this.fileSize)
-    },
+    }
   },
   methods: {
     // 上传前loading加载

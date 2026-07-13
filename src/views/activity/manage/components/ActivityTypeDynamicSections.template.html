@@ -277,13 +277,10 @@
         </span>
       </template>
       <div class="activity-detail-panel">
-        <el-input
+        <editor
           v-model="form.activityDetail"
-          type="textarea"
-          :rows="12"
-          resize="vertical"
-          :placeholder="currentSchema.editorPlaceholder"
-          class="activity-detail-textarea"
+          :min-height="220"
+          class="activity-detail-editor"
         />
       </div>
     </el-form-item>

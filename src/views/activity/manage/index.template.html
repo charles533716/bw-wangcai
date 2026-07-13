@@ -1,10 +1,10 @@
 <div class="activity-page app-container">
-  <template v-if="isEditMode">
+  <template v-if="isFormMode">
     <section class="editor-panel">
       <div>
-        <div class="editor-panel__eyebrow">活动管理</div>
-        <h1 class="editor-panel__title">{{ isCommonEditMode ? '编辑通用活动' : '编辑活动' }}</h1>
-        <p class="editor-panel__subtitle">{{ isCommonEditMode ? '维护通用活动基础信息、展示图片和上下架状态。' : '维护活动信息、奖励档位和规则配置。' }}</p>
+        <div v-if="!isFirstDepositMode" class="editor-panel__eyebrow">活动管理</div>
+        <h1 class="editor-panel__title">{{ formPageTitle }}</h1>
+        <p v-if="!isFirstDepositMode" class="editor-panel__subtitle">{{ formPageSubtitle }}</p>
       </div>
       <el-button icon="el-icon-back" @click="exitEditMode">返回活动列表</el-button>
     </section>
@@ -21,12 +21,12 @@
 
     <activity-form
       v-else
-      :key="'edit-' + routeActivityId + '-' + routeActivityType"
-      mode="edit"
+      :key="activityFormKey"
+      :mode="isCreateMode ? 'create' : 'edit'"
       :activity-id="routeActivityId"
       :initial-activity-type="routeActivityType"
       :meta="meta"
-      @success="handleEditSuccess"
+      @success="handleFormSuccess"
       @cancel="exitEditMode"
     />
   </template>
@@ -114,13 +114,6 @@
       <el-button
         type="primary"
         icon="el-icon-plus"
-        class="list-toolbar__button list-toolbar__button--common"
-        v-hasPermi="['activity:manage:add']"
-        @click="handleAddCommon"
-      >新增通用活动</el-button>
-      <el-button
-        type="primary"
-        icon="el-icon-plus"
         class="list-toolbar__button"
         v-hasPermi="['activity:manage:add']"
         @click="handleAdd"
@@ -175,11 +168,21 @@
             <span class="hot-sort">{{ scope.row.hotSort == null ? '-' : scope.row.hotSort }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="当前状态" align="center" prop="status" min-width="118">
+        <el-table-column label="状态" align="center" prop="status" min-width="150">
           <template slot-scope="scope">
-            <span :class="['status-text', getStatusMeta(scope.row.status).className]">
-              {{ getStatusMeta(scope.row.status).text }}
-            </span>
+            <div class="activity-status-switch">
+              <el-switch
+                v-model="scope.row.status"
+                active-value="0"
+                inactive-value="1"
+                active-color="#20b56d"
+                inactive-color="#c0c4cc"
+                @change="handleStatusSwitchChange(scope.row, $event)"
+              />
+              <span
+                :class="['activity-status-switch__label', isActivityEnabled(scope.row) ? 'is-enabled' : 'is-disabled']"
+              >{{ isActivityEnabled(scope.row) ? '启用' : '禁用' }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="活动设置" align="center" min-width="132" fixed="right" class-name="activity-settings-column">
@@ -197,6 +200,7 @@
                 <el-button
                   type="text"
                   class="danger-link"
+                  :disabled="isActivityEnabled(scope.row)"
                   v-hasPermi="['activity:manage:edit']"
                   @click="handleDelete(scope.row)"
                 >删除</el-button>
@@ -218,24 +222,31 @@
     </section>
 
     <el-dialog
-      title="新增活动"
-      :visible.sync="createDialogVisible"
-      :width="createDialogWidth"
-      :style="createDialogStyle"
-      :top="createDialogTop"
-      custom-class="activity-manage-dialog"
+      title="选择活动类型"
+      :visible.sync="activityTypeDialogVisible"
+      width="760px"
+      custom-class="activity-type-select-dialog"
       append-to-body
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <activity-form
-        v-if="createDialogVisible"
-        :key="'create-' + createDialogKey"
-        mode="create"
-        :meta="meta"
-        @success="handleCreateSuccess"
-        @cancel="createDialogVisible = false"
-      />
+      <div class="activity-type-select">
+        <button
+          v-for="item in createActivityTypeOptions"
+          :key="item.value"
+          type="button"
+          :disabled="item.disabled"
+          :class="['activity-type-select__card', { 'is-active': selectedCreateActivityType === item.value, 'is-disabled': item.disabled }]"
+          @click="handleSelectCreateActivityType(item)"
+        >
+          <span class="activity-type-select__title">{{ item.label }}</span>
+          <span class="activity-type-select__desc">{{ item.description }}</span>
+        </button>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="activityTypeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!selectedCreateActivityType" @click="handleConfirmCreateActivityType">下一步</el-button>
+      </div>
     </el-dialog>
 
     <el-dialog

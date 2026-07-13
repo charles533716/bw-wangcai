@@ -112,6 +112,13 @@ function normalizeRouteTitle(route = {}) {
   }
   const component = String(route.component || '')
   const routePath = String(route.path || '')
+  if (routePath === '/activity' && Array.isArray(route.children)) {
+    route.children.forEach(child => {
+      if (child.meta && child.component === 'activity/manage/index') {
+        child.meta.title = '活动列表'
+      }
+    })
+  }
   if (
     route.meta.title === '会员帐变记录' ||
     component.includes('report/memberchangerecord') ||

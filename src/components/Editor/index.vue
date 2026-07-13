@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="['editor-shell', { 'editor-shell--zh': toolbarLocale === 'zh-CN' }]">
     <el-upload
       :action="uploadUrl"
       :before-upload="handleBeforeUpload"
@@ -72,6 +72,10 @@ export default {
     type: {
       type: String,
       default: "url",
+    },
+    toolbarLocale: {
+      type: String,
+      default: "",
     }
   },
   data() {
@@ -90,7 +94,17 @@ export default {
         debug: "warn",
         modules: {
           // 工具栏配置
-          toolbar: [
+          toolbar: this.toolbarLocale === "zh-CN" ? [
+            [{ header: [false, 1, 2, 3] }],
+            ["blockquote", "bold", "underline", "italic", "strike"],
+            [{ color: [] }, { background: [] }],
+            [{ size: ["small", false, "large", "huge"] }],
+            [{ font: [] }],
+            [{ list: "ordered" }, { list: "bullet" }],
+            [{ align: [] }],
+            ["link", "image", "video"],
+            ["clean"]
+          ] : [
             ["bold", "italic", "underline", "strike"],       // 加粗 斜体 下划线 删除线
             ["blockquote", "code-block"],                    // 引用  代码块
             [{ list: "ordered" }, { list: "bullet" }],       // 有序、无序列表
@@ -143,6 +157,9 @@ export default {
     init() {
       const editor = this.$refs.editor
       this.Quill = new Quill(editor, this.options)
+      if (this.toolbarLocale === "zh-CN") {
+        this.localizeToolbar()
+      }
       // 如果设置了上传地址则自定义图片上传事件
       if (this.type == 'url') {
         let toolbar = this.Quill.getModule("toolbar")
@@ -173,6 +190,51 @@ export default {
       this.Quill.on("editor-change", (eventName, ...args) => {
         this.$emit("on-editor-change", eventName, ...args)
       })
+    },
+    localizeToolbar() {
+      const toolbar = this.Quill && this.Quill.getModule("toolbar")
+      const container = toolbar && toolbar.container
+      if (!container) {
+        return
+      }
+      const titles = {
+        ".ql-blockquote": "引用",
+        ".ql-bold": "加粗",
+        ".ql-underline": "下划线",
+        ".ql-italic": "斜体",
+        ".ql-strike": "删除线",
+        ".ql-list[value='ordered']": "有序列表",
+        ".ql-list[value='bullet']": "无序列表",
+        ".ql-link": "插入链接",
+        ".ql-image": "插入图片",
+        ".ql-video": "插入视频",
+        ".ql-clean": "清除格式"
+      }
+      Object.keys(titles).forEach(selector => {
+        const button = container.querySelector(selector)
+        if (button) {
+          button.setAttribute("title", titles[selector])
+        }
+      })
+      const formatGroup = document.createElement("span")
+      formatGroup.className = "ql-formats editor-zh-line-height-wrap"
+      const lineHeightSelect = document.createElement("select")
+      lineHeightSelect.className = "editor-zh-line-height"
+      ;[
+        { value: "normal", label: "默认行高" },
+        { value: "1.5", label: "1.5倍行高" },
+        { value: "2", label: "2倍行高" }
+      ].forEach(item => {
+        const option = document.createElement("option")
+        option.value = item.value
+        option.textContent = item.label
+        lineHeightSelect.appendChild(option)
+      })
+      lineHeightSelect.addEventListener("change", event => {
+        this.Quill.root.style.lineHeight = event.target.value
+      })
+      formatGroup.appendChild(lineHeightSelect)
+      container.appendChild(formatGroup)
     },
     // 上传前校检格式和大小
     handleBeforeUpload(file) {
@@ -322,5 +384,35 @@ export default {
 .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
 .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before {
   content: "等宽字体";
+}
+.editor-shell--zh .ql-snow .ql-picker.ql-header .ql-picker-label:not([data-value])::before {
+  content: "正文";
+}
+.editor-shell--zh .ql-snow .ql-picker.ql-size .ql-picker-label:not([data-value])::before {
+  content: "默认字号";
+}
+.editor-shell--zh .ql-snow .ql-picker.ql-font .ql-picker-label:not([data-value])::before {
+  content: "默认字体";
+}
+.editor-shell--zh .ql-picker.ql-size,
+.editor-shell--zh .ql-picker.ql-font {
+  width: 96px;
+}
+.editor-shell--zh .ql-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.editor-zh-line-height {
+  height: 28px;
+  padding: 0 26px 0 10px;
+  border: none;
+  color: #444;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.editor-zh-line-height:focus {
+  outline: none;
 }
 </style>

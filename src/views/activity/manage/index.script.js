@@ -1,8 +1,13 @@
 import ActivityForm from './components/ActivityForm'
 import ActivityCommonForm from './components/ActivityCommonForm'
 import { getActivityMeta, listActivities, updateActivityStatus } from '@/api/activity/manage'
+import { DEFAULT_TYPE_OPTIONS, getActivityTypeDescription, normalizeActivityTypeValue, resolveActivityTypeRequestValue } from './components/activityTypeSchemas'
 
 const COMMON_ACTIVITY_TYPE = '30'
+const FIRST_DEPOSIT_ACTIVITY_TYPE = '26'
+const COMMON_ACTIVITY_TYPE_LABEL = '通用活动'
+const CREATE_ACTIVITY_TYPE_ORDER = ['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL]
+const ENABLED_CREATE_ACTIVITY_TYPES = new Set(CREATE_ACTIVITY_TYPE_ORDER)
 
 function createDefaultQuery(siteCode) {
   return {
@@ -46,8 +51,9 @@ export default {
       loading: false,
       total: 0,
       activityList: [],
-      createDialogVisible: false,
       createCommonDialogVisible: false,
+      activityTypeDialogVisible: false,
+      selectedCreateActivityType: '',
       createDialogWidth: 'auto',
       createDialogStyle: {
         padding: '0'
@@ -86,11 +92,44 @@ export default {
     activityTypeOptions() {
       return Array.isArray(this.meta.activityTypes) ? this.meta.activityTypes : []
     },
+    createActivityTypeOptions() {
+      const rawOptions = DEFAULT_TYPE_OPTIONS.concat({
+        value: COMMON_ACTIVITY_TYPE,
+        label: COMMON_ACTIVITY_TYPE_LABEL,
+        description: '适用于活动文案、图片和基础规则配置的通用活动'
+      })
+      return rawOptions
+        .map(item => {
+          const value = resolveActivityTypeRequestValue(item.value || item.label, { activityTypes: rawOptions })
+          const label = item.label || normalizeActivityTypeValue(item.value || value, { activityTypes: rawOptions })
+          const typeKey = normalizeActivityTypeValue(label || value, { activityTypes: rawOptions })
+          return {
+            value,
+            label,
+            description: item.description || getActivityTypeDescription(typeKey, { activityTypes: rawOptions }),
+            disabled: !ENABLED_CREATE_ACTIVITY_TYPES.has(typeKey),
+            sortIndex: ENABLED_CREATE_ACTIVITY_TYPES.has(typeKey) ? CREATE_ACTIVITY_TYPE_ORDER.indexOf(typeKey) : CREATE_ACTIVITY_TYPE_ORDER.length
+          }
+        })
+        .filter(item => item.value)
+        .sort((left, right) => {
+          if (left.sortIndex !== right.sortIndex) {
+            return left.sortIndex - right.sortIndex
+          }
+          return String(left.label).localeCompare(String(right.label), 'zh-Hans-CN')
+        })
+    },
     statusOptions() {
       return normalizeOptions(this.meta.statusOptions)
     },
     isEditMode() {
       return this.$route.query.mode === 'edit' && !!this.$route.query.id
+    },
+    isCreateMode() {
+      return this.$route.query.mode === 'create' && !!this.$route.query.activityType
+    },
+    isFormMode() {
+      return this.isEditMode || this.isCreateMode
     },
     routeActivityId() {
       return this.$route.query.id || null
@@ -100,19 +139,58 @@ export default {
     },
     isCommonEditMode() {
       return String(this.routeActivityType || '').trim() === COMMON_ACTIVITY_TYPE
+    },
+    isFirstDepositCreateMode() {
+      return this.isCreateMode && String(this.routeActivityType || '').trim() === FIRST_DEPOSIT_ACTIVITY_TYPE
+    },
+    isFirstDepositEditMode() {
+      return this.isEditMode && String(this.routeActivityType || '').trim() === FIRST_DEPOSIT_ACTIVITY_TYPE
+    },
+    isFirstDepositMode() {
+      return this.isFirstDepositCreateMode || this.isFirstDepositEditMode
+    },
+    formPageTitle() {
+      if (this.isFirstDepositCreateMode) {
+        return '新增首存活动'
+      }
+      if (this.isFirstDepositEditMode) {
+        return '修改首存活动'
+      }
+      if (this.isCreateMode) {
+        return '新增活动'
+      }
+      return this.isCommonEditMode ? '编辑通用活动' : '编辑活动'
+    },
+    formPageSubtitle() {
+      if (this.isCreateMode) {
+        return '配置已选择的活动类型、活动信息、奖励档位和规则内容。'
+      }
+      return this.isCommonEditMode ? '维护通用活动基础信息、展示图片和上下架状态。' : '维护活动信息、奖励档位和规则配置。'
+    },
+    activityFormKey() {
+      if (this.isCreateMode) {
+        return 'create-page-' + this.routeActivityType
+      }
+      return 'edit-' + this.routeActivityId + '-' + this.routeActivityType
     }
   },
   watch: {
-    isEditMode(val, oldVal) {
+    isFormMode(val, oldVal) {
       if (!val && oldVal) {
         this.getList()
       }
     },
-    createDialogVisible(val) {
-      this.handleCreateDialogVisibleChange(val)
-    },
     createCommonDialogVisible(val) {
       this.handleCreateDialogVisibleChange(val)
+    },
+    activityTypeDialogVisible(val) {
+      if (!val) {
+        return
+      }
+      if (!this.selectedCreateActivityType) {
+        const firstEnabledType = this.createActivityTypeOptions.find(item => !item.disabled)
+        this.selectedCreateActivityType = firstEnabledType ? firstEnabledType.value : ''
+      }
     }
   },
   created() {
@@ -127,7 +205,7 @@ export default {
   methods: {
     async bootstrap() {
       await this.fetchMeta()
-      if (!this.isEditMode) {
+      if (!this.isFormMode) {
         this.getList()
       }
     },
@@ -218,7 +296,7 @@ export default {
       this.createDialogTop = '0px'
     },
     handleDialogResize() {
-      if (this.createDialogVisible || this.createCommonDialogVisible) {
+      if (this.createCommonDialogVisible) {
         this.syncCreateDialogLayout()
       }
     },
@@ -231,16 +309,46 @@ export default {
       })
     },
     handleAdd() {
-      this.createDialogKey += 1
-      this.createDialogVisible = true
+      const firstEnabledType = this.createActivityTypeOptions.find(item => !item.disabled)
+      this.selectedCreateActivityType = firstEnabledType ? firstEnabledType.value : ''
+      this.activityTypeDialogVisible = true
+    },
+    handleSelectCreateActivityType(item) {
+      if (!item || item.disabled) {
+        return
+      }
+      this.selectedCreateActivityType = item.value
+    },
+    handleConfirmCreateActivityType() {
+      if (!this.selectedCreateActivityType) {
+        this.$message.warning('请选择活动类型')
+        return
+      }
+      this.activityTypeDialogVisible = false
+      if (String(this.selectedCreateActivityType) === COMMON_ACTIVITY_TYPE) {
+        this.$nextTick(() => {
+          this.handleAddCommon()
+        })
+        return
+      }
+      this.$router.replace({
+        path: this.$route.path,
+        query: {
+          mode: 'create',
+          activityType: this.selectedCreateActivityType
+        }
+      })
     },
     handleAddCommon() {
       this.createDialogKey += 1
       this.createCommonDialogVisible = true
     },
     handleCreateSuccess() {
-      this.createDialogVisible = false
       this.createCommonDialogVisible = false
+      if (this.isFormMode) {
+        this.exitEditMode()
+        return
+      }
       this.handleQuery()
     },
     handleConfig(row) {
@@ -262,6 +370,10 @@ export default {
         this.$modal.msgWarning('活动ID不存在，无法删除')
         return
       }
+      if (this.isActivityEnabled(row)) {
+        this.$modal.msgWarning('启用状态的活动不可删除，请先禁用')
+        return
+      }
       const activityName = row.activityName || row.activityCode || row.id
       this.$modal.confirm(`是否确认删除活动"${activityName}"？删除后活动列表不再显示。`).then(() => {
         return updateActivityStatus(row.id, DELETED_STATUS_VALUE)
@@ -270,10 +382,35 @@ export default {
         this.getList()
       }).catch(() => {})
     },
+    handleStatusSwitchChange(row, nextStatus) {
+      const normalizedNextStatus = normalizeStatusValue(nextStatus)
+      const previousStatus = normalizedNextStatus === ENABLED_STATUS_VALUE
+        ? DISABLED_STATUS_VALUE
+        : ENABLED_STATUS_VALUE
+      if (!row || !row.id) {
+        if (row) {
+          row.status = previousStatus
+        }
+        this.$modal.msgWarning('活动ID不存在，无法修改状态')
+        return
+      }
+      updateActivityStatus(row.id, normalizedNextStatus).then(() => {
+        const statusText = normalizedNextStatus === ENABLED_STATUS_VALUE ? '启用' : '禁用'
+        this.$modal.msgSuccess(statusText + '成功')
+      }).catch(() => {
+        row.status = previousStatus
+      })
+    },
+    isActivityEnabled(row) {
+      return normalizeStatusValue(row && row.status) === ENABLED_STATUS_VALUE
+    },
     exitEditMode() {
       this.$router.replace({ path: this.$route.path, query: {} })
     },
     handleEditSuccess() {
+      this.exitEditMode()
+    },
+    handleFormSuccess() {
       this.exitEditMode()
     },
     activityTypeLabel(value) {
@@ -284,7 +421,8 @@ export default {
       const matched = this.activityTypeOptions.find(item => {
         return item && (String(item.value) === normalized || String(item.label) === normalized)
       })
-      return (matched && matched.label) || normalized
+      const fallback = DEFAULT_TYPE_OPTIONS.find(item => String(item.value) === normalized)
+      return (matched && matched.label) || (fallback && fallback.label) || normalized
     },
     getStatusMeta(status) {
       const value = normalizeStatusValue(status)
@@ -296,7 +434,7 @@ export default {
         className = 'is-disabled'
       }
       return {
-        text: (matched && matched.label) || value || '-',
+        text: value === ENABLED_STATUS_VALUE ? '启用' : value === DISABLED_STATUS_VALUE ? '禁用' : (matched && matched.label) || value || '-',
         className
       }
     },

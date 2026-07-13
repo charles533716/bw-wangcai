@@ -6,6 +6,7 @@ import {
   getActivityTypeSchema,
   normalizeActivityTypeValue
 } from './activityTypeSchemas'
+import Editor from '@/components/Editor'
 
 function normalizeGameTypeOption(item) {
   if (item && typeof item === 'object' && !Array.isArray(item)) {
@@ -19,6 +20,9 @@ function normalizeGameTypeOption(item) {
 
 export default {
   name: 'ActivityTypeDynamicSections',
+  components: {
+    Editor
+  },
   props: {
     form: {
       type: Object,
