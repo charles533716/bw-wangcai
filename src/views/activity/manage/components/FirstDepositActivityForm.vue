@@ -7,36 +7,36 @@
           <el-input v-model="form.activityName" placeholder="请输入标题" />
         </el-form-item>
 
-        <div class="first-config-meta first-grid__wide">
-          <el-form-item label="活动分类" required>
-            <el-select v-model="extra.activityCategory" multiple collapse-tags placeholder="请选择分类" style="width: 100%">
+        <el-form-item label="活动分类" required class="first-config-meta-row first-grid__wide">
+          <div class="first-config-meta">
+            <el-select v-model="extra.activityCategory" multiple collapse-tags placeholder="请选择分类" class="first-config-category">
               <el-option v-for="item in categoryOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
-          </el-form-item>
 
-          <el-form-item label="活动标签" required>
-            <el-select v-model="extra.activityTag" placeholder="请选择标签" style="width: 100%">
-              <el-option v-for="item in tagOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-          </el-form-item>
+            <el-form-item label="活动标签" required>
+              <el-select v-model="extra.activityTag" placeholder="请选择标签" style="width: 100%">
+                <el-option v-for="item in tagOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
 
-          <el-form-item label="排序" prop="activitySort" required>
-            <el-input-number v-model="form.activitySort" :min="1" :precision="0" :controls="false" class="first-field" placeholder="数值越小排序越前" />
-          </el-form-item>
+            <el-form-item label="排序" prop="activitySort" required>
+              <el-input-number v-model="form.activitySort" :min="1" :precision="0" :controls="false" class="first-field" placeholder="数值越小排序越前" />
+            </el-form-item>
 
-          <el-form-item label="状态" prop="status" required>
-            <el-switch
-              v-model="form.status"
-              active-value="0"
-              inactive-value="1"
-              active-text="启用"
-              inactive-text="禁用"
-              active-color="#20b56d"
-              inactive-color="#c0c4cc"
-              class="first-status-switch"
-            />
-          </el-form-item>
-        </div>
+            <el-form-item label="状态" prop="status" required>
+              <el-switch
+                v-model="form.status"
+                active-value="0"
+                inactive-value="1"
+                active-text="启用"
+                inactive-text="禁用"
+                active-color="#20b56d"
+                inactive-color="#c0c4cc"
+                class="first-status-switch"
+              />
+            </el-form-item>
+          </div>
+        </el-form-item>
 
         <el-form-item label="展示设备" required class="first-grid__wide">
           <el-checkbox-group :value="displayDevices" class="first-check-group" @input="handleDisplayDevicesChange">
@@ -733,9 +733,13 @@ export default {
 
 .first-config-meta {
   display: grid;
-  grid-template-columns: 280px 210px 220px 180px;
+  grid-template-columns: 180px 200px 210px 170px;
   gap: 10px;
-  margin-left: 27px;
+  align-items: center;
+}
+
+.first-config-category {
+  width: 100%;
 }
 
 .first-config-meta ::v-deep .el-form-item {
