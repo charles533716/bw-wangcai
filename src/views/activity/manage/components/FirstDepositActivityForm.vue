@@ -416,12 +416,15 @@ export default {
     },
     categoryOptions() {
       return [
-        { value: 'sports', label: '体育优惠' },
-        { value: 'live', label: '真人优惠' },
-        { value: 'esports', label: '电竞优惠' },
-        { value: 'lottery', label: '彩票优惠' },
-        { value: 'chess', label: '棋牌优惠' },
-        { value: 'electronic', label: '电子优惠' }
+        { value: 'latest', label: '最新' },
+        { value: 'sports', label: '体育' },
+        { value: 'live', label: '真人' },
+        { value: 'esports', label: '电竞' },
+        { value: 'lottery', label: '彩票' },
+        { value: 'chess', label: '棋牌' },
+        { value: 'electronic', label: '电子' },
+        { value: 'fishing', label: '捕鱼' },
+        { value: 'hash', label: '哈希' }
       ]
     },
     tagOptions() {

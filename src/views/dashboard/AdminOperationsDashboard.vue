@@ -20,13 +20,14 @@
         </el-select>
         <el-date-picker
           v-model="query.dateRange"
-          type="daterange"
+          type="datetimerange"
           size="small"
           class="ops-toolbar__date"
-          value-format="yyyy-MM-dd"
+          format="yyyy-MM-dd HH:mm:ss"
+          value-format="yyyy-MM-dd HH:mm:ss"
           range-separator="至"
-          start-placeholder="起始日期"
-          end-placeholder="结束日期"
+          start-placeholder="起始日期时间"
+          end-placeholder="结束日期时间"
           :clearable="false"
         />
         <el-button type="primary" size="small" class="ops-toolbar__button" @click="handleQuery">
@@ -36,7 +37,7 @@
     </section>
 
     <section class="overview-panel">
-      <div class="module-title">网站收益 / 资金明细</div>
+      <div class="module-title">总站收益明细</div>
       <div class="overview-grid">
         <div v-for="item in dashboardData.overview" :key="item.label" class="overview-item">
           <div class="overview-item__label">{{ item.label }}</div>
@@ -87,6 +88,15 @@
                   {{ row[field.key] }}
                 </td>
               </tr>
+              <tr class="module-table__summary">
+                <td
+                  v-for="field in module.fields"
+                  :key="field.key"
+                  :class="[fieldSizeClass(field), { 'is-wide': isWideField(field) }]"
+                >
+                  {{ summaryRowValue(module, field) }}
+                </td>
+              </tr>
             </tbody>
           </table>
           <div v-else class="module-empty">暂无数据</div>
@@ -105,6 +115,13 @@ const SITE_OPTIONS = [
   { value: 'DW', label: 'DW体育' },
   { value: 'CAISHEN', label: '财神体育' }
 ]
+
+const DASHBOARD_SITE_NAME_OVERRIDES = {
+  '演示总站': 'DW体育',
+  '待审演示站': '财神体育'
+}
+
+const normalizeDashboardSiteName = (name) => DASHBOARD_SITE_NAME_OVERRIDES[name] || name
 
 const SITE_NAMES = SITE_OPTIONS.filter((item) => item.value !== 'ALL').map((item) => item.label)
 const MEMBER_NAMES = ['wc_10086', 'dw_70888', 'cs_90018', 'wc_16888', 'dw_55123', 'cs_77889', 'wc_60666', 'dw_31314', 'cs_52020', 'wc_99881']
@@ -140,22 +157,39 @@ const buildTopRows = (sites, mapper) => {
   })
 }
 
+const SUMMARY_LABEL_FIELD = 'site'
+const NON_SUMMARY_FIELDS = ['site', 'rank', 'member', 'venueName', 'gameName', 'agent']
+
+const parseDisplayNumber = (value) => {
+  const normalized = String(value == null ? '' : value).replace(/[^\d.-]/g, '')
+  return Number(normalized || 0)
+}
+
 const moduleFields = {
   registration: [
     { key: 'site', label: '站点' },
     { key: 'depositTotal', label: '充值总金额' },
     { key: 'withdrawTotal', label: '提款总金额' },
-    { key: 'activityBonus', label: '活动优惠', tooltip: '所有类型的优惠+VIP彩金+线下人工手动活动' },
+    {
+      key: 'activityBonus',
+      label: '活动优惠',
+      tooltip: '活动优惠：包含会员推荐奖励、VIP彩金、人工发放彩金、活动奖励、礼金、线下人工手动活动奖励，以及后续新增的其他会员可领取奖励。'
+    },
     { key: 'vipRebate', label: 'VIP返水' },
-    { key: 'agentCommission', label: '代理佣金' },
-    { key: 'manualDepositTotal', label: '人工充值总金额' },
-    { key: 'manualWithdrawTotal', label: '人工提现总金额' },
-    { key: 'platformProfit', label: '平台游戏盈利总金额' }
+    { key: 'venueFee', label: '场馆费用' },
+    { key: 'depositFeeShare', label: '分摊存款手续费' },
+    { key: 'withdrawFeeShare', label: '分摊提款手续费' },
+    {
+      key: 'platformProfit',
+      label: '平台游戏盈利总金额',
+      tooltip: '平台游戏盈利总金额=充值总金额-提款总金额-场馆费用-分摊存款手续费-分摊提款手续费'
+    }
   ],
   totalUsers: [
+    { key: 'site', label: '站点' },
     { key: 'todayRegister', label: '今日注册' },
-    { key: 'firstDepositUsers', label: '首冲人数' },
-    { key: 'firstDepositAmount', label: '首冲金额' },
+    { key: 'firstDepositUsers', label: '首充人数' },
+    { key: 'firstDepositAmount', label: '首充金额' },
     { key: 'totalDeposit', label: '总存金额' },
     { key: 'userBalance', label: '用户余额' },
     { key: 'todayBet', label: '今日投注' },
@@ -216,7 +250,8 @@ const moduleFields = {
     { key: 'rank', label: '排名' },
     { key: 'offlineTotal', label: '累积下线' },
     { key: 'todayNew', label: '今日新增' },
-    { key: 'agentCommission', label: '代理佣金' },
+    { key: 'historyUnsettledCommission', label: '历史未结算佣金' },
+    { key: 'agentCommission', label: '代理佣金', tooltip: '历史已发放的佣金，不包含本月' },
     { key: 'agentBalance', label: '代理余额' }
   ],
   venueBetRank: [
@@ -243,31 +278,49 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
   const daySeed = dateRange.join('').replace(/\D/g, '').slice(-4) || '0713'
   const seed = Number(daySeed) || 713
   const siteScale = sites.length
+  const totalDeposit = (seed + 7200) * 186 * siteScale
+  const totalWithdraw = (seed + 4100) * 128 * siteScale
+  const venueFee = (seed + 900) * 18 * siteScale
+  const depositFeeShare = (seed + 380) * 6 * siteScale
+  const withdrawFeeShare = (seed + 260) * 5 * siteScale
 
   return {
     overview: [
       { label: '总投注额度', value: money((seed + 4200) * 288 * siteScale) },
       { label: '总收益', value: money((seed + 1200) * 38 * siteScale) },
       { label: '全站用户总额', value: money((seed + 6500) * 208 * siteScale) },
-      { label: '资金池总额', value: money((seed + 2300) * 166 * siteScale) }
+      { label: '资金池总额', value: money((seed + 2300) * 166 * siteScale) },
+      { label: '总存款', value: money(totalDeposit) },
+      { label: '总提款', value: money(totalWithdraw) },
+      { label: '场馆费用', value: money(venueFee) },
+      { label: '分摊存款手续费', value: money(depositFeeShare) },
+      { label: '分摊提款手续费', value: money(withdrawFeeShare) }
     ],
     modules: [
       {
         key: 'registration',
-        title: '注册人数',
+        title: '网站明细',
         size: 'large',
         fields: moduleFields.registration,
-        rows: buildTopRows(sites, (index, site) => ({
-          site,
-          depositTotal: money(880000 - index * 31800),
-          withdrawTotal: money(520000 - index * 21400),
-          activityBonus: money(48000 - index * 1260),
-          vipRebate: money(26000 - index * 880),
-          agentCommission: money(36000 - index * 960),
-          manualDepositTotal: money(18000 - index * 530),
-          manualWithdrawTotal: money(12000 - index * 410),
-          platformProfit: money(96000 - index * 2180)
-        }))
+        rows: buildTopRows(sites, (index, site) => {
+          const depositTotal = 880000 - index * 31800
+          const withdrawTotal = 520000 - index * 21400
+          const venueFee = 36000 - index * 960
+          const depositFeeShare = 8000 - index * 260
+          const withdrawFeeShare = 6000 - index * 180
+          const platformProfit = depositTotal - withdrawTotal - venueFee - depositFeeShare - withdrawFeeShare
+          return {
+            site,
+            depositTotal: money(depositTotal),
+            withdrawTotal: money(withdrawTotal),
+            activityBonus: money(48000 - index * 1260),
+            vipRebate: money(26000 - index * 880),
+            venueFee: money(venueFee),
+            depositFeeShare: money(depositFeeShare),
+            withdrawFeeShare: money(withdrawFeeShare),
+            platformProfit: money(platformProfit)
+          }
+        })
       },
       {
         key: 'totalUsers',
@@ -291,7 +344,7 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
       },
       {
         key: 'amountRecharge',
-        title: '金额充值排行',
+        title: '今日充值排行',
         size: 'small',
         fields: moduleFields.amountRecharge,
         rows: buildTopRows(sites, (index, site) => ({
@@ -299,18 +352,6 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
           depositCount: numberText(780 - index * 28),
           depositUsers: numberText(530 - index * 18),
           avgDeposit: money(2680 - index * 76)
-        }))
-      },
-      {
-        key: 'siteIncome',
-        title: '站点收益排行',
-        size: 'small',
-        fields: moduleFields.siteIncome,
-        rows: buildTopRows(sites, (index, site) => ({
-          site,
-          activeUsers: numberText(2160 - index * 65),
-          profitAmount: money(286000 - index * 9600),
-          depositGap: money(128000 - index * 5200)
         }))
       },
       {
@@ -323,6 +364,18 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
           withdrawCount: numberText(360 - index * 12),
           withdrawUsers: numberText(286 - index * 9),
           avgWithdraw: money(3280 - index * 92)
+        }))
+      },
+      {
+        key: 'siteIncome',
+        title: '站点收益排行',
+        size: 'small',
+        fields: moduleFields.siteIncome,
+        rows: buildTopRows(sites, (index, site) => ({
+          site,
+          activeUsers: numberText(2160 - index * 65),
+          profitAmount: money(286000 - index * 9600),
+          depositGap: money(128000 - index * 5200)
         }))
       },
       {
@@ -387,6 +440,7 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
           rank: index + 1,
           offlineTotal: numberText(860 - index * 32),
           todayNew: numberText(68 - index * 2),
+          historyUnsettledCommission: money(26800 - index * 920),
           agentCommission: money(58000 - index * 1800),
           agentBalance: money(128000 - index * 4200),
           agent: AGENT_NAMES[index]
@@ -434,15 +488,16 @@ export default {
   },
   data() {
     const currentDate = today()
+    const currentDateRange = [`${currentDate} 00:00:00`, `${currentDate} 23:59:59`]
     return {
       siteOptions: SITE_OPTIONS,
       query: {
         siteCode: 'ALL',
-        dateRange: [currentDate, currentDate]
+        dateRange: currentDateRange
       },
       dashboardData: createOperationsDashboardData({
         siteCode: 'ALL',
-        dateRange: [currentDate, currentDate]
+        dateRange: currentDateRange
       }, SITE_OPTIONS)
     }
   },
@@ -453,7 +508,7 @@ export default {
         const options = response && response.data && response.data.options
         if (Array.isArray(options) && options.length) {
           const normalizedOptions = options.map((item) => ({
-            label: item.label,
+            label: normalizeDashboardSiteName(item.label),
             value: item.value
           }))
           this.siteOptions = normalizedOptions.some((item) => item.value === 'ALL')
@@ -479,14 +534,23 @@ export default {
       this.$message.success('全站运营数据已更新')
     },
     isWideField(field) {
-      return ['manualDepositTotal', 'manualWithdrawTotal', 'platformProfit'].includes(field.key)
+      return ['depositFeeShare', 'withdrawFeeShare', 'platformProfit'].includes(field.key)
     },
     fieldSizeClass(field) {
       if (field.key === 'rank') return 'is-rank'
       if (['orderCount', 'count', 'people'].includes(field.key)) return 'is-count'
       if (['site', 'member', 'venueName', 'gameName'].includes(field.key)) return 'is-name'
-      if (/Amount|Total|Balance|Gap|Profit|Deposit|Withdraw|Rebate|Commission|Bet|winAmount|loseAmount/.test(field.key)) return 'is-money'
+      if (/Amount|Total|Balance|Gap|Profit|Deposit|Withdraw|Rebate|Commission|Bet|Fee|winAmount|loseAmount/.test(field.key)) return 'is-money'
       return ''
+    },
+    summaryRowValue(module, field) {
+      if (field.key === SUMMARY_LABEL_FIELD) return '总计'
+      if (NON_SUMMARY_FIELDS.includes(field.key)) return ''
+
+      const values = module.rows.map((row) => row[field.key])
+      const total = values.reduce((sum, value) => sum + parseDisplayNumber(value), 0)
+      const isMoneyField = values.some((value) => String(value || '').includes('¥'))
+      return isMoneyField ? money(total) : numberText(total)
     }
   }
 }
@@ -531,7 +595,7 @@ export default {
 }
 
 .ops-toolbar__date {
-  width: 300px;
+  width: 420px;
 }
 
 .ops-toolbar__button {
@@ -560,7 +624,7 @@ export default {
 
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -634,6 +698,12 @@ export default {
 }
 
 .module-table__content th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #111827;
+}
+
+.module-table__summary td {
   background: #f8fafc;
   font-weight: 700;
   color: #111827;
