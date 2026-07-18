@@ -134,33 +134,11 @@
         </div>
       </el-form-item>
 
-      <el-form-item label="活动开始时间" prop="activityBeginTime">
-        <el-date-picker
-          v-model="form.activityBeginTime"
-          type="date"
-          format="yyyy/MM/dd"
-          value-format="yyyy-MM-dd"
-          :disabled="isActivityBeginTimeLocked"
-          :picker-options="activityBeginPickerOptions"
-          placeholder="年 / 月 / 日"
-          style="width: 100%"
-        />
-        <div v-if="isActivityBeginTimeLocked" class="field-tip">活动已开始，开始日期不可修改</div>
-      </el-form-item>
-
-      <el-form-item label="活动结束时间" prop="activityEndTime">
-        <el-date-picker
-          v-model="form.activityEndTime"
-          type="date"
-          format="yyyy/MM/dd"
-          value-format="yyyy-MM-dd"
-          clearable
-          :picker-options="activityEndPickerOptions"
-          placeholder="年 / 月 / 日"
-          style="width: 100%"
-        />
-        <div class="field-tip">留空 = 长期有效</div>
-      </el-form-item>
+      <activity-frontend-display-fields
+        ref="frontendDisplayFields"
+        :form="form"
+        :is-edit="isEdit"
+      />
 
       <el-form-item label="提现流水倍数" prop="withdrawBetMultiple">
         <el-input-number v-model="form.withdrawBetMultiple" :min="1" :precision="0" :controls="false" class="field-number" />
@@ -175,11 +153,6 @@
         <el-input-number v-model="form.hotSort" :min="1" :precision="0" :controls="false" class="field-number" />
       </el-form-item>
 
-      <el-form-item v-if="isEdit" label="状态" prop="status">
-        <el-select v-model="form.status" placeholder="请选择活动状态" style="width: 100%">
-          <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
     </section>
 
     <section class="common-grid common-grid--media">

@@ -7,6 +7,7 @@ import {
     updateActivity
 } from "@/api/activity/manage";
 import ActivityTypeDynamicSections from "./ActivityTypeDynamicSections";
+import ActivityFrontendDisplayFields from "./ActivityFrontendDisplayFields";
 import FirstDepositActivityForm from "./FirstDepositActivityForm";
 import {
     DAILY_RESET_TIME_OPTIONS,
@@ -27,16 +28,33 @@ const CROSS_TYPE_COMBINED_OPTIONS = [{
 }];
 const DEFAULT_ACTIVITY_OBJECT_VALUE = "0";
 const DEFAULT_ACTIVITY_THEME_VALUE = "0";
+const WORLD_CUP_ACTIVITY_THEME_VALUE = "1";
 const VIP_ACTIVITY_OBJECT_VALUE = "1";
+const SEVEN_DAY_REGISTERED_ACTIVITY_OBJECT_VALUE = "2";
 const AGENT_ACTIVITY_OBJECT_VALUE = "3";
 const FALLBACK_VIP_LEVEL_VALUE = "0";
 const COMMON_ACTIVITY_TYPE_VALUE = "30";
+const NEWCOMER_ACTIVITY_TYPE_VALUE = "25";
+const NEWCOMER_ACTIVITY_TYPE_LABEL = "新人礼";
 const SIGNIN_ACTIVITY_TYPE_VALUE = "27";
 const SIGNIN_ACTIVITY_TYPE_LABEL = "签到";
 const FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE = "26";
 const FIRST_DEPOSIT_ACTIVITY_TYPE_LABEL = "首存活动";
 const SIGNIN_CLAIM_RULE_VALUE = "1";
 const ACTIVITY_NAME_PATTERN = /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}$/;
+const FRONTEND_ACTIVITY_OBJECT_OPTIONS = [{
+    value: DEFAULT_ACTIVITY_OBJECT_VALUE,
+    label: "全体会员"
+}, {
+    value: VIP_ACTIVITY_OBJECT_VALUE,
+    label: "VIP会员"
+}, {
+    value: SEVEN_DAY_REGISTERED_ACTIVITY_OBJECT_VALUE,
+    label: "7天内注册用户"
+}, {
+    value: AGENT_ACTIVITY_OBJECT_VALUE,
+    label: "代理"
+}];
 
 function padNumber(value) {
     return value < 10 ? "0" + value : String(value)
@@ -533,6 +551,7 @@ export default {
     name: "ActivityForm",
     components: {
         ActivityTypeDynamicSections: ActivityTypeDynamicSections,
+        ActivityFrontendDisplayFields: ActivityFrontendDisplayFields,
         FirstDepositActivityForm: FirstDepositActivityForm,
         ImageUpload: ImageUpload
     },
@@ -692,9 +711,21 @@ export default {
             return normalizeActivityTypeOptions(DEFAULT_TYPE_OPTIONS).filter(item => String(item.value) !== COMMON_ACTIVITY_TYPE_VALUE)
         },
         activityObjectOptions() {
+            if (this.isFrontendDisplayActivity) {
+                return FRONTEND_ACTIVITY_OBJECT_OPTIONS
+            }
             return normalizeStringValueOptions(this.meta && this.meta.activityObjectOptions, [])
         },
         activityThemeOptions() {
+            if (this.isSigninActivity) {
+                return [{
+                    value: DEFAULT_ACTIVITY_THEME_VALUE,
+                    label: "通用"
+                }, {
+                    value: WORLD_CUP_ACTIVITY_THEME_VALUE,
+                    label: "世界杯"
+                }]
+            }
             return normalizeStringValueOptions(this.meta && this.meta.activityThemeOptions, [{
                 value: DEFAULT_ACTIVITY_THEME_VALUE,
                 label: "通用"
@@ -723,6 +754,11 @@ export default {
         },
         isSigninActivity() {
             return normalizeActivityTypeValue(this.form.activityType, this.meta) === SIGNIN_ACTIVITY_TYPE_LABEL || resolveActivityTypeRequestValue(this.form.activityType, this.meta) === SIGNIN_ACTIVITY_TYPE_VALUE
+        },
+        isFrontendDisplayActivity() {
+            const normalizedType = normalizeActivityTypeValue(this.form.activityType, this.meta);
+            const requestType = resolveActivityTypeRequestValue(this.form.activityType, this.meta);
+            return normalizedType === NEWCOMER_ACTIVITY_TYPE_LABEL || requestType === NEWCOMER_ACTIVITY_TYPE_VALUE || this.isSigninActivity
         },
         isFirstDepositActivity() {
             return normalizeActivityTypeValue(this.form.activityType, this.meta) === FIRST_DEPOSIT_ACTIVITY_TYPE_LABEL || resolveActivityTypeRequestValue(this.form.activityType, this.meta) === FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE || String(this.form.activityType || "").trim() === FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE

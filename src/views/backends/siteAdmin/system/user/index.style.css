@@ -1,9 +1,9 @@
 /* 调整表单标签宽度增加30% */
-.el-form-item__label {
+.site-user-page .el-form-item__label {
   width: calc(80px * 1.3) !important;
 }
 
-.el-form-item__content {
+.site-user-page .el-form-item__content {
   margin-left: calc(80px * 1.3) !important;
 }
 

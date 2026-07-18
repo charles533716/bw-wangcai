@@ -50,7 +50,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="isEdit" label="状态" prop="status">
+        <el-form-item v-if="isEdit && !isFrontendDisplayActivity" label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择活动状态" style="width: 100%">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -133,7 +133,14 @@
           <div class="field-tip">点击后按代理名称筛选。勾选上级代理后会自动勾选关联下级代理。已选 {{ form.agentCode.length }} 项</div>
         </el-form-item>
 
-        <el-form-item label="活动开始时间" prop="activityBeginTime">
+        <activity-frontend-display-fields
+          v-if="isFrontendDisplayActivity"
+          ref="frontendDisplayFields"
+          :form="form"
+          :is-edit="isEdit"
+        />
+
+        <el-form-item v-if="!isFrontendDisplayActivity" label="活动开始时间" prop="activityBeginTime">
           <el-date-picker
             v-model="form.activityBeginTime"
             type="date"
@@ -147,7 +154,7 @@
           <div v-if="isActivityBeginTimeLocked" class="field-tip">活动已开始，开始日期不可修改</div>
         </el-form-item>
 
-        <el-form-item label="活动结束时间" prop="activityEndTime">
+        <el-form-item v-if="!isFrontendDisplayActivity" label="活动结束时间" prop="activityEndTime">
           <el-date-picker
             v-model="form.activityEndTime"
             type="date"

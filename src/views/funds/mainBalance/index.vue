@@ -164,7 +164,7 @@
 
     <el-dialog
       :visible.sync="redPacketOpen"
-      width="620px"
+      :width="redPacketDialogWidth"
       :custom-class="redPacketDialogClass"
       append-to-body
       :show-close="false"
@@ -180,7 +180,23 @@
           <i class="el-icon-close"></i>
         </button>
       </div>
-      <el-form ref="redPacketForm" :model="redPacketForm" :rules="redPacketRules" class="redpacket-form">
+      <el-tabs
+        v-if="isActivityCashMode"
+        v-model="activityCashTab"
+        class="activity-cash-tabs"
+        @tab-click="handleActivityCashTabChange"
+      >
+        <el-tab-pane label="单笔发放" name="single" />
+        <el-tab-pane label="批量导入" name="batch" />
+      </el-tabs>
+
+      <el-form
+        v-show="!isActivityCashMode || activityCashTab === 'single'"
+        ref="redPacketForm"
+        :model="redPacketForm"
+        :rules="redPacketRules"
+        class="redpacket-form"
+      >
         <div v-if="redPacketMode === 'redPacket'" class="redpacket-balance">
           <span>当前可用额度：</span>
           <strong>¥{{ money(summary.balance) }}</strong>
@@ -201,6 +217,20 @@
             @change="handleRedPacketSiteChange"
           >
             <el-option v-for="item in siteOptions" :key="item.siteCode" :label="siteLabel(item)" :value="item.siteCode" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isActivityCashMode" prop="bonusType">
+          <div class="redpacket-form__label">彩金类型<span class="redpacket-form__required">*</span></div>
+          <el-select
+            v-model="redPacketForm.bonusType"
+            class="redpacket-form__control"
+            clearable
+            placeholder="请选择彩金类型"
+          >
+            <el-option label="推广彩金" value="promotion" />
+            <el-option label="活动彩金" value="activity" />
+            <el-option label="平台彩金" value="platform" />
           </el-select>
         </el-form-item>
 
@@ -308,6 +338,208 @@
           @click="submitRedPacket"
         >{{ submitButtonText }}</el-button>
       </el-form>
+
+      <div v-if="isBatchActivityCashMode" class="batch-activity-panel">
+        <div class="batch-import-head">
+          <div>
+            <strong>批量导入活动彩金</strong>
+            <p>请先下载示例表并按固定字段整理数据，导入后系统会自动区分正常与异常数据。</p>
+          </div>
+          <div class="batch-import-actions">
+            <el-upload
+              v-if="batchImportFileName"
+              class="batch-reupload"
+              action="#"
+              accept=".xlsx,.xls"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleBatchFileChange"
+            >
+              <el-button size="small" icon="el-icon-upload2">重新导入Excel</el-button>
+            </el-upload>
+            <el-button size="small" icon="el-icon-download" @click="downloadBatchTemplate">下载示例Excel</el-button>
+          </div>
+        </div>
+
+        <el-upload
+          v-if="!batchImportFileName"
+          class="batch-upload"
+          drag
+          action="#"
+          accept=".xlsx,.xls"
+          :auto-upload="false"
+          :show-file-list="false"
+          :on-change="handleBatchFileChange"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">将 Excel 文件拖到此处，或<em>点击选择文件</em></div>
+          <div slot="tip" class="el-upload__tip">仅支持 .xlsx、.xls 文件，单个文件不超过 5MB</div>
+        </el-upload>
+
+        <template v-if="batchImportFileName">
+          <el-alert
+            :title="`文件“${batchImportFileName}”校验完成，正常数据可继续发放，异常数据不会参与发放。`"
+            type="success"
+            :closable="false"
+            show-icon
+            class="batch-result-alert"
+          />
+
+          <div class="batch-stat-grid">
+            <div class="batch-stat-item">
+              <span>导入总数</span>
+              <strong>{{ batchImportResult.allRows.length }}</strong>
+            </div>
+            <div class="batch-stat-item batch-stat-item--success">
+              <span>正常数据</span>
+              <strong>{{ batchImportResult.validRows.length }}</strong>
+            </div>
+            <div class="batch-stat-item batch-stat-item--danger">
+              <span>异常数据</span>
+              <strong>{{ batchImportResult.invalidRows.length }}</strong>
+            </div>
+            <div class="batch-stat-item batch-stat-item--amount">
+              <span>正常彩金总额</span>
+              <strong>¥{{ money(batchImportResult.validAmount) }}</strong>
+            </div>
+          </div>
+
+          <el-tabs v-model="batchResultTab" type="border-card" class="batch-result-tabs">
+            <el-tab-pane :label="`正常数据（${batchImportResult.validRows.length}）`" name="valid">
+              <el-table :data="pagedBatchValidRows" border stripe height="360">
+                <el-table-column label="序号" width="62" align="center">
+                  <template slot-scope="scope">{{ batchSequence(batchValidPage, batchValidPageSize, scope.$index) }}</template>
+                </el-table-column>
+                <el-table-column prop="rowNo" label="行号" width="62" align="center" />
+                <el-table-column prop="siteName" label="所属站点" min-width="125" />
+                <el-table-column prop="bonusType" label="彩金类型" min-width="110" />
+                <el-table-column prop="memberAccount" label="会员账号" min-width="130" />
+                <el-table-column prop="amount" label="单会员活动彩金金额" min-width="160" align="right">
+                  <template slot-scope="scope">¥{{ money(scope.row.amount) }}</template>
+                </el-table-column>
+                <el-table-column prop="turnoverMultiple" label="提现所需流水倍数" min-width="145" align="center">
+                  <template slot-scope="scope">{{ scope.row.turnoverMultiple }} 倍</template>
+                </el-table-column>
+              </el-table>
+              <div class="batch-table-pagination">
+                <el-pagination
+                  background
+                  layout="total, sizes, prev, pager, next"
+                  :current-page="batchValidPage"
+                  :page-size="batchValidPageSize"
+                  :page-sizes="[20, 50, 100]"
+                  :total="batchImportResult.validRows.length"
+                  @size-change="handleBatchValidSizeChange"
+                  @current-change="handleBatchValidPageChange"
+                />
+              </div>
+            </el-tab-pane>
+            <el-tab-pane :label="`异常数据（${batchImportResult.invalidRows.length}）`" name="invalid">
+              <div class="batch-invalid-head">
+                <span>异常数据请导出核对，修正后重新导入。</span>
+                <el-button
+                  size="small"
+                  type="danger"
+                  plain
+                  icon="el-icon-download"
+                  :disabled="!batchImportResult.invalidRows.length"
+                  @click="downloadInvalidBatchRows"
+                >导出异常Excel</el-button>
+              </div>
+              <el-table :data="pagedBatchInvalidRows" border stripe height="360">
+                <el-table-column label="序号" width="62" align="center">
+                  <template slot-scope="scope">{{ batchSequence(batchInvalidPage, batchInvalidPageSize, scope.$index) }}</template>
+                </el-table-column>
+                <el-table-column prop="rowNo" label="行号" width="62" align="center" />
+                <el-table-column prop="siteName" label="所属站点" min-width="110" />
+                <el-table-column prop="bonusType" label="彩金类型" min-width="100" />
+                <el-table-column prop="memberAccount" label="会员账号" min-width="120" />
+                <el-table-column prop="amount" label="彩金金额" min-width="100" align="right" />
+                <el-table-column prop="turnoverMultiple" label="流水倍数" min-width="90" align="center" />
+                <el-table-column prop="errorText" label="异常原因" min-width="260">
+                  <template slot-scope="scope"><span class="batch-error-text">{{ scope.row.errorText }}</span></template>
+                </el-table-column>
+              </el-table>
+              <div class="batch-table-pagination">
+                <el-pagination
+                  background
+                  layout="total, sizes, prev, pager, next"
+                  :current-page="batchInvalidPage"
+                  :page-size="batchInvalidPageSize"
+                  :page-sizes="[20, 50, 100]"
+                  :total="batchImportResult.invalidRows.length"
+                  @size-change="handleBatchInvalidSizeChange"
+                  @current-change="handleBatchInvalidPageChange"
+                />
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+
+          <div v-if="batchImportResult.validRows.length" class="batch-config-panel">
+            <div class="batch-config-title">
+              <strong>正常数据批量发放配置</strong>
+              <span>以下配置将统一应用于 {{ batchImportResult.validRows.length }} 条正常数据</span>
+            </div>
+            <div class="batch-config-grid">
+              <div class="batch-config-field">
+                <label>发放时间</label>
+                <div class="redpacket-segment">
+                  <button
+                    type="button"
+                    :class="{ 'is-active': batchIssueMode === 'now' }"
+                    @click="setBatchIssueMode('now')"
+                  >立即发放</button>
+                  <button
+                    type="button"
+                    :class="{ 'is-active': batchIssueMode === 'scheduled' }"
+                    @click="setBatchIssueMode('scheduled')"
+                  >指定时间</button>
+                </div>
+                <el-date-picker
+                  v-if="batchIssueMode === 'scheduled'"
+                  v-model="batchAvailableTime"
+                  type="datetime"
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  placeholder="请选择发放时间"
+                  class="batch-date-picker"
+                />
+              </div>
+              <div class="batch-config-field">
+                <label>领取有效期</label>
+                <div class="redpacket-segment">
+                  <button
+                    type="button"
+                    :class="{ 'is-active': batchValidity === '24h' }"
+                    @click="batchValidity = '24h'"
+                  >24小时</button>
+                  <button
+                    type="button"
+                    :class="{ 'is-active': batchValidity === '7d' }"
+                    @click="batchValidity = '7d'"
+                  >7天</button>
+                </div>
+              </div>
+              <div class="batch-config-field batch-config-field--remark">
+                <label>备注</label>
+                <el-input
+                  v-model.trim="batchRemark"
+                  type="textarea"
+                  :rows="2"
+                  maxlength="500"
+                  show-word-limit
+                  placeholder="请输入本次批量发放备注（选填）"
+                />
+              </div>
+            </div>
+            <el-button
+              type="primary"
+              class="batch-submit"
+              :loading="batchSubmitting"
+              @click="submitBatchActivityCash"
+            >确认批量发放（{{ batchImportResult.validRows.length }}笔）</el-button>
+          </div>
+        </template>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -316,6 +548,14 @@
 import { createActivityCash, getMainBalanceSummary, listMainBalanceRecords, rechargeMainBalance } from '@/api/funds/mainBalance'
 import { createRedPacket, listRedPacketMembers } from '@/api/funds/redPacket'
 import { listSiteOptions } from '@/api/site/site'
+import { listMainBalanceDemoRecords } from './demoRecords'
+const {
+  validateBatchActivityCashRows,
+  getBatchActivityCashDemoRows,
+  getBatchActivityCashTemplateRows,
+  paginateBatchRows,
+  getBatchRowSequence
+} = require('./batchActivityCash')
 
 function defaultRecordQuery() {
   return {
@@ -330,6 +570,7 @@ function defaultRecordQuery() {
 function defaultRedPacketForm() {
   return {
     siteCode: '',
+    bonusType: '',
     targetMember: '',
     amount: '',
     turnoverMultiple: '1',
@@ -338,6 +579,10 @@ function defaultRedPacketForm() {
     validity: '24h',
     remark: ''
   }
+}
+
+function defaultBatchImportResult() {
+  return { allRows: [], validRows: [], invalidRows: [], validAmount: 0 }
 }
 
 export default {
@@ -352,6 +597,19 @@ export default {
       rechargeOpen: false,
       redPacketOpen: false,
       redPacketMode: 'redPacket',
+      activityCashTab: 'single',
+      batchResultTab: 'valid',
+      batchImportFileName: '',
+      batchImportResult: defaultBatchImportResult(),
+      batchValidPage: 1,
+      batchValidPageSize: 20,
+      batchInvalidPage: 1,
+      batchInvalidPageSize: 20,
+      batchIssueMode: 'now',
+      batchAvailableTime: '',
+      batchValidity: '24h',
+      batchRemark: '',
+      batchSubmitting: false,
       summary: { balance: 0, currency: 'CNY' },
       records: [],
       total: 0,
@@ -376,6 +634,7 @@ export default {
       },
       redPacketRules: {
         siteCode: [{ required: true, message: '请选择站点', trigger: 'change' }],
+        bonusType: [{ required: true, message: '请选择彩金类型', trigger: 'change' }],
         targetMember: [{ required: true, message: '请选择会员', trigger: 'change' }],
         amount: [
           { required: true, message: '请输入红包金额', trigger: 'blur' },
@@ -396,8 +655,17 @@ export default {
     isActivityCashMode() {
       return this.redPacketMode === 'activityCash'
     },
+    isBatchActivityCashMode() {
+      return this.isActivityCashMode && this.activityCashTab === 'batch'
+    },
+    redPacketDialogWidth() {
+      return this.isBatchActivityCashMode ? '1180px' : '620px'
+    },
     redPacketDialogClass() {
-      return this.isActivityCashMode ? 'redpacket-dialog activity-cash-dialog' : 'redpacket-dialog'
+      if (!this.isActivityCashMode) return 'redpacket-dialog'
+      return this.isBatchActivityCashMode
+        ? 'redpacket-dialog activity-cash-dialog activity-cash-dialog--batch'
+        : 'redpacket-dialog activity-cash-dialog'
     },
     redPacketDialogIcon() {
       return this.isActivityCashMode ? 'el-icon-money' : 'el-icon-present'
@@ -416,6 +684,12 @@ export default {
     },
     submitButtonText() {
       return this.isActivityCashMode ? '确认发放活动彩金' : '确认派发红包'
+    },
+    pagedBatchValidRows() {
+      return paginateBatchRows(this.batchImportResult.validRows, this.batchValidPage, this.batchValidPageSize)
+    },
+    pagedBatchInvalidRows() {
+      return paginateBatchRows(this.batchImportResult.invalidRows, this.batchInvalidPage, this.batchInvalidPageSize)
     }
   },
   methods: {
@@ -431,8 +705,11 @@ export default {
       this.loading = true
       const params = this.buildRecordParams()
       listMainBalanceRecords(params).then(res => {
-        this.records = (res && res.rows) || []
-        this.total = (res && res.total) || 0
+        const responseRows = (res && res.rows) || []
+        const useDemoRecords = process.env.VUE_APP_PROTOTYPE_MOCK !== 'false' && responseRows.every(row => !row.transactionId)
+        const result = useDemoRecords ? listMainBalanceDemoRecords(params) : { rows: responseRows, total: (res && res.total) || 0 }
+        this.records = result.rows
+        this.total = result.total
       }).finally(() => {
         this.loading = false
       })
@@ -488,12 +765,134 @@ export default {
     openBonusDialog() {
       this.redPacketForm = defaultRedPacketForm()
       this.memberOptions = []
+      this.activityCashTab = 'single'
+      this.resetBatchImport()
       this.redPacketOpen = true
       this.$nextTick(() => this.$refs.redPacketForm && this.$refs.redPacketForm.clearValidate())
     },
     handleRedPacketSiteChange() {
       this.redPacketForm.targetMember = ''
       this.memberOptions = []
+    },
+    handleActivityCashTabChange() {
+      this.$nextTick(() => {
+        const dialog = document.querySelector('.activity-cash-dialog')
+        if (dialog) dialog.scrollIntoView({ block: 'start' })
+      })
+    },
+    resetBatchImport() {
+      this.batchResultTab = 'valid'
+      this.batchImportFileName = ''
+      this.batchImportResult = defaultBatchImportResult()
+      this.batchValidPage = 1
+      this.batchValidPageSize = 20
+      this.batchInvalidPage = 1
+      this.batchInvalidPageSize = 20
+      this.batchIssueMode = 'now'
+      this.batchAvailableTime = ''
+      this.batchValidity = '24h'
+      this.batchRemark = ''
+      this.batchSubmitting = false
+    },
+    handleBatchFileChange(file) {
+      const name = String((file && file.name) || '')
+      const lowerName = name.toLowerCase()
+      if (!lowerName.endsWith('.xls') && !lowerName.endsWith('.xlsx')) {
+        this.$message.error('请选择 .xlsx 或 .xls 格式的 Excel 文件')
+        return
+      }
+      if (file.raw && file.raw.size > 5 * 1024 * 1024) {
+        this.$message.error('Excel 文件不能超过 5MB')
+        return
+      }
+      this.batchImportFileName = name
+      this.batchImportResult = validateBatchActivityCashRows(getBatchActivityCashDemoRows())
+      this.batchValidPage = 1
+      this.batchInvalidPage = 1
+      this.batchResultTab = this.batchImportResult.validRows.length ? 'valid' : 'invalid'
+      this.$message.success(`校验完成：正常 ${this.batchImportResult.validRows.length} 条，异常 ${this.batchImportResult.invalidRows.length} 条`)
+    },
+    batchSequence(page, pageSize, pageIndex) {
+      return getBatchRowSequence(page, pageSize, pageIndex)
+    },
+    handleBatchValidSizeChange(size) {
+      this.batchValidPageSize = size
+      this.batchValidPage = 1
+    },
+    handleBatchValidPageChange(page) {
+      this.batchValidPage = page
+    },
+    handleBatchInvalidSizeChange(size) {
+      this.batchInvalidPageSize = size
+      this.batchInvalidPage = 1
+    },
+    handleBatchInvalidPageChange(page) {
+      this.batchInvalidPage = page
+    },
+    setBatchIssueMode(mode) {
+      this.batchIssueMode = mode
+      if (mode === 'now') this.batchAvailableTime = ''
+    },
+    downloadBatchTemplate() {
+      this.downloadActivityCashExcel(getBatchActivityCashTemplateRows(), '活动彩金批量发放示例.xls', false)
+    },
+    downloadInvalidBatchRows() {
+      if (!this.batchImportResult.invalidRows.length) return
+      this.downloadActivityCashExcel(this.batchImportResult.invalidRows, '活动彩金异常数据.xls', true)
+    },
+    downloadActivityCashExcel(rows, fileName, includeError) {
+      const columns = [
+        { key: 'siteName', label: '所属站点' },
+        { key: 'bonusType', label: '彩金类型' },
+        { key: 'memberAccount', label: '会员账号' },
+        { key: 'amount', label: '单会员活动彩金金额' },
+        { key: 'turnoverMultiple', label: '提现所需流水倍数' }
+      ]
+      if (includeError) columns.push({ key: 'errorText', label: '异常原因' })
+      const header = columns.map(column => `<th>${this.escapeExcelCell(column.label)}</th>`).join('')
+      const body = rows.map(row => `<tr>${columns.map(column => `<td>${this.escapeExcelCell(row[column.key])}</td>`).join('')}</tr>`).join('')
+      const html = `\ufeff<html><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      this.$message.success(`${fileName} 已导出`)
+    },
+    escapeExcelCell(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+    },
+    submitBatchActivityCash() {
+      const count = this.batchImportResult.validRows.length
+      if (!count) {
+        this.$message.warning('没有可发放的正常数据')
+        return
+      }
+      if (this.batchIssueMode === 'scheduled' && !this.batchAvailableTime) {
+        this.$message.warning('请选择发放时间')
+        return
+      }
+      this.$confirm(
+        `确认按当前配置批量生成 ${count} 笔活动彩金发放订单吗？异常数据不会参与发放。`,
+        '确认批量发放',
+        { confirmButtonText: '确认发放', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        this.batchSubmitting = true
+        window.setTimeout(() => {
+          this.batchSubmitting = false
+          this.$message.success(`批量发放成功，已生成 ${count} 笔发放订单`)
+          this.redPacketOpen = false
+          this.refreshPage()
+        }, 500)
+      }).catch(() => {})
     },
     validatePositiveAmount(rule, value, callback) {
       const num = Number(value)
@@ -560,6 +959,7 @@ export default {
       const baseDate = availableTime ? new Date(String(availableTime).replace(/-/g, '/')) : new Date()
       return {
         siteCode: form.siteCode,
+        bonusType: form.bonusType,
         targetMember: form.targetMember,
         amount: form.amount,
         turnoverMultiple: form.turnoverMultiple,
@@ -679,8 +1079,42 @@ export default {
 .redpacket-balance strong { font-size: 16px; }
 .redpacket-balance--activity { border-color: #b8d3ff; background: #eef6ff; color: #1d4ed8; }
 .redpacket-form__label { margin-bottom: 8px; color: #8aa0bf; font-size: 13px; font-weight: 800; }
+.redpacket-form__required { margin-left: 4px; color: #f56c6c; }
 .redpacket-form__control { width: 100%; }
 .redpacket-form__tip { margin-top: 8px; color: #8aa0bf; font-size: 12px; }
+.activity-cash-tabs { margin-bottom: 16px; }
+.batch-activity-panel { color: #253044; }
+.batch-import-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+.batch-import-head strong { color: #172033; font-size: 16px; }
+.batch-import-head p { margin: 7px 0 0; color: #8a98ad; font-size: 13px; }
+.batch-import-actions { display: flex; align-items: center; gap: 8px; }
+.batch-upload { margin-bottom: 16px; }
+.batch-result-alert { margin-bottom: 14px; }
+.batch-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.batch-stat-item {
+  display: flex; align-items: center; justify-content: space-between; min-height: 68px; padding: 0 16px;
+  border: 1px solid #e5ebf3; border-radius: 8px; background: #f8fafc;
+}
+.batch-stat-item span { color: #7c8ca5; font-size: 13px; }
+.batch-stat-item strong { color: #172033; font-size: 24px; }
+.batch-stat-item--success { border-color: #bdebd6; background: #f2fbf7; }
+.batch-stat-item--success strong { color: #059669; }
+.batch-stat-item--danger { border-color: #ffd0d6; background: #fff6f7; }
+.batch-stat-item--danger strong { color: #e11d48; }
+.batch-stat-item--amount { border-color: #c7dcff; background: #f2f7ff; }
+.batch-stat-item--amount strong { color: #2563ff; font-size: 20px; }
+.batch-result-tabs { margin-bottom: 16px; }
+.batch-invalid-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #8a98ad; font-size: 13px; }
+.batch-table-pagination { display: flex; justify-content: flex-end; padding-top: 12px; }
+.batch-error-text { color: #e11d48; }
+.batch-config-panel { padding: 16px; border: 1px solid #dbe7f7; border-radius: 8px; background: #f8fbff; }
+.batch-config-title { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.batch-config-title strong { color: #172033; font-size: 15px; }
+.batch-config-title span { color: #8a98ad; font-size: 12px; }
+.batch-config-grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 16px; }
+.batch-config-field label { display: block; margin-bottom: 8px; color: #687a94; font-size: 13px; font-weight: 700; }
+.batch-date-picker { width: 100%; margin-top: 10px; }
+.batch-submit { width: 100%; margin-top: 16px; }
 .redpacket-segment {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 8px; border-radius: 8px; background: #edf3fb;
 }
@@ -696,12 +1130,22 @@ export default {
   .page-heading, .record-panel__head { align-items: flex-start; flex-direction: column; }
   .main-action-grid { grid-template-columns: 1fr; }
   .date-range { width: 100%; }
+  .batch-stat-grid, .batch-config-grid { grid-template-columns: 1fr; }
 }
 ::v-deep .redpacket-dialog { border-radius: 8px; }
 ::v-deep .redpacket-dialog .el-dialog__header { padding: 26px 24px 10px; }
 ::v-deep .redpacket-dialog .el-dialog__body { padding: 0 24px 24px; }
 ::v-deep .activity-cash-dialog .redpacket-dialog__icon { background: #eef6ff; color: #2563ff; }
 ::v-deep .activity-cash-dialog .redpacket-submit { background: #2563ff; box-shadow: 0 12px 24px rgba(37, 99, 255, 0.2); }
+::v-deep .activity-cash-dialog--batch { max-width: calc(100vw - 40px); }
+::v-deep .activity-cash-dialog--batch .el-dialog__body { max-height: calc(100vh - 140px); overflow: auto; }
+::v-deep .activity-cash-tabs .el-tabs__header { margin-bottom: 0; }
+::v-deep .activity-cash-tabs .el-tabs__item { min-width: 110px; text-align: center; }
+::v-deep .batch-upload .el-upload, ::v-deep .batch-upload .el-upload-dragger { width: 100%; }
+::v-deep .batch-upload .el-upload-dragger { height: 118px; border-radius: 8px; }
+::v-deep .batch-upload .el-icon-upload { margin: 22px 0 8px; font-size: 36px; }
+::v-deep .batch-result-tabs .el-tabs__content { padding: 12px; }
+::v-deep .batch-result-tabs .el-table th { background: #f5f7fa; color: #475569; }
 ::v-deep .redpacket-form .el-form-item { margin-bottom: 18px; }
 ::v-deep .redpacket-form__control .el-input__inner {
   height: 42px; border-color: #d6e0ec; border-radius: 8px;

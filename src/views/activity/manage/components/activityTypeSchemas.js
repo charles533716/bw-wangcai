@@ -326,7 +326,7 @@ const CUMULATIVE_RECHARGE_SWITCHES = [createSwitchOption("rechargeMustBoundWalle
 const WIN_RATE_SWITCHES = [createSwitchOption("excludeDrawForWinRate", "和局不计入胜负统计", "和局结果不影响胜率计算，也不计入局数"), createSwitchOption("excludeCanceledOrder", "取消/作废注单不计入", "被取消的注单不计入有效局数"), createSwitchOption("countSingleWinPerMatch", "同场次同玩法多单下注只记一单获胜", "同一场次相同玩法的多个投注，仅计一场获胜")];
 const DAILY_STREAK_SWITCHES = [createSwitchOption("restartAfterBreak", "中断后重新计算", "若某日未达标，连续天数从0重新开始"), createSwitchOption("excludeDrawForDailyWin", "和局不计入获胜局数", "和局结果不算作“获胜”"), createSwitchOption("noCompensationForMissedDay", "当日未达标不补发", "不可用次日达标补发昨日未完成的任务"), createSwitchOption("mergeGameTypesForDaily", "跨游戏类型合并统计", "所有选中类型的投注笔数/获胜局数合并计算")];
 const DAILY_AMOUNT_SWITCHES = [createSwitchOption("excludeCanceledOrRefundOrder", "排除取消/退款注单", "已取消或退款的注单不计入额度、笔数及订单数"), createSwitchOption("excludeSpecificOrders", "排除全赢/彩票/特码投注", "上述投注不计入额度、笔数及订单数"), createSwitchOption("accountUniquenessForDaily", "账户唯一性校验", "同一手机号/银行卡/设备/IP同一个账户参与")];
-const NEWCOMER_SWITCHES = [createSwitchOption("realNameVerifyRequired", "实名验证前置", "须完成手机号、银行卡、邮箱绑定后方可申请"), createSwitchOption("deviceUniquenessCheck", "设备唯一性校验", "同一设备只能参与一次"), createSwitchOption("bankCardUniquenessCheck", "银行卡唯一性校验", "同一银行卡只能绑定一个账户参与")];
+const NEWCOMER_SWITCHES = [createSwitchOption("realNameVerifyRequired", "实名验证前置", "须完成手机号、银行卡、邮箱绑定后方可申请"), createSwitchOption("deviceUniquenessCheck", "设备唯一性校验", "同一设备只能参与一次"), createSwitchOption("ipUniquenessCheck", "IP唯一性校验", "同一IP只能参与一次"), createSwitchOption("bankCardUniquenessCheck", "银行卡唯一性校验", "同一银行卡只能绑定一个账户参与")];
 const SIGNIN_WEEKDAYS = ["1", "2", "3", "4", "5", "6", "7"];
 const TYPE_SCHEMAS = {
     "连胜": {
@@ -1029,7 +1029,14 @@ const TYPE_SCHEMAS = {
             statisticalPeriod: "活动期间内累计",
             minimumValidBet: null,
             gameTypes: [],
-            baseConfigExtra: {},
+            baseConfigExtra: {
+                activityCategory: [],
+                activityTag: "",
+                displayDevices: ["all", "web", "appH5"],
+                activityPeriod: "fixed",
+                displayTimeRange: [],
+                activityTimeRange: []
+            },
             rewardItems: buildNewcomerDefaults(),
             ruleSwitches: buildDefaultRuleSwitches(NEWCOMER_SWITCHES),
             activityDetail: ""
@@ -1206,6 +1213,12 @@ const TYPE_SCHEMAS = {
             minimumValidBet: null,
             gameTypes: [],
             baseConfigExtra: {
+                activityCategory: [],
+                activityTag: "",
+                displayDevices: ["all", "web", "appH5"],
+                activityPeriod: "fixed",
+                displayTimeRange: [],
+                activityTimeRange: [],
                 sameTierRepeatable: false,
                 signinMethod: "固定自然周",
                 activityDays: 7
@@ -1699,7 +1712,7 @@ function resolveActivityTypeTemplate(activityType, optionSources) {
 }
 
 function resolveTemplateBaseConfigMap(template) {
-    var result = {};
+    var result = Object.assign({}, schema.defaults.ruleSwitches || {});
     var items = template && Array.isArray(template.baseConfig) ? template.baseConfig : [];
     items.forEach(function(item) {
         if (item && item.code) {

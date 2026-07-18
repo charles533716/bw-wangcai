@@ -101,7 +101,7 @@ export default {
       const templateItems = this.currentTemplate && Array.isArray(this.currentTemplate.enableConfig) ? this.currentTemplate.enableConfig : []
       if (templateItems.length) {
         const seenKeys = new Set()
-        return templateItems
+        const resolvedItems = templateItems
           .map(item => ({
             key: item && (item.code || item.key) ? (item.code || item.key) : '',
             label: item && (item.name || item.label) ? (item.name || item.label) : '',
@@ -114,6 +114,13 @@ export default {
             seenKeys.add(item.key)
             return true
           })
+        this.currentSchema.ruleOptions.forEach(item => {
+          if (!seenKeys.has(item.key)) {
+            seenKeys.add(item.key)
+            resolvedItems.push(item)
+          }
+        })
+        return resolvedItems
       }
       return this.currentSchema.ruleOptions
     },
