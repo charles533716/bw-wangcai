@@ -131,6 +131,8 @@ const GAME_NAMES = ['麻将胡了', '赏金女王', '超级王牌', '财神到',
 
 const money = (value) => `¥ ${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const numberText = (value) => Number(value || 0).toLocaleString('zh-CN')
+const ACTIVE_USERS_TOOLTIP = '统计时间范围内，登录或产生充值、提款、投注等有效行为的去重会员人数。'
+const AVG_DEPOSIT_TOOLTIP = '人均充值=单个站点的充值金额/充值人数'
 
 const today = () => {
   const date = new Date()
@@ -196,18 +198,18 @@ const moduleFields = {
     { key: 'validBet', label: '有效投注' },
     { key: 'orderCount', label: '注单数量' },
     { key: 'bettorCount', label: '投注人数' },
-    { key: 'activeUsers', label: '活跃人数' },
+    { key: 'activeUsers', label: '活跃人数', tooltip: ACTIVE_USERS_TOOLTIP },
     { key: 'betProfit', label: '投注盈亏' }
   ],
   amountRecharge: [
     { key: 'site', label: '站点' },
     { key: 'depositCount', label: '充值笔数' },
     { key: 'depositUsers', label: '充值人数' },
-    { key: 'avgDeposit', label: '人均充值' }
+    { key: 'avgDeposit', label: '人均充值', tooltip: AVG_DEPOSIT_TOOLTIP }
   ],
   siteIncome: [
     { key: 'site', label: '站点' },
-    { key: 'activeUsers', label: '活跃人数' },
+    { key: 'activeUsers', label: '活跃人数', tooltip: ACTIVE_USERS_TOOLTIP },
     { key: 'profitAmount', label: '盈亏金额' },
     { key: 'depositGap', label: '存提差' }
   ],
@@ -250,6 +252,7 @@ const moduleFields = {
     { key: 'rank', label: '排名' },
     { key: 'offlineTotal', label: '累积下线' },
     { key: 'todayNew', label: '今日新增' },
+    { key: 'activeMemberCount', label: '活跃会员人数', tooltip: ACTIVE_USERS_TOOLTIP },
     { key: 'historyUnsettledCommission', label: '历史未结算佣金' },
     { key: 'agentCommission', label: '代理佣金', tooltip: '历史已发放的佣金，不包含本月' },
     { key: 'agentBalance', label: '代理余额' }
@@ -440,6 +443,7 @@ const createOperationsDashboardData = (query = {}, siteOptions = SITE_OPTIONS) =
           rank: index + 1,
           offlineTotal: numberText(860 - index * 32),
           todayNew: numberText(68 - index * 2),
+          activeMemberCount: numberText(326 - index * 11),
           historyUnsettledCommission: money(26800 - index * 920),
           agentCommission: money(58000 - index * 1800),
           agentBalance: money(128000 - index * 4200),
