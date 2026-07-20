@@ -167,8 +167,9 @@
       :width="redPacketDialogWidth"
       :custom-class="redPacketDialogClass"
       append-to-body
-      :show-close="true"
-      :close-on-click-modal="false"
+      :show-close="false"
+      :close-on-click-modal="true"
+      @click.native.self="redPacketOpen = false"
     >
       <div slot="title" class="redpacket-dialog__title">
         <span class="redpacket-dialog__icon"><i :class="redPacketDialogIcon"></i></span>
@@ -176,6 +177,15 @@
           <strong>{{ redPacketDialogTitle }}</strong>
           <em>{{ redPacketDialogSubTitle }}</em>
         </span>
+        <button
+          type="button"
+          class="redpacket-dialog__close"
+          aria-label="关闭弹窗"
+          title="关闭"
+          @click="redPacketOpen = false"
+        >
+          <i class="el-icon-close"></i>
+        </button>
       </div>
       <el-tabs
         v-if="isActivityCashMode"
@@ -1060,11 +1070,20 @@ export default {
 .amount-positive, .balance-inline { color: #059669; font-weight: 700; }
 .balance-inline { color: #172033; }
 .amount-negative { color: #e11d48; font-weight: 700; }
-.redpacket-dialog__title { display: flex; align-items: center; gap: 14px; padding-right: 40px; }
+.redpacket-dialog__title { position: relative; display: flex; align-items: center; gap: 14px; padding-right: 52px; }
 .redpacket-dialog__title strong { display: block; color: #172033; font-size: 22px; line-height: 1.2; }
 .redpacket-dialog__title em {
   display: block; margin-top: 5px; color: #8aa0bf; font-size: 12px; font-style: normal; font-weight: 800; letter-spacing: 4px;
 }
+.redpacket-dialog__close {
+  position: absolute; top: -4px; right: 0; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 1px solid #d9e2ef; border-radius: 8px;
+  background: #f8fafc; color: #52647f; font-size: 20px; cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+.redpacket-dialog__close:hover { border-color: #8fb5ff; background: #eef5ff; color: #2563eb; }
+.redpacket-dialog__close:focus { outline: 2px solid rgba(37, 99, 235, 0.3); outline-offset: 2px; }
 .redpacket-form { padding-top: 2px; }
 .redpacket-balance {
   display: flex; align-items: center; justify-content: space-between; min-height: 46px; margin-bottom: 18px; padding: 0 16px;

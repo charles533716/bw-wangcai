@@ -92,7 +92,10 @@ function testBatchInterfaceCopy() {
   assert(/<el-upload[\s\S]*?v-if="!batchImportFileName"/.test(viewSource), '导入完成后应隐藏 Excel 上传区域')
   assert(viewSource.includes('class="batch-reupload"'), '导入完成后应保留紧凑的重新导入入口')
   assert(viewSource.includes('重新导入Excel'), '重新导入入口文案应清晰可见')
-  assert(viewSource.includes(':show-close="true"'), '单笔发放和批量导入弹窗右上角都应显示标准关闭按钮')
+  assert(viewSource.includes('class="redpacket-dialog__close"'), '单笔发放和批量导入弹窗右上角都应显示醒目的关闭按钮')
+  assert(viewSource.includes('aria-label="关闭弹窗"'), '关闭按钮应提供明确的无障碍名称')
+  assert(viewSource.includes(':close-on-click-modal="true"'), '点击弹窗外的灰色遮罩应关闭单笔发放和批量导入弹窗')
+  assert(viewSource.includes('@click.native.self="redPacketOpen = false"'), '弹窗遮罩应有明确的点击关闭兜底处理')
 }
 
 function testRevisionNoteCopy() {
