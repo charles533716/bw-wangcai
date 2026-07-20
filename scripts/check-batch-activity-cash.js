@@ -92,6 +92,7 @@ function testBatchInterfaceCopy() {
   assert(/<el-upload[\s\S]*?v-if="!batchImportFileName"/.test(viewSource), '导入完成后应隐藏 Excel 上传区域')
   assert(viewSource.includes('class="batch-reupload"'), '导入完成后应保留紧凑的重新导入入口')
   assert(viewSource.includes('重新导入Excel'), '重新导入入口文案应清晰可见')
+  assert(viewSource.includes(':show-close="true"'), '单笔发放和批量导入弹窗右上角都应显示标准关闭按钮')
 }
 
 function testRevisionNoteCopy() {

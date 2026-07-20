@@ -167,7 +167,7 @@
       :width="redPacketDialogWidth"
       :custom-class="redPacketDialogClass"
       append-to-body
-      :show-close="false"
+      :show-close="true"
       :close-on-click-modal="false"
     >
       <div slot="title" class="redpacket-dialog__title">
@@ -176,9 +176,6 @@
           <strong>{{ redPacketDialogTitle }}</strong>
           <em>{{ redPacketDialogSubTitle }}</em>
         </span>
-        <button type="button" class="redpacket-dialog__close" @click="redPacketOpen = false">
-          <i class="el-icon-close"></i>
-        </button>
       </div>
       <el-tabs
         v-if="isActivityCashMode"
@@ -1063,13 +1060,10 @@ export default {
 .amount-positive, .balance-inline { color: #059669; font-weight: 700; }
 .balance-inline { color: #172033; }
 .amount-negative { color: #e11d48; font-weight: 700; }
-.redpacket-dialog__title { position: relative; display: flex; align-items: center; gap: 14px; padding-right: 40px; }
+.redpacket-dialog__title { display: flex; align-items: center; gap: 14px; padding-right: 40px; }
 .redpacket-dialog__title strong { display: block; color: #172033; font-size: 22px; line-height: 1.2; }
 .redpacket-dialog__title em {
   display: block; margin-top: 5px; color: #8aa0bf; font-size: 12px; font-style: normal; font-weight: 800; letter-spacing: 4px;
-}
-.redpacket-dialog__close {
-  position: absolute; top: 2px; right: 0; width: 28px; height: 28px; border: 0; background: transparent; color: #91a2bd; cursor: pointer; font-size: 22px;
 }
 .redpacket-form { padding-top: 2px; }
 .redpacket-balance {
