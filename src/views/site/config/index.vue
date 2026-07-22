@@ -55,6 +55,13 @@
             v-if="activeTab === 'comprehensive'"
           />
         </el-tab-pane>
+
+        <el-tab-pane label="安全设置" name="security">
+          <security-settings
+            :site-code="siteCode"
+            v-if="activeTab === 'security'"
+          />
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -68,6 +75,7 @@ import DomainConfig from './DomainConfig'
 import ResourceConfig from './ResourceConfig'
 import UpdateConfig from './UpdateConfig'
 import ComprehensiveConfig from './ComprehensiveConfig'
+import SecuritySettings from './SecuritySettings'
 
 export default {
   name: "SiteConfig",
@@ -78,7 +86,8 @@ export default {
     DomainConfig,
     ResourceConfig,
     UpdateConfig,
-    ComprehensiveConfig
+    ComprehensiveConfig,
+    SecuritySettings
   },
   data() {
     return {
