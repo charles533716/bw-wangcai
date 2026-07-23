@@ -81,7 +81,7 @@
       </div>
     </section>
 
-    <section class="first-section">
+    <section v-if="useFirstDepositRules" class="first-section">
       <div class="first-section__title">规则配置</div>
       <div class="first-rules">
         <el-form-item label="申请模式" required>
@@ -177,6 +177,95 @@
           </el-table-column>
         </el-table>
       </div>
+    </section>
+
+    <section v-else class="first-section first-section--shared-rules">
+      <div class="first-section__title">规则配置</div>
+      <div v-if="showSiteVenueRules" class="first-rules first-rules--site-venue">
+        <el-form-item label="选择站点" required class="first-grid__wide">
+          <el-select
+            :value="selectedSites"
+            multiple
+            filterable
+            collapse-tags
+            :disabled="isEdit && useFirstDepositRules"
+            placeholder="请选择站点"
+            class="site-select"
+            @input="handleSelectedSitesChange"
+          >
+            <el-option v-for="item in siteOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="!isCumulativeRechargeRules" label="有效投注统计场馆" required class="first-grid__wide">
+          <div v-if="selectedSiteVenueGroups.length" class="venue-groups">
+            <div v-for="group in selectedSiteVenueGroups" :key="group.site.value" class="venue-group">
+              <div class="venue-group__head">
+                <div class="venue-group__title">{{ group.site.label }}</div>
+                <el-button type="text" class="venue-toggle" @click="toggleVenueGroup(group.site.value)">
+                  {{ isVenueGroupCollapsed(group.site.value) ? '展开' : '收起' }}
+                  <i :class="isVenueGroupCollapsed(group.site.value) ? 'el-icon-arrow-down' : 'el-icon-arrow-up'" />
+                </el-button>
+              </div>
+              <el-checkbox-group v-show="!isVenueGroupCollapsed(group.site.value)" :value="getSiteVenueSelection(group.site.value)" class="venue-options" @input="handleSiteVenuesChange(group.site.value, $event)">
+                <el-checkbox class="venue-options__all" label="all">全选</el-checkbox>
+                <div class="venue-options__items">
+                  <el-checkbox v-for="item in group.site.venues" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox>
+                </div>
+              </el-checkbox-group>
+            </div>
+          </div>
+          <span v-else class="venue-empty">请先选择站点</span>
+        </el-form-item>
+
+        <el-form-item label="统计周期" required class="first-grid__wide">
+          <div class="valid-bet-period-field">
+            <el-select v-model="extra.validBetStatPeriod" placeholder="请选择统计周期" class="valid-bet-period-select">
+              <el-option label="按自然日统计" value="day" />
+              <el-option label="按自然周统计" value="week" />
+              <el-option label="按自然月统计" value="month" />
+            </el-select>
+            <span class="valid-bet-period-hint">{{ validBetStatPeriodHint }}</span>
+          </div>
+        </el-form-item>
+
+        <div class="valid-bet-reward-section">
+          <div class="valid-bet-reward-heading">
+            <div class="valid-bet-reward-heading__title">奖励档位</div>
+            <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAddReward">增加档位</el-button>
+          </div>
+
+          <el-table :data="rewardItems" border class="valid-bet-reward-table">
+            <el-table-column label="序号" width="88" align="center">
+              <template slot-scope="{ $index }">{{ $index + 1 }}</template>
+            </el-table-column>
+            <el-table-column :label="rewardThresholdLabel" min-width="250" align="center">
+              <template slot-scope="{ row }">
+                <div class="valid-bet-threshold-input">
+                  <span class="valid-bet-threshold-input__symbol">≥</span>
+                  <el-input-number v-model="row.targetValidBetAmount" :min="0" :precision="2" :controls="false" class="table-field" :placeholder="rewardThresholdPlaceholder" />
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="奖励金额（元）" min-width="240" align="center">
+              <template slot-scope="{ row }">
+                <el-input-number v-model="row.rewardAmount" :min="0" :precision="2" :controls="false" class="table-field" placeholder="请输入奖励金额" />
+              </template>
+            </el-table-column>
+            <el-table-column label="流水要求（倍）" min-width="220" align="center">
+              <template slot-scope="{ row }">
+                <el-input-number v-model="row.extraConfig.turnoverMultiple" :min="0" :precision="0" :controls="false" class="table-field" placeholder="请输入流水倍数" />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="110" align="center">
+              <template slot-scope="{ $index }">
+                <el-button :disabled="rewardItems.length <= 1" size="mini" @click="handleRemoveReward($index)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+      <slot name="rules" />
     </section>
 
     <section class="first-section">
@@ -400,6 +489,18 @@ export default {
     isEdit: {
       type: Boolean,
       default: false
+    },
+    useFirstDepositRules: {
+      type: Boolean,
+      default: true
+    },
+    showSiteVenueRules: {
+      type: Boolean,
+      default: false
+    },
+    isCumulativeRechargeRules: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -413,6 +514,29 @@ export default {
         this.$set(this.form, 'baseConfigExtra', {})
       }
       return this.form.baseConfigExtra
+    },
+    validBetStatPeriodHint() {
+      const hints = {
+        day: '（次日0点统计）',
+        week: '（次周一0点统计）',
+        month: '（次月1日0点统计）'
+      }
+      return hints[this.extra.validBetStatPeriod] || ''
+    },
+    rewardThresholdPeriodPrefix() {
+      const prefixes = {
+        day: '当日',
+        week: '当周',
+        month: '当月'
+      }
+      return prefixes[this.extra.validBetStatPeriod] || ''
+    },
+    rewardThresholdLabel() {
+      const label = this.isCumulativeRechargeRules ? '有效累计存款（元）' : '有效投注金额（元）'
+      return `${this.rewardThresholdPeriodPrefix}${label}`
+    },
+    rewardThresholdPlaceholder() {
+      return this.isCumulativeRechargeRules ? '请输入有效累计存款' : '请输入有效投注金额'
     },
     categoryOptions() {
       return [
@@ -527,12 +651,15 @@ export default {
     form: {
       immediate: true,
       handler() {
-        if (this.isEdit) {
+        if (this.useFirstDepositRules && this.isEdit) {
           this.$nextTick(() => this.syncSelectedSites(['wc']))
         }
       }
     },
     'extra.giftType'() {
+      if (!this.useFirstDepositRules) {
+        return
+      }
       this.$nextTick(() => {
         if (this.$refs.rewardTable) {
           this.$refs.rewardTable.doLayout()
@@ -553,6 +680,7 @@ export default {
         selectedSites: ['wc'],
         venueSelections: {},
         rmbVenues: [],
+        validBetStatPeriod: 'day',
         giftType: 'percent',
         webContentMode: 'popup',
         h5ModuleTop: '0',
@@ -574,15 +702,25 @@ export default {
         : (this.extra.activityCategory ? [this.extra.activityCategory] : [])
       const categoryValues = this.categoryOptions.map(item => item.value)
       this.$set(this.extra, 'activityCategory', selectedCategories.filter(value => categoryValues.includes(value)))
-      this.$set(this.extra, 'applyMode', 'accountOnce')
       if (!this.isEdit) {
         this.$set(this.form, 'status', '1')
       }
-      this.syncSelectedSites(this.selectedSites)
-      if (!Array.isArray(this.form.rewardItems) || !this.form.rewardItems.length) {
-        this.$set(this.form, 'rewardItems', [cloneRewardItem(0), cloneRewardItem(1), cloneRewardItem(2)])
+      if (this.useFirstDepositRules || this.showSiteVenueRules) {
+        this.syncSelectedSites(this.selectedSites)
       }
-      this.rewardItems.forEach((item, index) => this.ensureRewardItem(item, index))
+      if (this.useFirstDepositRules) {
+        this.$set(this.extra, 'applyMode', 'accountOnce')
+        if (!Array.isArray(this.form.rewardItems) || !this.form.rewardItems.length) {
+          this.$set(this.form, 'rewardItems', [cloneRewardItem(0), cloneRewardItem(1), cloneRewardItem(2)])
+        }
+        this.rewardItems.forEach((item, index) => this.ensureRewardItem(item, index))
+      }
+      if (this.showSiteVenueRules) {
+        if (!this.isEdit || !Array.isArray(this.form.rewardItems) || !this.form.rewardItems.length) {
+          this.$set(this.form, 'rewardItems', [cloneRewardItem(0)])
+        }
+        this.rewardItems.forEach((item, index) => this.ensureRewardItem(item, index))
+      }
     },
     ensureRewardItem(item, index) {
       if (!item.extraConfig) {
@@ -656,7 +794,7 @@ export default {
       }, []))
     },
     handleSelectedSitesChange(values) {
-      if (this.isEdit) {
+      if (this.isEdit && this.useFirstDepositRules) {
         return
       }
       this.syncSelectedSites(values)
@@ -792,6 +930,65 @@ export default {
 
 .site-select {
   width: 260px;
+}
+
+.valid-bet-period-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.valid-bet-period-select {
+  flex: 0 0 260px;
+  width: 260px;
+}
+
+.valid-bet-period-hint {
+  color: #f5222d;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.valid-bet-reward-section {
+  width: 960px;
+  max-width: 100%;
+}
+
+.valid-bet-reward-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+
+.valid-bet-reward-heading__title {
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.valid-bet-reward-table {
+  width: 100%;
+}
+
+.valid-bet-reward-table ::v-deep .el-table__body-wrapper {
+  overflow-x: hidden;
+}
+
+.valid-bet-threshold-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.valid-bet-threshold-input__symbol {
+  flex: 0 0 auto;
+  color: #606266;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .first-check-group {

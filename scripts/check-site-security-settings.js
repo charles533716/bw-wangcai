@@ -19,7 +19,16 @@ assert(
   securitySource.includes('开启后，同一实名信息在当前站点内只能归属一个用户。用户解绑、删除收款方式或注销账号后，历史归属关系仍保留，不允许其他用户绑定。'),
   '安全设置页缺少统一说明'
 )
-assert.strictEqual((securitySource.match(/defaultValue: true/g) || []).length, 4, '四个开关必须默认开启')
+assert(securitySource.includes('label="状态"'), '开关所在列必须命名为状态')
+assert(securitySource.includes('label="示例"'), '规则字段后必须增加示例字段')
+assert(!securitySource.includes('label="控件"'), '不应继续展示控件列名')
+assert(!securitySource.includes('label="默认值"'), '不应展示默认值字段')
+assert(securitySource.includes('getExample(scope.row)'), '示例内容必须跟随对应状态动态变化')
+assert(securitySource.includes('不可再绑定当前站点的其他用户'), '开启状态缺少禁止重复绑定示例')
+assert(securitySource.includes('仍可绑定当前站点的其他用户'), '关闭状态缺少允许重复绑定示例')
+;['mobileUnique', 'bankCardUnique', 'alipayUnique', 'wechatUnique'].forEach(key => {
+  assert(securitySource.includes(`${key}: true`), `配置项必须默认开启：${key}`)
+})
 assert(securitySource.includes('安全设置保存成功'), '安全设置页缺少保存成功提示')
 assert(securitySource.includes('localStorage'), '安全设置页缺少本地状态保存行为')
 

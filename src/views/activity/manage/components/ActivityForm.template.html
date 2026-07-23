@@ -1,11 +1,26 @@
 <div v-loading="loading" class="activity-form-shell">
   <el-form ref="form" :model="form" :rules="rules" label-position="right" label-width="128px" class="activity-form">
     <first-deposit-activity-form
-      v-if="isFirstDepositActivity"
+      v-if="usesFirstDepositLayout"
       ref="firstDepositForm"
       :form="form"
       :is-edit="isEdit"
-    />
+      :use-first-deposit-rules="isFirstDepositActivity"
+      :show-site-venue-rules="usesSharedSiteVenueRules"
+      :is-cumulative-recharge-rules="isCumulativeRechargeActivity"
+    >
+      <activity-type-dynamic-sections
+        v-if="!isFirstDepositActivity && !usesSharedSiteVenueRules"
+        slot="rules"
+        ref="dynamicSections"
+        :form="form"
+        :activity-type="form.activityType"
+        :option-sources="dynamicOptionSources"
+        :is-edit="isEdit"
+        :show-activity-editor="false"
+        :show-rule-switches="false"
+      />
+    </first-deposit-activity-form>
 
     <template v-else>
     <section class="activity-section activity-section--base">

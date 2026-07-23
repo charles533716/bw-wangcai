@@ -156,7 +156,13 @@
     />
 
     <!-- 添加或修改角色配置对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
+    <el-dialog
+      :title="title"
+      :visible.sync="open"
+      width="620px"
+      custom-class="role-dialog"
+      append-to-body
+    >
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="角色名称" prop="roleName">
           <el-input v-model="form.roleName" placeholder="请输入角色名称" />
@@ -187,11 +193,12 @@
           <el-checkbox v-model="menuNodeAll" @change="handleCheckedTreeNodeAll($event, 'menu')">全选/全不选</el-checkbox>
           <el-checkbox v-model="form.menuCheckStrictly" @change="handleCheckedTreeConnect($event, 'menu')">父子联动</el-checkbox>
           <el-tree
-            class="tree-border"
+            class="tree-border permission-tree"
             :data="menuOptions"
             show-checkbox
             ref="menu"
             node-key="id"
+            :default-expanded-keys="defaultExpandedMenuKeys"
             :check-strictly="!form.menuCheckStrictly"
             empty-text="加载中，请稍候"
             :props="defaultProps"
@@ -252,8 +259,14 @@
 </template>
 
 <script>
-import { listRole, getRole, delRole, addRole, updateRole, dataScope, changeRoleStatus, deptTreeSelect } from "@/api/system/role"
-import { treeselect as menuTreeselect, roleMenuTreeselect } from "@/api/system/menu"
+import { dataScope, deptTreeSelect } from "@/api/system/role"
+import {
+  buildRoleMenuTree,
+  clonePrototypeRoles,
+  filterPrototypeRoles,
+  getRoleCheckedKeys,
+  nextRoleId
+} from './prototypeData'
 
 export default {
   name: "Role",
@@ -274,6 +287,8 @@ export default {
       total: 0,
       // 角色表格数据
       roleList: [],
+      // 原型角色数据
+      prototypeRoleRows: clonePrototypeRoles(),
       // 弹出层标题
       title: "",
       // 是否显示弹出层
@@ -311,6 +326,8 @@ export default {
       ],
       // 菜单列表
       menuOptions: [],
+      // 默认展开的菜单节点
+      defaultExpandedMenuKeys: [],
       // 部门列表
       deptOptions: [],
       // 查询参数
@@ -348,18 +365,24 @@ export default {
     /** 查询角色列表 */
     getList() {
       this.loading = true
-      listRole(this.addDateRange(this.queryParams, this.dateRange)).then(response => {
-          this.roleList = response.rows
-          this.total = response.total
-          this.loading = false
-        }
+      const filteredRows = filterPrototypeRoles(
+        this.prototypeRoleRows,
+        this.queryParams,
+        this.dateRange
       )
+      const pageNum = Number(this.queryParams.pageNum) || 1
+      const pageSize = Number(this.queryParams.pageSize) || 10
+      const start = (pageNum - 1) * pageSize
+      this.roleList = filteredRows.slice(start, start + pageSize)
+      this.total = filteredRows.length
+      this.loading = false
     },
     /** 查询菜单树结构 */
     getMenuTreeselect() {
-      menuTreeselect().then(response => {
-        this.menuOptions = response.data
-      })
+      const sidebarRoutes = this.$store.state.permission.sidebarRouters || []
+      this.menuOptions = buildRoleMenuTree(sidebarRoutes)
+      this.defaultExpandedMenuKeys = this.menuOptions.slice(0, 3).map(node => node.id)
+      return Promise.resolve({ data: this.menuOptions })
     },
     // 所有菜单节点数据
     getMenuAllCheckedKeys() {
@@ -381,9 +404,11 @@ export default {
     },
     /** 根据角色ID查询菜单树结构 */
     getRoleMenuTreeselect(roleId) {
-      return roleMenuTreeselect(roleId).then(response => {
-        this.menuOptions = response.menus
-        return response
+      this.getMenuTreeselect()
+      const role = this.prototypeRoleRows.find(item => Number(item.roleId) === Number(roleId))
+      return Promise.resolve({
+        menus: this.menuOptions,
+        checkedKeys: getRoleCheckedKeys(role && role.roleKey, this.menuOptions)
       })
     },
     /** 根据角色ID查询部门树结构 */
@@ -396,9 +421,11 @@ export default {
     // 角色状态修改
     handleStatusChange(row) {
       let text = row.status === "0" ? "启用" : "停用"
-      this.$modal.confirm('确认要"' + text + '""' + row.roleName + '"角色吗？').then(function() {
-        return changeRoleStatus(row.roleId, row.status)
-      }).then(() => {
+      this.$modal.confirm('确认要"' + text + '""' + row.roleName + '"角色吗？').then(() => {
+        const role = this.prototypeRoleRows.find(item => item.roleId === row.roleId)
+        if (role) {
+          role.status = row.status
+        }
         this.$modal.msgSuccess(text + "成功")
       }).catch(function() {
         row.status = row.status === "0" ? "1" : "0"
@@ -470,15 +497,13 @@ export default {
     // 树权限（展开/折叠）
     handleCheckedTreeExpand(value, type) {
       if (type == 'menu') {
-        let treeList = this.menuOptions
-        for (let i = 0; i < treeList.length; i++) {
-          this.$refs.menu.store.nodesMap[treeList[i].id].expanded = value
-        }
+        Object.keys(this.$refs.menu.store.nodesMap).forEach(nodeId => {
+          this.$refs.menu.store.nodesMap[nodeId].expanded = value
+        })
       } else if (type == 'dept') {
-        let treeList = this.deptOptions
-        for (let i = 0; i < treeList.length; i++) {
-          this.$refs.dept.store.nodesMap[treeList[i].id].expanded = value
-        }
+        Object.keys(this.$refs.dept.store.nodesMap).forEach(nodeId => {
+          this.$refs.dept.store.nodesMap[nodeId].expanded = value
+        })
       }
     },
     // 树权限（全选/全不选）
@@ -507,20 +532,23 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const roleId = row.roleId || this.ids
+      const roleId = row.roleId || this.ids[0]
       const roleMenu = this.getRoleMenuTreeselect(roleId)
-      getRole(roleId).then(response => {
-        this.form = response.data
-        this.open = true
-        this.$nextTick(() => {
-          roleMenu.then(res => {
-            let checkedKeys = res.checkedKeys
-            checkedKeys.forEach((v) => {
-                this.$nextTick(()=>{
-                    this.$refs.menu.setChecked(v, true ,false)
-                })
-            })
-          })
+      const role = this.prototypeRoleRows.find(item => Number(item.roleId) === Number(roleId))
+      if (!role) {
+        this.$modal.msgError("未找到角色数据")
+        return
+      }
+      this.form = {
+        ...this.form,
+        ...JSON.parse(JSON.stringify(role)),
+        menuCheckStrictly: true,
+        deptCheckStrictly: true
+      }
+      this.open = true
+      this.$nextTick(() => {
+        roleMenu.then(res => {
+          this.$refs.menu.setCheckedKeys(res.checkedKeys)
         })
       })
       this.title = "修改角色"
@@ -535,13 +563,16 @@ export default {
     handleDataScope(row) {
       this.reset()
       const deptTreeSelect = this.getDeptTree(row.roleId)
-      getRole(row.roleId).then(response => {
-        this.form = response.data
-        this.openDataScope = true
-        this.$nextTick(() => {
-          deptTreeSelect.then(res => {
-            this.$refs.dept.setCheckedKeys(res.checkedKeys)
-          })
+      const role = this.prototypeRoleRows.find(item => item.roleId === row.roleId)
+      this.form = {
+        ...this.form,
+        ...JSON.parse(JSON.stringify(role || row)),
+        dataScope: (role && role.dataScope) || '1'
+      }
+      this.openDataScope = true
+      this.$nextTick(() => {
+        deptTreeSelect.then(res => {
+          this.$refs.dept.setCheckedKeys(res.checkedKeys)
         })
       })
       this.title = "分配数据权限"
@@ -555,21 +586,21 @@ export default {
     submitForm: function() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          this.form.menuIds = this.getMenuAllCheckedKeys()
           if (this.form.roleId != undefined) {
-            this.form.menuIds = this.getMenuAllCheckedKeys()
-            updateRole(this.form).then(response => {
-              this.$modal.msgSuccess("修改成功")
-              this.open = false
-              this.getList()
-            })
+            const roleIndex = this.prototypeRoleRows.findIndex(item => item.roleId === this.form.roleId)
+            this.prototypeRoleRows.splice(roleIndex, 1, JSON.parse(JSON.stringify(this.form)))
+            this.$modal.msgSuccess("修改成功")
           } else {
-            this.form.menuIds = this.getMenuAllCheckedKeys()
-            addRole(this.form).then(response => {
-              this.$modal.msgSuccess("新增成功")
-              this.open = false
-              this.getList()
+            this.prototypeRoleRows.push({
+              ...JSON.parse(JSON.stringify(this.form)),
+              roleId: nextRoleId(this.prototypeRoleRows),
+              createTime: this.parseTime(new Date())
             })
+            this.$modal.msgSuccess("新增成功")
           }
+          this.open = false
+          this.getList()
         }
       })
     },
@@ -587,9 +618,9 @@ export default {
     /** 删除按钮操作 */
     handleDelete(row) {
       const roleIds = row.roleId || this.ids
-      this.$modal.confirm('是否确认删除角色编号为"' + roleIds + '"的数据项？').then(function() {
-        return delRole(roleIds)
-      }).then(() => {
+      const deleteIds = Array.isArray(roleIds) ? roleIds : [roleIds]
+      this.$modal.confirm('是否确认删除角色编号为"' + deleteIds.join(',') + '"的数据项？').then(() => {
+        this.prototypeRoleRows = this.prototypeRoleRows.filter(item => !deleteIds.includes(item.roleId))
         this.getList()
         this.$modal.msgSuccess("删除成功")
       }).catch(() => {})
@@ -603,3 +634,25 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+::v-deep .role-dialog .el-dialog__body {
+  padding: 20px 24px 10px;
+}
+
+.permission-tree {
+  width: 100%;
+  max-height: 430px;
+  margin-top: 10px;
+  padding: 8px 6px;
+  overflow: auto;
+}
+
+::v-deep .permission-tree .el-tree-node__content {
+  min-height: 30px;
+}
+
+::v-deep .permission-tree .el-tree-node__label {
+  color: #606266;
+}
+</style>

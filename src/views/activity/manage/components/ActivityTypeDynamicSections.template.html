@@ -96,7 +96,7 @@
 
   <section v-else-if="hasBaseSection" class="activity-section">
     <div class="section-heading">
-      <h3 class="section-heading__title">{{ currentSchema.typeKey }} - 活动设置</h3>
+      <h3 class="section-heading__title">{{ displayTypeTitle }} - 活动设置</h3>
     </div>
     <div v-if="shouldShowBaseConfig" class="section-caption">{{ currentSchema.baseCaption }}</div>
 
@@ -145,7 +145,7 @@
 
   <section v-else class="activity-section activity-section--first activity-section--intro">
     <div class="section-heading section-heading--loose">
-      <h3 class="section-heading__title">{{ currentSchema.typeKey }} - 活动设置</h3>
+      <h3 class="section-heading__title">{{ displayTypeTitle }} - 活动设置</h3>
     </div>
   </section>
 
@@ -248,7 +248,7 @@
     </div>
   </section>
 
-  <section v-if="currentTypeKey !== '签到' && resolvedRuleOptions.length" class="activity-section">
+  <section v-if="showRuleSwitches && currentTypeKey !== '签到' && resolvedRuleOptions.length" class="activity-section">
     <div class="section-heading">
       <h3 class="section-heading__title">规则开关</h3>
     </div>
@@ -264,7 +264,7 @@
     </div>
   </section>
 
-  <section class="activity-section activity-section--editor">
+  <section v-if="showActivityEditor" class="activity-section activity-section--editor">
     <div class="section-heading section-heading--editor">
       <h3 class="section-heading__title">活动文案编辑</h3>
     </div>

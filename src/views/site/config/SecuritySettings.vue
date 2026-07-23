@@ -15,12 +15,12 @@
       </div>
 
       <el-table :data="settingRows" border class="security-table">
-        <el-table-column label="配置项" min-width="220">
+        <el-table-column label="配置项" min-width="170">
           <template slot-scope="scope">
             <span class="setting-name">{{ scope.row.label }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="控件" width="180">
+        <el-table-column label="状态" width="170">
           <template slot-scope="scope">
             <el-switch
               v-model="form[scope.row.key]"
@@ -29,12 +29,17 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="默认值" width="120" align="center">
+        <el-table-column label="规则" min-width="290" prop="rule" />
+        <el-table-column label="示例" min-width="370">
           <template slot-scope="scope">
-            {{ scope.row.defaultValue ? '开启' : '关闭' }}
+            <span
+              class="setting-example"
+              :class="{ 'setting-example--disabled': !form[scope.row.key] }"
+            >
+              {{ getExample(scope.row) }}
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="规则" min-width="440" prop="rule" />
       </el-table>
     </section>
   </div>
@@ -45,33 +50,37 @@ const SETTING_ROWS = [
   {
     key: 'mobileUnique',
     label: '手机号唯一绑定',
-    defaultValue: true,
+    exampleSubject: '手机号 138****8888',
     rule: '同一站点内，一个手机号只能归属一个用户'
   },
   {
     key: 'bankCardUnique',
     label: '银行卡唯一绑定',
-    defaultValue: true,
+    exampleSubject: '银行卡 6222 **** **** 8888',
     rule: '同一站点内，一张银行卡只能归属一个用户'
   },
   {
     key: 'alipayUnique',
     label: '支付宝唯一绑定',
-    defaultValue: true,
+    exampleSubject: '支付宝账号 zhang***@example.com',
     rule: '同一站点内，一个支付宝账号只能归属一个用户'
   },
   {
     key: 'wechatUnique',
     label: '微信唯一绑定',
-    defaultValue: true,
+    exampleSubject: '微信号 wx_demo_001',
     rule: '同一站点内，一个微信账号只能归属一个用户'
   }
 ]
 
-const createDefaultForm = () => SETTING_ROWS.reduce((result, item) => {
-  result[item.key] = item.defaultValue
-  return result
-}, {})
+const DEFAULT_SETTINGS = {
+  mobileUnique: true,
+  bankCardUnique: true,
+  alipayUnique: true,
+  wechatUnique: true
+}
+
+const createDefaultForm = () => ({ ...DEFAULT_SETTINGS })
 
 export default {
   name: 'SecuritySettings',
@@ -96,6 +105,12 @@ export default {
     this.loadSettings()
   },
   methods: {
+    getExample(row) {
+      const bindingResult = this.form[row.key]
+        ? '不可再绑定当前站点的其他用户'
+        : '仍可绑定当前站点的其他用户'
+      return `${row.exampleSubject} 已绑定站点A的用户001；${bindingResult}；可绑定站点B的用户。`
+    },
     loadSettings() {
       const saved = window.localStorage.getItem(this.storageKey)
       if (!saved) return
@@ -179,6 +194,15 @@ export default {
 .setting-name {
   color: #303133;
   font-weight: 500;
+}
+
+.setting-example {
+  color: #606266;
+  line-height: 20px;
+}
+
+.setting-example--disabled {
+  color: #909399;
 }
 
 @media (max-width: 900px) {

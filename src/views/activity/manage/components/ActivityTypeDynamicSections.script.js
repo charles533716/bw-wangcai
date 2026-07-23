@@ -41,6 +41,14 @@ export default {
     isEdit: {
       type: Boolean,
       default: false
+    },
+    showActivityEditor: {
+      type: Boolean,
+      default: true
+    },
+    showRuleSwitches: {
+      type: Boolean,
+      default: true
     }
   },
   data() {
@@ -54,6 +62,13 @@ export default {
     },
     currentSchema() {
       return getActivityTypeSchema(this.currentTypeKey, this.optionSources)
+    },
+    displayTypeTitle() {
+      const displayLabels = {
+        '累充': '累充活动',
+        '每日投注额度+笔数': '有效投注额'
+      }
+      return displayLabels[this.currentSchema.typeKey] || this.currentSchema.typeKey
     },
     currentTemplate() {
       const templates = this.optionSources && this.optionSources.activityTypeConfigTemplates ? this.optionSources.activityTypeConfigTemplates : {}

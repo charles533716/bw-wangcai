@@ -40,6 +40,10 @@ const SIGNIN_ACTIVITY_TYPE_VALUE = "27";
 const SIGNIN_ACTIVITY_TYPE_LABEL = "签到";
 const FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE = "26";
 const FIRST_DEPOSIT_ACTIVITY_TYPE_LABEL = "首存活动";
+const CUMULATIVE_RECHARGE_ACTIVITY_TYPE_VALUE = "21";
+const CUMULATIVE_RECHARGE_ACTIVITY_TYPE_LABEL = "累充";
+const DAILY_AMOUNT_ACTIVITY_TYPE_VALUE = "24";
+const DAILY_AMOUNT_ACTIVITY_TYPE_LABEL = "每日投注额度+笔数";
 const SIGNIN_CLAIM_RULE_VALUE = "1";
 const ACTIVITY_NAME_PATTERN = /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}$/;
 const FRONTEND_ACTIVITY_OBJECT_OPTIONS = [{
@@ -758,10 +762,35 @@ export default {
         isFrontendDisplayActivity() {
             const normalizedType = normalizeActivityTypeValue(this.form.activityType, this.meta);
             const requestType = resolveActivityTypeRequestValue(this.form.activityType, this.meta);
-            return normalizedType === NEWCOMER_ACTIVITY_TYPE_LABEL || requestType === NEWCOMER_ACTIVITY_TYPE_VALUE || this.isSigninActivity
+            return normalizedType === NEWCOMER_ACTIVITY_TYPE_LABEL ||
+                requestType === NEWCOMER_ACTIVITY_TYPE_VALUE ||
+                this.isSigninActivity ||
+                requestType === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_VALUE ||
+                normalizedType === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_LABEL ||
+                requestType === DAILY_AMOUNT_ACTIVITY_TYPE_VALUE ||
+                normalizedType === DAILY_AMOUNT_ACTIVITY_TYPE_LABEL
         },
         isFirstDepositActivity() {
             return normalizeActivityTypeValue(this.form.activityType, this.meta) === FIRST_DEPOSIT_ACTIVITY_TYPE_LABEL || resolveActivityTypeRequestValue(this.form.activityType, this.meta) === FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE || String(this.form.activityType || "").trim() === FIRST_DEPOSIT_ACTIVITY_TYPE_VALUE
+        },
+        isCumulativeRechargeActivity() {
+            return normalizeActivityTypeValue(this.form.activityType, this.meta) === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_LABEL ||
+                resolveActivityTypeRequestValue(this.form.activityType, this.meta) === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_VALUE
+        },
+        isDailyAmountActivity() {
+            return normalizeActivityTypeValue(this.form.activityType, this.meta) === DAILY_AMOUNT_ACTIVITY_TYPE_LABEL ||
+                resolveActivityTypeRequestValue(this.form.activityType, this.meta) === DAILY_AMOUNT_ACTIVITY_TYPE_VALUE
+        },
+        usesSharedSiteVenueRules() {
+            return this.isCumulativeRechargeActivity || this.isDailyAmountActivity
+        },
+        usesFirstDepositLayout() {
+            const normalizedType = normalizeActivityTypeValue(this.form.activityType, this.meta);
+            const requestType = resolveActivityTypeRequestValue(this.form.activityType, this.meta);
+            return this.isFirstDepositActivity ||
+                this.isCumulativeRechargeActivity ||
+                normalizedType === DAILY_AMOUNT_ACTIVITY_TYPE_LABEL ||
+                requestType === DAILY_AMOUNT_ACTIVITY_TYPE_VALUE
         },
         isClaimRuleSelectable() {
             return !this.isSigninActivity && !!String(this.form.activityEndTime || "").trim()

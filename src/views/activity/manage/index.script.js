@@ -6,8 +6,12 @@ import { DEFAULT_TYPE_OPTIONS, getActivityTypeDescription, normalizeActivityType
 const COMMON_ACTIVITY_TYPE = '30'
 const FIRST_DEPOSIT_ACTIVITY_TYPE = '26'
 const COMMON_ACTIVITY_TYPE_LABEL = '通用活动'
-const CREATE_ACTIVITY_TYPE_ORDER = ['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL]
-const ENABLED_CREATE_ACTIVITY_TYPES = new Set(CREATE_ACTIVITY_TYPE_ORDER)
+const CREATE_ACTIVITY_TYPE_ORDER = ['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL, '累充', '每日投注额度+笔数', '连续每日投注', '连胜', '胜率']
+const ENABLED_CREATE_ACTIVITY_TYPES = new Set(['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL, '累充', '每日投注额度+笔数'])
+const CREATE_ACTIVITY_TYPE_DISPLAY_LABELS = {
+  '累充': '累充活动',
+  '每日投注额度+笔数': '有效投注额'
+}
 
 function createDefaultQuery(siteCode) {
   return {
@@ -101,14 +105,16 @@ export default {
       return rawOptions
         .map(item => {
           const value = resolveActivityTypeRequestValue(item.value || item.label, { activityTypes: rawOptions })
-          const label = item.label || normalizeActivityTypeValue(item.value || value, { activityTypes: rawOptions })
-          const typeKey = normalizeActivityTypeValue(label || value, { activityTypes: rawOptions })
+          const rawLabel = item.label || normalizeActivityTypeValue(item.value || value, { activityTypes: rawOptions })
+          const typeKey = normalizeActivityTypeValue(rawLabel || value, { activityTypes: rawOptions })
           return {
             value,
-            label,
+            label: CREATE_ACTIVITY_TYPE_DISPLAY_LABELS[typeKey] || rawLabel,
             description: item.description || getActivityTypeDescription(typeKey, { activityTypes: rawOptions }),
             disabled: !ENABLED_CREATE_ACTIVITY_TYPES.has(typeKey),
-            sortIndex: ENABLED_CREATE_ACTIVITY_TYPES.has(typeKey) ? CREATE_ACTIVITY_TYPE_ORDER.indexOf(typeKey) : CREATE_ACTIVITY_TYPE_ORDER.length
+            sortIndex: CREATE_ACTIVITY_TYPE_ORDER.indexOf(typeKey) === -1
+              ? CREATE_ACTIVITY_TYPE_ORDER.length
+              : CREATE_ACTIVITY_TYPE_ORDER.indexOf(typeKey)
           }
         })
         .filter(item => item.value)
@@ -137,6 +143,11 @@ export default {
     routeActivityType() {
       return this.$route.query.activityType || ''
     },
+    routeActivityTypeLabel() {
+      const rawOptions = DEFAULT_TYPE_OPTIONS.concat({ value: COMMON_ACTIVITY_TYPE, label: COMMON_ACTIVITY_TYPE_LABEL })
+      const routeTypeLabel = normalizeActivityTypeValue(this.routeActivityType, { activityTypes: rawOptions })
+      return CREATE_ACTIVITY_TYPE_DISPLAY_LABELS[routeTypeLabel] || routeTypeLabel || '活动'
+    },
     isCommonEditMode() {
       return String(this.routeActivityType || '').trim() === COMMON_ACTIVITY_TYPE
     },
@@ -157,7 +168,8 @@ export default {
         return '修改首存活动'
       }
       if (this.isCreateMode) {
-        return '新增活动'
+        const routeTypeLabel = this.routeActivityTypeLabel
+        return '新增' + routeTypeLabel
       }
       return this.isCommonEditMode ? '编辑通用活动' : '编辑活动'
     },

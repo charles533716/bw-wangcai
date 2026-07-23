@@ -138,6 +138,20 @@ export const manualRoutes = [
     ]
   },
   {
+    path: '/member',
+    component: Layout,
+    alwaysShow: true,
+    meta: { title: '会员管理', icon: 'peoples', mergeByTitle: true, mergeOnly: true },
+    children: [
+      {
+        path: 'realNameBinding',
+        component: () => import('@/views/member/realNameBinding/index'),
+        name: 'MemberRealNameBinding',
+        meta: { title: '实名信息绑定记录', icon: 'list' }
+      }
+    ]
+  },
+  {
     path: '/funds',
     component: Layout,
     alwaysShow: true,
