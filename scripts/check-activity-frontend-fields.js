@@ -54,6 +54,7 @@ assertIncludes(manageScript, "const CREATE_ACTIVITY_TYPE_ORDER = ['新人礼', '
 assertIncludes(manageScript, "const ENABLED_CREATE_ACTIVITY_TYPES = new Set(['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL, '累充', '每日投注额度+笔数'])", '累充或每日投注额度+笔数仍处于禁用状态')
 assertIncludes(manageScript, "'累充': '累充活动'", '选择活动类型弹窗中的累充名称不正确')
 assertIncludes(manageScript, "'每日投注额度+笔数': '有效投注额'", '选择活动类型弹窗中的有效投注额名称不正确')
+assertIncludes(schemas, '在活动期间有效投注额达标，按档位发放奖励', '选择活动类型弹窗中的有效投注额副标题不正确')
 assertIncludes(activityScript, 'normalizedType === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_LABEL', '累充活动未接入前端展示配置')
 assertIncludes(activityScript, 'normalizedType === DAILY_AMOUNT_ACTIVITY_TYPE_LABEL', '每日投注额度+笔数未接入前端展示配置')
 assertIncludes(activityScript, 'requestType === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_VALUE', '累充活动缺少编码识别')

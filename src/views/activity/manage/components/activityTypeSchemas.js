@@ -21,7 +21,7 @@ export const DEFAULT_TYPE_OPTIONS = [{
 }, {
     value: "24",
     label: "每日投注额度+笔数",
-    description: "每日有效投注额度与笔数同时达标，按档位发放奖励"
+    description: "在活动期间有效投注额达标，按档位发放奖励"
 }, {
     value: "25",
     label: "新人礼",
