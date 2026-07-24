@@ -309,7 +309,18 @@
           />
         </el-form-item>
 
-        <el-form-item>
+        <el-form-item v-if="isActivityCashMode" prop="validityDays">
+          <div class="redpacket-form__label">{{ validityFieldLabel }}</div>
+          <el-input
+            v-model.trim="redPacketForm.validityDays"
+            class="redpacket-form__control redpacket-number-input"
+            inputmode="numeric"
+            maxlength="5"
+            placeholder="请输入领取有效天数"
+          />
+        </el-form-item>
+
+        <el-form-item v-else>
           <div class="redpacket-form__label">{{ validityFieldLabel }}</div>
           <div class="redpacket-segment">
             <button
@@ -512,19 +523,14 @@
                 />
               </div>
               <div class="batch-config-field">
-                <label>领取有效期</label>
-                <div class="redpacket-segment">
-                  <button
-                    type="button"
-                    :class="{ 'is-active': batchValidity === '24h' }"
-                    @click="batchValidity = '24h'"
-                  >24小时</button>
-                  <button
-                    type="button"
-                    :class="{ 'is-active': batchValidity === '7d' }"
-                    @click="batchValidity = '7d'"
-                  >7天</button>
-                </div>
+                <label>领取有效期（天）</label>
+                <el-input
+                  v-model.trim="batchValidityDays"
+                  class="redpacket-number-input validity-days-input"
+                  inputmode="numeric"
+                  maxlength="5"
+                  placeholder="请输入领取有效天数"
+                />
               </div>
               <div class="batch-config-field batch-config-field--remark">
                 <label>备注</label>
@@ -584,6 +590,7 @@ function defaultRedPacketForm() {
     issueMode: 'now',
     availableTime: '',
     validity: '24h',
+    validityDays: '1',
     remark: ''
   }
 }
@@ -614,7 +621,7 @@ export default {
       batchInvalidPageSize: 20,
       batchIssueMode: 'now',
       batchAvailableTime: '',
-      batchValidity: '24h',
+      batchValidityDays: '1',
       batchRemark: '',
       batchSubmitting: false,
       summary: { balance: 0, currency: 'CNY' },
@@ -650,6 +657,10 @@ export default {
         turnoverMultiple: [
           { required: true, message: '请输入流水倍数', trigger: 'blur' },
           { validator: this.validateTurnoverMultiple, trigger: 'blur' }
+        ],
+        validityDays: [
+          { required: true, message: '请输入领取有效天数', trigger: 'blur' },
+          { validator: this.validateValidityDays, trigger: 'blur' }
         ]
       }
     }
@@ -687,7 +698,7 @@ export default {
       return this.isActivityCashMode ? '单会员活动彩金金额（CNY）' : '单会员红包金额（CNY）'
     },
     validityFieldLabel() {
-      return this.isActivityCashMode ? '领取有效期' : '红包有效期'
+      return this.isActivityCashMode ? '领取有效期（天）' : '红包有效期'
     },
     submitButtonText() {
       return this.isActivityCashMode ? '确认发放活动彩金' : '确认派发红包'
@@ -797,7 +808,7 @@ export default {
       this.batchInvalidPageSize = 20
       this.batchIssueMode = 'now'
       this.batchAvailableTime = ''
-      this.batchValidity = '24h'
+      this.batchValidityDays = '1'
       this.batchRemark = ''
       this.batchSubmitting = false
     },
@@ -887,6 +898,10 @@ export default {
         this.$message.warning('请选择发放时间')
         return
       }
+      if (!this.isPositiveInteger(this.batchValidityDays)) {
+        this.$message.warning('领取有效期必须是大于0的整数天数')
+        return
+      }
       this.$confirm(
         `确认按当前配置批量生成 ${count} 笔活动彩金发放订单吗？异常数据不会参与发放。`,
         '确认批量发放',
@@ -916,6 +931,16 @@ export default {
         return
       }
       callback()
+    },
+    validateValidityDays(rule, value, callback) {
+      if (!this.isPositiveInteger(value)) {
+        callback(new Error('领取有效期必须是大于0的整数天数'))
+        return
+      }
+      callback()
+    },
+    isPositiveInteger(value) {
+      return /^\d+$/.test(String(value || '').trim()) && Number(value) > 0
     },
     setRedPacketIssueMode(mode) {
       this.redPacketForm.issueMode = mode
@@ -971,13 +996,20 @@ export default {
         amount: form.amount,
         turnoverMultiple: form.turnoverMultiple,
         availableTime,
-        expireTime: this.formatDateTimeParam(this.addRedPacketValidity(baseDate, form.validity)),
+        expireTime: this.formatDateTimeParam(
+          this.isActivityCashMode
+            ? this.addValidityDays(baseDate, form.validityDays)
+            : this.addRedPacketValidity(baseDate, form.validity)
+        ),
         remark: form.remark
       }
     },
     addRedPacketValidity(baseDate, validity) {
       const hours = validity === '7d' ? 24 * 7 : 24
       return new Date(baseDate.getTime() + hours * 60 * 60 * 1000)
+    },
+    addValidityDays(baseDate, validityDays) {
+      return new Date(baseDate.getTime() + Number(validityDays) * 24 * 60 * 60 * 1000)
     },
     formatDateTimeParam(date) {
       const pad = value => String(value).padStart(2, '0')
@@ -1094,6 +1126,7 @@ export default {
 .redpacket-form__label { margin-bottom: 8px; color: #8aa0bf; font-size: 13px; font-weight: 800; }
 .redpacket-form__required { margin-left: 4px; color: #f56c6c; }
 .redpacket-form__control { width: 100%; }
+.validity-days-input { width: 100%; }
 .redpacket-form__tip { margin-top: 8px; color: #8aa0bf; font-size: 12px; }
 .activity-cash-tabs { margin-bottom: 16px; }
 .batch-activity-panel { color: #253044; }

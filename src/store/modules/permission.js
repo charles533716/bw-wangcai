@@ -113,6 +113,21 @@ function normalizeRouteTitle(route = {}) {
   const component = String(route.component || '')
   const routePath = String(route.path || '')
   if (routePath === '/activity' && Array.isArray(route.children)) {
+    const rewardDetailIndex = route.children.findIndex(child => child.component === 'activity/rewardDetail/index')
+    const hasManualPayout = route.children.some(child => String(child.path || '').includes('manualPayout'))
+    if (rewardDetailIndex >= 0 && !hasManualPayout) {
+      const rewardDetailRoute = route.children[rewardDetailIndex]
+      route.children.splice(rewardDetailIndex + 1, 0, {
+        path: 'manualPayout',
+        name: 'ActivityManualPayout',
+        component: 'activity/rewardDetail/index',
+        meta: {
+          ...(rewardDetailRoute.meta || {}),
+          title: '手动派彩',
+          icon: 'money'
+        }
+      })
+    }
     route.children.forEach(child => {
       if (child.meta && child.component === 'activity/manage/index') {
         child.meta.title = '活动列表'

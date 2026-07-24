@@ -12,15 +12,34 @@ const CREATE_ACTIVITY_TYPE_DISPLAY_LABELS = {
   '累充': '累充活动',
   '每日投注额度+笔数': '有效投注额'
 }
+const ACTIVITY_LIST_FILTER_TYPE_OPTIONS = [
+  { value: '25', label: '新人礼' },
+  { value: '27', label: '签到' },
+  { value: '26', label: '首存活动' },
+  { value: COMMON_ACTIVITY_TYPE, label: COMMON_ACTIVITY_TYPE_LABEL },
+  { value: '21', label: '累充活动' },
+  { value: '24', label: '有效投注额' }
+]
+const ACTIVITY_LIST_FILTER_TAG_OPTIONS = ['最新', '新人', '限时', '日常', '体育', 'VIP'].map(value => ({
+  value,
+  label: value
+}))
 
 function createDefaultQuery(siteCode) {
   return {
     pageNum: 1,
     pageSize: 10,
     activityName: '',
-    activityType: '',
-    siteCode: siteCode || ''
+    activityType: [],
+    activityTag: [],
+    siteCode: siteCode ? [siteCode] : []
   }
+}
+
+function normalizeQueryValues(value) {
+  return Array.isArray(value)
+    ? value.map(item => String(item || '').trim()).filter(Boolean)
+    : String(value || '').split(',').map(item => item.trim()).filter(Boolean)
 }
 
 const ENABLED_STATUS_VALUE = '0'
@@ -57,6 +76,8 @@ export default {
       activityList: [],
       createCommonDialogVisible: false,
       activityTypeDialogVisible: false,
+      activityTypesPreviewVisible: false,
+      activityTypesPreviewList: [],
       selectedCreateActivityType: '',
       createDialogWidth: 'auto',
       createDialogStyle: {
@@ -83,7 +104,8 @@ export default {
         activityTypeConfigTemplates: {}
       },
       queryParams: createDefaultQuery(''),
-      queryDateRange: []
+      displayTimeRange: [],
+      activityTimeRange: []
     }
   },
   computed: {
@@ -94,7 +116,10 @@ export default {
       return Array.isArray(this.meta.siteOptions) ? this.meta.siteOptions : []
     },
     activityTypeOptions() {
-      return Array.isArray(this.meta.activityTypes) ? this.meta.activityTypes : []
+      return ACTIVITY_LIST_FILTER_TYPE_OPTIONS
+    },
+    activityTagOptions() {
+      return ACTIVITY_LIST_FILTER_TAG_OPTIONS
     },
     createActivityTypeOptions() {
       const rawOptions = DEFAULT_TYPE_OPTIONS.concat({
@@ -247,22 +272,52 @@ export default {
         data
       )
       if (this.isSiteReadonly) {
-        this.queryParams.siteCode = this.meta.currentSiteCode || ''
+        this.queryParams.siteCode = this.meta.currentSiteCode ? [this.meta.currentSiteCode] : []
       }
     },
     buildListQuery() {
+      const activityTypes = normalizeQueryValues(this.queryParams.activityType)
+      const activityTags = normalizeQueryValues(this.queryParams.activityTag)
+      const siteCodes = this.isSiteReadonly
+        ? normalizeQueryValues(this.meta.currentSiteCode)
+        : normalizeQueryValues(this.queryParams.siteCode)
       const query = {
         pageNum: this.queryParams.pageNum,
         pageSize: this.queryParams.pageSize,
         activityName: this.queryParams.activityName || undefined,
-        activityType: this.queryParams.activityType || undefined,
-        siteCode: (this.isSiteReadonly ? this.meta.currentSiteCode : this.queryParams.siteCode) || undefined
+        activityType: activityTypes.length ? activityTypes.join(',') : undefined,
+        activityTag: activityTags.length ? activityTags.join(',') : undefined,
+        siteCode: siteCodes.length ? siteCodes.join(',') : undefined
       }
-      if (Array.isArray(this.queryDateRange) && this.queryDateRange.length === 2) {
-        query.queryStartDate = this.queryDateRange[0]
-        query.queryEndDate = this.queryDateRange[1]
+      if (Array.isArray(this.displayTimeRange) && this.displayTimeRange.length === 2) {
+        query.displayStartTime = this.displayTimeRange[0]
+        query.displayEndTime = this.displayTimeRange[1]
+      }
+      if (Array.isArray(this.activityTimeRange) && this.activityTimeRange.length === 2) {
+        query.activityStartTime = this.activityTimeRange[0]
+        query.activityEndTime = this.activityTimeRange[1]
       }
       return query
+    },
+    async queryActivityNameSuggestions(keyword, callback) {
+      try {
+        const res = await listActivities({
+          pageNum: 1,
+          pageSize: 100,
+          activityName: String(keyword || '').trim() || undefined
+        })
+        const seen = new Set()
+        const suggestions = (Array.isArray(res && res.rows) ? res.rows : [])
+          .map(item => String(item && item.activityName || '').trim())
+          .filter(name => name && !seen.has(name) && seen.add(name))
+          .map(value => ({ value }))
+        callback(suggestions)
+      } catch (error) {
+        callback([])
+      }
+    },
+    handleActivityNameSelect() {
+      this.handleQuery()
     },
     async getList() {
       this.loading = true
@@ -280,7 +335,8 @@ export default {
     },
     resetQuery() {
       this.queryParams = createDefaultQuery(this.isSiteReadonly ? this.meta.currentSiteCode : '')
-      this.queryDateRange = []
+      this.displayTimeRange = []
+      this.activityTimeRange = []
       this.$nextTick(() => {
         if (this.$refs.queryForm) {
           this.$refs.queryForm.clearValidate()
@@ -436,6 +492,23 @@ export default {
       const fallback = DEFAULT_TYPE_OPTIONS.find(item => String(item.value) === normalized)
       return (matched && matched.label) || (fallback && fallback.label) || normalized
     },
+    activityTypeLabels(row) {
+      const rawTypes = Array.isArray(row && row.activityTypes) && row.activityTypes.length
+        ? row.activityTypes
+        : String(row && row.activityType || '').split(',')
+      const seen = new Set()
+      return rawTypes
+        .map(value => String(value || '').trim())
+        .filter(value => value && !seen.has(value) && seen.add(value))
+        .map(value => ({
+          value,
+          label: this.activityTypeLabel(value)
+        }))
+    },
+    showActivityTypes(row) {
+      this.activityTypesPreviewList = this.activityTypeLabels(row)
+      this.activityTypesPreviewVisible = true
+    },
     getStatusMeta(status) {
       const value = normalizeStatusValue(status)
       const matched = this.statusOptions.find(item => item.value === value)
@@ -452,6 +525,11 @@ export default {
     },
     formatEndTime(value) {
       return value ? (this.parseTime(value, '{y}-{m}-{d}') || '-') : '长期有效'
+    },
+    formatActivityRange(beginTime, endTime) {
+      const begin = beginTime ? this.parseTime(beginTime, '{y}-{m}-{d} {h}:{i}:{s}') : '-'
+      const end = endTime ? this.parseTime(endTime, '{y}-{m}-{d} {h}:{i}:{s}') : '长期有效'
+      return begin + ' ~ ' + end
     }
   }
 }

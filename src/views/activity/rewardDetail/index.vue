@@ -1,7 +1,7 @@
 <template>
   <div class="activity-reward-detail-page app-container">
     <section class="page-header">
-      <h1 class="page-title">活动奖励明细</h1>
+      <h1 class="page-title">{{ pageTitle }}</h1>
     </section>
 
     <section class="filter-card">
@@ -87,7 +87,7 @@
 
           <el-form-item class="filter-item" prop="bonusStatus">
             <template slot="label">
-              <span class="filter-label"><i class="el-icon-time"></i><span>领取状态</span></span>
+              <span class="filter-label"><i class="el-icon-time"></i><span>{{ statusFilterLabel }}</span></span>
             </template>
             <el-select v-model="queryParams.bonusStatus" clearable placeholder="全部状态" style="width: 100%">
               <el-option label="全部状态" value="" />
@@ -138,7 +138,7 @@
     <section class="detail-card">
       <div class="detail-card__header">
         <div class="detail-card__title-wrap">
-          <h2 class="detail-card__title">奖励明细列表</h2>
+          <h2 class="detail-card__title">{{ listTitle }}</h2>
           <span class="detail-card__badge">共 {{ total }} 条</span>
         </div>
         <div class="detail-card__tools">
@@ -216,7 +216,7 @@
             <span class="type-pill">{{ row.activityType || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="任务名称" prop="taskName" min-width="140" align="center">
+        <el-table-column v-if="!isManualPayout" label="任务名称" prop="taskName" min-width="140" align="center">
           <template slot-scope="{ row }">
             <span>{{ row.taskName || '-' }}</span>
           </template>
@@ -226,19 +226,32 @@
             <span class="reward-text">{{ formatCurrency(row.rewardBonus) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="领取状态" prop="bonusStatusLabel" min-width="112" align="center">
+        <el-table-column :label="statusColumnLabel" prop="bonusStatusLabel" min-width="112" align="center">
           <template slot-scope="{ row }">
             <span :class="['status-pill', bonusStatusClass(row.bonusStatus)]">{{ resolveBonusStatusLabel(row) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="达标时间" prop="finishTime" min-width="172" align="left">
+        <el-table-column :label="payoutTimeColumnLabel" :prop="isManualPayout ? 'payoutTime' : 'finishTime'" min-width="172" align="left">
           <template slot-scope="{ row }">
-            {{ parseTime(row.finishTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}
+            {{ parseTime(isManualPayout ? row.payoutTime : row.finishTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="领取时间" prop="receivingTime" min-width="172" align="left">
           <template slot-scope="{ row }">
             {{ parseTime(row.receivingTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isManualPayout" label="操作" width="116" align="center" fixed="right">
+          <template slot-scope="{ row }">
+            <el-button
+              v-if="canManualPayout(row)"
+              type="text"
+              class="manual-payout-button"
+              @click="handleManualPayout(row)"
+            >
+              手动派彩
+            </el-button>
+            <span v-else>-</span>
           </template>
         </el-table-column>
       </el-table>
@@ -298,6 +311,57 @@ function formatCompactDateValue(date) {
   return [date.getFullYear(), padNumber(date.getMonth() + 1), padNumber(date.getDate())].join('')
 }
 
+const MANUAL_PAYOUT_SITES = [
+  { code: 'WC', name: '旺财体育' },
+  { code: 'DW', name: 'DW体育' },
+  { code: 'CS', name: '财神体育' },
+  { code: 'XH', name: '星河体育' }
+]
+const MANUAL_PAYOUT_ACTIVITIES = [
+  { type: '新人礼', name: '720新人礼活动' },
+  { type: '签到', name: '世界杯签到活动' },
+  { type: '首存活动', name: '体育首存送68%最高2000元' },
+  { type: '通用活动', name: '周末限时送彩金' },
+  { type: '累充活动', name: '累计充值奖励活动' },
+  { type: '有效投注额', name: '有效投注额达标奖励' }
+]
+const MANUAL_PAYOUT_STATUS = {
+  1: '已达标',
+  2: '已派彩',
+  3: '已领取'
+}
+
+function createManualPayoutRows() {
+  return Array.from({ length: 280 }, (_, index) => {
+    const sequence = index + 1
+    const site = MANUAL_PAYOUT_SITES[index % MANUAL_PAYOUT_SITES.length]
+    const activity = MANUAL_PAYOUT_ACTIVITIES[index % MANUAL_PAYOUT_ACTIVITIES.length]
+    const bonusStatus = [1, 2, 3][index % 3]
+    const memberSequence = 1000 + Math.floor(index / 4)
+    const day = padNumber(19 + (index % 7))
+    return {
+      id: sequence,
+      createTime: `2026-07-${day} 00:00:00`,
+      siteCode: site.code,
+      siteName: site.name,
+      agentName: index % 3 === 0 ? '-' : `agent${padNumber((index % 18) + 1)}`,
+      memberUserId: 1800 + sequence,
+      memberName: `testhd${memberSequence}`,
+      taskId: 4782 - index,
+      activityCode: `ACT202607${String(200954289475 + index)}`,
+      activityName: activity.name,
+      activityType: activity.type,
+      taskName: ['累充奖励', '复活奖励', '取款奖励', '首存奖励', '实名奖励', '活跃奖励'][index % 6],
+      rewardBonus: [58, 888, 5, 18, 68, 128][index % 6],
+      bonusStatus,
+      bonusStatusLabel: MANUAL_PAYOUT_STATUS[bonusStatus],
+      finishTime: `2026-07-${day} 17:${padNumber(index % 60)}:25`,
+      payoutTime: bonusStatus >= 2 ? `2026-07-${day} 17:${padNumber(index % 60)}:45` : '',
+      receivingTime: bonusStatus === 3 ? `2026-07-${day} 18:${padNumber(index % 60)}:30` : ''
+    }
+  })
+}
+
 export default {
   name: 'ActivityRewardDetail',
   data() {
@@ -316,10 +380,29 @@ export default {
       },
       queryParams: createDefaultQuery(),
       createDateRange: createDefaultCreateDateRange(),
-      receivingDateRange: []
+      receivingDateRange: [],
+      manualPayoutRows: createManualPayoutRows()
     }
   },
   computed: {
+    isManualPayout() {
+      return this.$route.path.includes('/activity/manualPayout')
+    },
+    pageTitle() {
+      return this.isManualPayout ? '手动派彩' : '活动奖励明细'
+    },
+    listTitle() {
+      return this.isManualPayout ? '手动派彩列表' : '奖励明细列表'
+    },
+    statusFilterLabel() {
+      return this.isManualPayout ? '状态' : '领取状态'
+    },
+    statusColumnLabel() {
+      return this.isManualPayout ? '状态' : '领取状态'
+    },
+    payoutTimeColumnLabel() {
+      return this.isManualPayout ? '派彩时间' : '达标时间'
+    },
     siteOptions() {
       return Array.isArray(this.meta.siteOptions) ? this.meta.siteOptions : []
     },
@@ -353,6 +436,20 @@ export default {
       await this.getList(true)
     },
     async loadMeta() {
+      if (this.isManualPayout) {
+        this.meta = {
+          siteReadonly: false,
+          currentSiteCode: '',
+          siteOptions: MANUAL_PAYOUT_SITES.map(item => ({ value: item.code, label: item.name })),
+          activityTypes: MANUAL_PAYOUT_ACTIVITIES.map(item => ({ value: item.type, label: item.type })),
+          bonusStatusOptions: Object.keys(MANUAL_PAYOUT_STATUS).map(value => ({
+            value: Number(value),
+            label: MANUAL_PAYOUT_STATUS[value]
+          }))
+        }
+        this.queryParams = createDefaultQuery()
+        return
+      }
       const res = await getActivityRewardDetailMeta()
       this.meta = res.data || this.meta
       const nextQuery = createDefaultQuery()
@@ -380,6 +477,10 @@ export default {
       return params
     },
     async getList(includeSummary = false) {
+      if (this.isManualPayout) {
+        this.loadManualPayoutList()
+        return
+      }
       this.loading = true
       try {
         const params = this.buildQueryParams()
@@ -391,6 +492,25 @@ export default {
         }
       } finally {
         this.loading = false
+      }
+    },
+    loadManualPayoutList() {
+      const query = this.queryParams
+      const keywordIncludes = (value, keyword) => !keyword || String(value || '').toLowerCase().includes(String(keyword).toLowerCase())
+      const filtered = this.manualPayoutRows.filter(row => {
+        return (!query.siteCode || row.siteCode === query.siteCode) &&
+          keywordIncludes(row.agentName, query.agentKeyword) &&
+          keywordIncludes(row.memberName, query.memberName) &&
+          keywordIncludes(row.memberUserId, query.memberUserId) &&
+          keywordIncludes(row.activityName, query.activityName) &&
+          (!query.activityType || row.activityType === query.activityType) &&
+          (query.bonusStatus === '' || query.bonusStatus === null || Number(row.bonusStatus) === Number(query.bonusStatus))
+      })
+      const start = (query.pageNum - 1) * query.pageSize
+      this.list = filtered.slice(start, start + query.pageSize)
+      this.total = filtered.length
+      this.summaryTotals = {
+        rewardBonus: filtered.reduce((total, row) => total + Number(row.rewardBonus || 0), 0)
       }
     },
     async getSummary(params) {
@@ -453,7 +573,8 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         })
-        await this.download('/activity/reward-detail/export', this.buildQueryParams(), `活动奖励明细_${formatCompactDateValue(new Date())}.xlsx`)
+        const exportName = this.isManualPayout ? '手动派彩' : '活动奖励明细'
+        await this.download('/activity/reward-detail/export', this.buildQueryParams(), `${exportName}_${formatCompactDateValue(new Date())}.xlsx`)
       } catch (error) {
         if (error !== 'cancel') {
           throw error
@@ -508,15 +629,40 @@ export default {
         return 'status-pill--success'
       }
       if (Number(status) === 2) {
-        return 'status-pill--danger'
+        return 'status-pill--warning'
       }
-      return 'status-pill--warning'
+      return 'status-pill--success'
     },
     resolveBonusStatusLabel(row) {
       if (row && row.bonusStatusLabel) {
         return row.bonusStatusLabel
       }
       return this.bonusStatusMap[String(row && row.bonusStatus)] || '-'
+    },
+    canManualPayout(row) {
+      return Number(row && row.bonusStatus) === 1 || String(row && row.bonusStatusLabel) === '已达标'
+    },
+    async handleManualPayout(row) {
+      try {
+        await this.$confirm(
+          `确认向会员“${row.memberName || row.memberUserId || '-'}”手动派发${this.formatCurrency(row.rewardBonus)}活动奖励吗？`,
+          '手动派彩确认',
+          {
+            confirmButtonText: '确认派彩',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        )
+        const payoutTime = this.parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}')
+        this.$set(row, 'bonusStatus', 2)
+        this.$set(row, 'bonusStatusLabel', '已派彩')
+        this.$set(row, 'payoutTime', payoutTime)
+        this.$modal.msgSuccess('手动派彩成功')
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+          throw error
+        }
+      }
     }
   }
 }
@@ -693,6 +839,12 @@ export default {
 
 .member-link-button {
   padding: 0;
+}
+
+.manual-payout-button {
+  padding: 0;
+  color: #2f7df6;
+  font-weight: 600;
 }
 
 .type-pill {

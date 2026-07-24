@@ -37,88 +37,117 @@
     </section>
 
     <section class="filter-card">
-      <el-form ref="queryForm" :model="queryParams" class="filter-form" @submit.native.prevent>
-        <div class="filter-row">
-          <div class="filter-fields">
-            <el-form-item class="filter-field filter-field--name" prop="activityName">
-              <el-input
-                v-model="queryParams.activityName"
-                clearable
-                placeholder="活动名称"
-                prefix-icon="el-icon-search"
-                @keyup.enter.native="handleQuery"
+      <el-form ref="queryForm" :model="queryParams" label-width="80px" class="filter-form" @submit.native.prevent>
+        <div class="filter-form__row filter-form__row--primary">
+          <el-form-item label="站点" class="filter-item" prop="siteCode">
+            <el-select
+              v-model="queryParams.siteCode"
+              multiple
+              collapse-tags
+              :disabled="isSiteReadonly"
+              :clearable="!isSiteReadonly"
+              placeholder="全部站点"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in siteOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
               />
-            </el-form-item>
+            </el-select>
+          </el-form-item>
 
-            <div class="filter-inline">
-              <span class="filter-inline__label">活动类型:</span>
-              <el-form-item class="filter-inline__control" prop="activityType">
-                <el-select v-model="queryParams.activityType" clearable placeholder="全部" style="width: 100%">
-                  <el-option
-                    v-for="item in activityTypeOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-              </el-form-item>
-            </div>
+          <el-form-item label="活动标题" class="filter-item" prop="activityName">
+            <el-autocomplete
+              v-model="queryParams.activityName"
+              :fetch-suggestions="queryActivityNameSuggestions"
+              :trigger-on-focus="true"
+              clearable
+              placeholder="输入活动标题"
+              style="width: 100%"
+              @keyup.enter.native="handleQuery"
+              @select="handleActivityNameSelect"
+            />
+          </el-form-item>
 
-            <div class="filter-inline">
-              <span class="filter-inline__label">站点:</span>
-              <el-form-item class="filter-inline__control" prop="siteCode">
-                <el-select
-                  v-model="queryParams.siteCode"
-                  :disabled="isSiteReadonly"
-                  :clearable="!isSiteReadonly"
-                  placeholder="全部"
-                  style="width: 100%"
-                >
-                  <el-option label="全部" value="" />
-                  <el-option
-                    v-for="item in siteOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-              </el-form-item>
-            </div>
+          <el-form-item label="活动类型" class="filter-item" prop="activityType">
+            <el-select
+              v-model="queryParams.activityType"
+              multiple
+              collapse-tags
+              clearable
+              placeholder="全部类型"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in activityTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
 
-            <div class="filter-inline filter-inline--date">
-              <span class="filter-inline__label">查询日期</span>
-              <el-form-item class="filter-inline__control">
-                <el-date-picker
-                  v-model="queryDateRange"
-                  type="daterange"
-                  range-separator="~"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  value-format="yyyy-MM-dd"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </div>
-          </div>
+          <el-form-item label="活动标签" class="filter-item" prop="activityTag">
+            <el-select
+              v-model="queryParams.activityTag"
+              multiple
+              collapse-tags
+              clearable
+              placeholder="全部标签"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in activityTagOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
 
-          <div class="filter-actions">
-            <el-button type="primary" class="filter-action filter-action--primary" @click="handleQuery">查询</el-button>
-            <el-button class="filter-action filter-action--refresh" icon="el-icon-refresh" circle @click="resetQuery" />
-          </div>
+          <el-form-item label="展示时间" class="filter-item filter-item--date">
+            <el-date-picker
+              v-model="displayTimeRange"
+              type="datetimerange"
+              range-separator="~"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="yyyy-MM-dd HH:mm:ss"
+              value-format="yyyy-MM-dd HH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
         </div>
 
+        <div class="filter-form__row filter-form__row--secondary">
+          <el-form-item label="活动时间" class="filter-item filter-item--date">
+            <el-date-picker
+              v-model="activityTimeRange"
+              type="datetimerange"
+              range-separator="~"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="yyyy-MM-dd HH:mm:ss"
+              value-format="yyyy-MM-dd HH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
+
+          <div class="filter-actions">
+            <el-button class="filter-action" @click="resetQuery">重置</el-button>
+            <el-button type="primary" class="filter-action filter-action--primary" @click="handleQuery">查询</el-button>
+            <el-button
+              type="primary"
+              class="filter-action filter-action--primary"
+              v-hasPermi="['activity:manage:add']"
+              @click="handleAdd"
+            >新增活动</el-button>
+          </div>
+        </div>
       </el-form>
     </section>
-
-    <div class="list-toolbar">
-      <el-button
-        type="primary"
-        icon="el-icon-plus"
-        class="list-toolbar__button"
-        v-hasPermi="['activity:manage:add']"
-        @click="handleAdd"
-      >新增活动</el-button>
-    </div>
 
     <section ref="tableCard" class="table-card">
       <el-table
@@ -127,48 +156,61 @@
         empty-text="没有查到结果"
         class="activity-table"
       >
-        <el-table-column label="时间" align="center" prop="createTime" min-width="182">
+        <el-table-column label="序号" align="center" width="72" fixed="left">
           <template slot-scope="scope">
-            <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</span>
+            <span>{{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="站点" align="center" min-width="120">
+        <el-table-column label="站点" align="center" min-width="110" fixed="left">
           <template slot-scope="scope">
             <span>{{ scope.row.siteName || scope.row.siteCode || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="活动编码" align="center" prop="activityCode" min-width="188">
-          <template slot-scope="scope">
-            <span class="table-code">{{ scope.row.activityCode || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="活动名称" align="center" prop="activityName" min-width="180">
+        <el-table-column label="活动标题" align="center" prop="activityName" min-width="220" fixed="left">
           <template slot-scope="scope">
             <span class="activity-name">{{ scope.row.activityName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="活动类型" align="center" prop="activityType" min-width="160">
+        <el-table-column label="活动类型" align="center" prop="activityType" min-width="150">
           <template slot-scope="scope">
-            <span class="type-pill">{{ activityTypeLabel(scope.row.activityType) }}</span>
+            <div class="activity-type-summary">
+              <span class="activity-type-text">{{ activityTypeLabels(scope.row)[0].label }}</span>
+              <el-button
+                v-if="activityTypeLabels(scope.row).length > 1"
+                type="text"
+                class="activity-type-more"
+                @click="showActivityTypes(scope.row)"
+              >更多</el-button>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="开始时间" align="center" prop="activityBeginTime" min-width="120">
+        <el-table-column label="活动标签" align="center" prop="activityTag" min-width="100">
           <template slot-scope="scope">
-            <span>{{ parseTime(scope.row.activityBeginTime, '{y}-{m}-{d}') || '-' }}</span>
+            <span>{{ scope.row.activityTag || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="结束时间" align="center" prop="activityEndTime" min-width="120">
+        <el-table-column label="展示时间" align="center" min-width="300">
           <template slot-scope="scope">
-            <span>{{ formatEndTime(scope.row.activityEndTime) }}</span>
+            <span>{{ formatActivityRange(scope.row.displayBeginTime, scope.row.displayEndTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="活动排序" align="center" prop="activitySort" min-width="96" />
-        <el-table-column label="热门排序" align="center" prop="hotSort" min-width="96">
+        <el-table-column label="活动时间" align="center" min-width="300">
           <template slot-scope="scope">
-            <span class="hot-sort">{{ scope.row.hotSort == null ? '-' : scope.row.hotSort }}</span>
+            <span>{{ formatActivityRange(scope.row.activityBeginTime, scope.row.activityEndTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" align="center" prop="status" min-width="150">
+        <el-table-column label="排序" align="center" prop="activitySort" width="80" />
+        <el-table-column label="最后操作时间" align="center" prop="updateTime" min-width="176">
+          <template slot-scope="scope">
+            <span>{{ parseTime(scope.row.updateTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="最后操作人" align="center" prop="operatorName" min-width="110">
+          <template slot-scope="scope">
+            <span>{{ scope.row.operatorName || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" align="center" prop="status" min-width="120" fixed="right">
           <template slot-scope="scope">
             <div class="activity-status-switch">
               <el-switch
@@ -185,7 +227,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="活动设置" align="center" min-width="132" fixed="right" class-name="activity-settings-column">
+        <el-table-column label="操作" align="center" min-width="132" fixed="right" class-name="activity-settings-column">
           <template slot-scope="scope">
             <div class="activity-settings">
               <span class="action-slot action-slot--config">
@@ -194,7 +236,7 @@
                   class="primary-link"
                   v-hasPermi="['activity:manage:edit']"
                   @click="handleConfig(scope.row)"
-                >设置</el-button>
+                >编辑</el-button>
               </span>
               <span class="action-slot action-slot--delete">
                 <el-button
@@ -220,6 +262,24 @@
         />
       </div>
     </section>
+
+    <el-dialog
+      title="全部活动类型"
+      :visible.sync="activityTypesPreviewVisible"
+      width="420px"
+      custom-class="activity-types-preview-dialog"
+      append-to-body
+    >
+      <el-table :data="activityTypesPreviewList" border class="activity-types-preview-table">
+        <el-table-column label="序号" align="center" width="90">
+          <template slot-scope="scope">{{ scope.$index + 1 }}</template>
+        </el-table-column>
+        <el-table-column label="活动类型" align="center" prop="label" />
+      </el-table>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="activityTypesPreviewVisible = false">知道了</el-button>
+      </div>
+    </el-dialog>
 
     <el-dialog
       title="选择活动类型"

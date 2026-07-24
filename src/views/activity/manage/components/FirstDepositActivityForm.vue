@@ -55,12 +55,13 @@
           <el-form-item label="展示时间" required>
             <el-date-picker
               v-model="displayTimeRange"
-              :type="isForeverPeriod ? 'date' : 'daterange'"
+              :type="isForeverPeriod ? 'datetime' : 'datetimerange'"
               :range-separator="'→'"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              placeholder="开始时间"
-              value-format="yyyy-MM-dd"
+              start-placeholder="开始日期时间"
+              end-placeholder="结束日期时间"
+              placeholder="开始日期时间"
+              format="yyyy-MM-dd HH:mm:ss"
+              value-format="yyyy-MM-dd HH:mm:ss"
               style="width: 100%"
             />
           </el-form-item>
@@ -68,12 +69,13 @@
           <el-form-item label="活动时间" required>
             <el-date-picker
               v-model="activityTimeRange"
-              :type="isForeverPeriod ? 'date' : 'daterange'"
+              :type="isForeverPeriod ? 'datetime' : 'datetimerange'"
               :range-separator="'→'"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              placeholder="开始时间"
-              value-format="yyyy-MM-dd"
+              start-placeholder="开始日期时间"
+              end-placeholder="结束日期时间"
+              placeholder="开始日期时间"
+              format="yyyy-MM-dd HH:mm:ss"
+              value-format="yyyy-MM-dd HH:mm:ss"
               style="width: 100%"
             />
           </el-form-item>
@@ -229,6 +231,43 @@
           </div>
         </el-form-item>
 
+        <div class="shared-claim-fields">
+          <el-form-item label="提现流水倍数" label-width="128px" required>
+            <div class="withdraw-turnover-field">
+              <el-input-number
+                v-model="extra.withdrawTurnoverMultiple"
+                :min="0"
+                :precision="0"
+                :controls="false"
+                class="withdraw-turnover-input"
+                placeholder="请输入提现流水倍数"
+              />
+              <div class="withdraw-turnover-hint">提现所需有效投注 = 奖金 × 倍数</div>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="达标后可领取时间（天）" label-width="160px" required>
+            <div class="claim-valid-days-field">
+              <el-input-number
+                v-model="extra.claimValidDays"
+                :min="1"
+                :precision="0"
+                :controls="false"
+                class="claim-valid-days-input"
+                placeholder="请输入可领取时间"
+              />
+              <div class="claim-valid-days-hint">超过此天数奖励过期，不可领取</div>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="派发规则" label-width="80px" required>
+            <el-select v-model="extra.dispatchRule" class="dispatch-rule-select" placeholder="请选择派发规则">
+              <el-option label="系统自动派发" value="auto" />
+              <el-option label="手动派发" value="manual" />
+            </el-select>
+          </el-form-item>
+        </div>
+
         <div class="valid-bet-reward-section">
           <div class="valid-bet-reward-heading">
             <div class="valid-bet-reward-heading__title">奖励档位</div>
@@ -250,11 +289,6 @@
             <el-table-column label="奖励金额（元）" min-width="240" align="center">
               <template slot-scope="{ row }">
                 <el-input-number v-model="row.rewardAmount" :min="0" :precision="2" :controls="false" class="table-field" placeholder="请输入奖励金额" />
-              </template>
-            </el-table-column>
-            <el-table-column label="流水要求（倍）" min-width="220" align="center">
-              <template slot-scope="{ row }">
-                <el-input-number v-model="row.extraConfig.turnoverMultiple" :min="0" :precision="0" :controls="false" class="table-field" placeholder="请输入流水倍数" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="110" align="center">
@@ -681,6 +715,9 @@ export default {
         venueSelections: {},
         rmbVenues: [],
         validBetStatPeriod: 'day',
+        withdrawTurnoverMultiple: 1,
+        claimValidDays: null,
+        dispatchRule: 'auto',
         giftType: 'percent',
         webContentMode: 'popup',
         h5ModuleTop: '0',
@@ -948,6 +985,46 @@ export default {
   font-size: 12px;
   line-height: 1.4;
   white-space: nowrap;
+}
+
+.withdraw-turnover-field {
+  width: 260px;
+}
+
+.withdraw-turnover-input,
+.claim-valid-days-input {
+  width: 100%;
+}
+
+.withdraw-turnover-hint,
+.claim-valid-days-hint {
+  margin-top: 8px;
+  color: #a0a6b1;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.shared-claim-fields {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.shared-claim-fields ::v-deep .el-form-item {
+  margin-bottom: 0;
+}
+
+.shared-claim-fields ::v-deep .el-form-item__label {
+  white-space: nowrap;
+}
+
+.claim-valid-days-field {
+  width: 260px;
+}
+
+.dispatch-rule-select {
+  width: 260px;
 }
 
 .valid-bet-reward-section {

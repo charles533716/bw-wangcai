@@ -96,6 +96,11 @@ function testBatchInterfaceCopy() {
   assert(viewSource.includes('aria-label="关闭弹窗"'), '关闭按钮应提供明确的无障碍名称')
   assert(viewSource.includes(':close-on-click-modal="true"'), '点击弹窗外的灰色遮罩应关闭单笔发放和批量导入弹窗')
   assert(viewSource.includes('@click.native.self="redPacketOpen = false"'), '弹窗遮罩应有明确的点击关闭兜底处理')
+  assert(viewSource.includes('v-model.trim="redPacketForm.validityDays"'), '单笔活动彩金领取有效期应支持输入天数')
+  assert(viewSource.includes('v-model.trim="batchValidityDays"'), '批量活动彩金领取有效期应支持输入天数')
+  assert.strictEqual((viewSource.match(/领取有效期（天）/g) || []).length >= 2, true, '单笔和批量领取有效期字段名称应包含单位“天”')
+  assert.strictEqual(viewSource.includes('class="validity-days-unit"'), false, '领取有效期输入框右侧不应重复展示“天”')
+  assert(viewSource.includes('validateValidityDays'), '领取有效期应校验为大于0的整数天数')
 }
 
 function testRevisionNoteCopy() {

@@ -72,12 +72,13 @@
       >
         <el-date-picker
           v-model="displayTimeRange"
-          :type="isForeverPeriod ? 'date' : 'daterange'"
+          :type="isForeverPeriod ? 'datetime' : 'datetimerange'"
           range-separator="→"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          placeholder="开始日期"
-          value-format="yyyy-MM-dd"
+          start-placeholder="开始日期时间"
+          end-placeholder="结束日期时间"
+          placeholder="开始日期时间"
+          format="yyyy-MM-dd HH:mm:ss"
+          value-format="yyyy-MM-dd HH:mm:ss"
           style="width: 100%"
         />
       </el-form-item>
@@ -90,12 +91,13 @@
       >
         <el-date-picker
           v-model="activityTimeRange"
-          :type="isForeverPeriod ? 'date' : 'daterange'"
+          :type="isForeverPeriod ? 'datetime' : 'datetimerange'"
           range-separator="→"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          placeholder="开始日期"
-          value-format="yyyy-MM-dd"
+          start-placeholder="开始日期时间"
+          end-placeholder="结束日期时间"
+          placeholder="开始日期时间"
+          format="yyyy-MM-dd HH:mm:ss"
+          value-format="yyyy-MM-dd HH:mm:ss"
           style="width: 100%"
         />
       </el-form-item>

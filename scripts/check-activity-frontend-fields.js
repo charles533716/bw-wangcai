@@ -13,10 +13,24 @@ function assertIncludes(source, expected, message) {
   }
 }
 
+function assertOrder(source, values, message) {
+  let previousIndex = -1
+  values.forEach(value => {
+    const nextIndex = source.indexOf(value, previousIndex + 1)
+    if (nextIndex === -1 || nextIndex < previousIndex) {
+      throw new Error(message + ': ' + value)
+    }
+    previousIndex = nextIndex
+  })
+}
+
 const component = read('src/views/activity/manage/components/ActivityFrontendDisplayFields.vue')
 const activityTemplate = read('src/views/activity/manage/components/ActivityForm.template.html')
 const activityScript = read('src/views/activity/manage/components/ActivityForm.script.js')
 const manageScript = read('src/views/activity/manage/index.script.js')
+const manageTemplate = read('src/views/activity/manage/index.template.html')
+const manageStyle = read('src/views/activity/manage/index.style.css')
+const activityApi = read('src/api/activity/manage.js')
 const commonTemplate = read('src/views/activity/manage/components/ActivityCommonForm.template.html')
 const commonScript = read('src/views/activity/manage/components/ActivityCommonForm.script.js')
 const dynamicSectionsScript = read('src/views/activity/manage/components/ActivityTypeDynamicSections.script.js')
@@ -28,6 +42,12 @@ const schemas = read('src/views/activity/manage/components/activityTypeSchemas.j
 ;['活动分类', '活动标签', '展示设备', '活动周期', '展示时间', '活动时间'].forEach(label => {
   assertIncludes(component, label, '共用展示配置缺少字段')
 })
+assertIncludes(component, ":type=\"isForeverPeriod ? 'datetime' : 'datetimerange'\"", '新人礼、签到和通用活动时间组件未支持时分秒')
+assertIncludes(component, 'format="yyyy-MM-dd HH:mm:ss"', '共用展示配置未显示时分秒')
+assertIncludes(component, 'value-format="yyyy-MM-dd HH:mm:ss"', '共用展示配置未提交时分秒')
+assertIncludes(firstDepositForm, ":type=\"isForeverPeriod ? 'datetime' : 'datetimerange'\"", '首存、累充和有效投注额活动时间组件未支持时分秒')
+assertIncludes(firstDepositForm, 'format="yyyy-MM-dd HH:mm:ss"', '首存类活动配置未显示时分秒')
+assertIncludes(firstDepositForm, 'value-format="yyyy-MM-dd HH:mm:ss"', '首存类活动配置未提交时分秒')
 
 assertIncludes(component, 'label="状态"', '共用展示配置缺少状态字段')
 assertIncludes(component, 'active-value="0"', '状态开关缺少启用值')
@@ -54,6 +74,102 @@ assertIncludes(manageScript, "const CREATE_ACTIVITY_TYPE_ORDER = ['新人礼', '
 assertIncludes(manageScript, "const ENABLED_CREATE_ACTIVITY_TYPES = new Set(['新人礼', '签到', '首存活动', COMMON_ACTIVITY_TYPE_LABEL, '累充', '每日投注额度+笔数'])", '累充或每日投注额度+笔数仍处于禁用状态')
 assertIncludes(manageScript, "'累充': '累充活动'", '选择活动类型弹窗中的累充名称不正确')
 assertIncludes(manageScript, "'每日投注额度+笔数': '有效投注额'", '选择活动类型弹窗中的有效投注额名称不正确')
+;[
+  "{ value: '25', label: '新人礼' }",
+  "{ value: '27', label: '签到' }",
+  "{ value: '26', label: '首存活动' }",
+  "{ value: COMMON_ACTIVITY_TYPE, label: COMMON_ACTIVITY_TYPE_LABEL }",
+  "{ value: '21', label: '累充活动' }",
+  "{ value: '24', label: '有效投注额' }"
+].forEach(option => {
+  assertIncludes(manageScript, option, '活动列表筛选缺少指定活动类型')
+})
+assertIncludes(manageTemplate, '<el-autocomplete', '活动名称筛选未使用可搜索建议框')
+assertIncludes(manageTemplate, ':fetch-suggestions="queryActivityNameSuggestions"', '活动名称筛选缺少关键词建议')
+assertIncludes(manageTemplate, 'v-model="queryParams.siteCode"', '活动列表缺少站点筛选')
+assertIncludes(manageTemplate, 'v-model="queryParams.activityTag"', '活动列表缺少活动标签筛选')
+assertIncludes(manageTemplate, 'v-for="item in activityTagOptions"', '活动标签筛选缺少可选项')
+assertIncludes(manageTemplate, 'multiple', '活动列表筛选缺少多选能力')
+assertIncludes(manageTemplate, '展示时间', '活动列表缺少展示时间筛选')
+assertIncludes(manageTemplate, '活动时间', '活动列表缺少活动时间筛选')
+assertIncludes(manageTemplate, 'type="datetimerange"', '活动列表时间筛选未精确到时分秒')
+assertIncludes(manageTemplate, 'format="yyyy-MM-dd HH:mm:ss"', '活动列表时间筛选界面未显示时分秒')
+assertIncludes(manageTemplate, 'value-format="yyyy-MM-dd HH:mm:ss"', '活动列表时间筛选缺少秒级格式')
+assertIncludes(manageTemplate, '>重置</el-button>', '活动列表缺少独立重置按钮')
+const filterActionsTemplate = manageTemplate.slice(
+  manageTemplate.indexOf('<div class="filter-actions">'),
+  manageTemplate.indexOf('</div>', manageTemplate.indexOf('<div class="filter-actions">'))
+)
+assertOrder(filterActionsTemplate, ['>重置</el-button>', '>查询</el-button>', '>新增活动</el-button>'], '筛选区按钮顺序不正确')
+if (filterActionsTemplate.includes('icon="el-icon-plus"')) {
+  throw new Error('新增活动按钮仍展示加号图标')
+}
+assertIncludes(manageStyle, 'margin-left: auto;', '筛选区操作按钮未统一右对齐')
+assertIncludes(manageStyle, 'width: 88px;', '筛选区三个按钮大小未统一')
+assertIncludes(manageScript, 'displayTimeRange: []', '活动列表缺少展示时间查询状态')
+assertIncludes(manageScript, 'activityTimeRange: []', '活动列表缺少活动时间查询状态')
+assertIncludes(manageScript, 'queryActivityNameSuggestions', '活动名称筛选缺少建议查询方法')
+assertIncludes(manageTemplate, 'label-width="80px"', '活动列表筛选项未使用常规标签表单布局')
+assertIncludes(manageTemplate, 'class="filter-form__row filter-form__row--primary"', '活动列表筛选项缺少第一行布局')
+assertIncludes(manageTemplate, 'class="filter-form__row filter-form__row--secondary"', '活动列表筛选项缺少第二行布局')
+assertIncludes(manageStyle, '.filter-item--date', '活动列表时间筛选未设置加宽样式')
+assertIncludes(manageStyle, 'width: 460px;', '活动列表时间筛选项宽度仍然过小')
+assertIncludes(manageStyle, '.filter-item--date ::v-deep .el-range-editor.el-input__inner', '活动列表时间筛选缺少完整外框样式')
+assertIncludes(manageStyle, 'background: transparent;', '活动列表时间筛选内部输入框仍会遮挡外框')
+const primaryFilterRow = manageTemplate.slice(
+  manageTemplate.indexOf('class="filter-form__row filter-form__row--primary"'),
+  manageTemplate.indexOf('class="filter-form__row filter-form__row--secondary"')
+)
+assertOrder(primaryFilterRow, ['label="站点"', 'label="活动标题"', 'label="活动类型"', 'label="活动标签"', 'label="展示时间"'], '活动标题、活动标签或展示时间位置不正确')
+assertIncludes(manageTemplate, 'placeholder="输入活动标题"', '活动标题筛选提示文案不正确')
+if (manageStyle.includes('.filter-item,\n  .filter-item--date {\n    width: 100%;')) {
+  throw new Error('活动列表筛选项仍会被强制拉满整行')
+}
+assertIncludes(activityApi, 'PROTOTYPE_ACTIVITY_ROWS', '活动列表缺少独立假数据')
+assertIncludes(activityApi, 'ACTIVITY_DEMO_NAMES.length !== 20', '活动列表假数据数量不是20条')
+assertIncludes(activityApi, 'buildPrototypeListResponse', '活动列表假数据未接入筛选和分页')
+const activityTableTemplate = manageTemplate.slice(manageTemplate.indexOf('<el-table'), manageTemplate.indexOf('<div class="table-card__pagination">'))
+assertOrder(activityTableTemplate, [
+  'label="序号"',
+  'label="站点"',
+  'label="活动标题"',
+  'label="活动类型"',
+  'label="活动标签"',
+  'label="展示时间"',
+  'label="活动时间"',
+  'label="排序"',
+  'label="最后操作时间"',
+  'label="最后操作人"',
+  'label="状态"',
+  'label="操作"'
+], '活动列表字段顺序不正确')
+assertIncludes(activityTableTemplate, 'label="序号" align="center" width="72" fixed="left"', '序号列未固定在左侧')
+assertIncludes(activityTableTemplate, 'label="站点" align="center" min-width="110" fixed="left"', '站点列未固定在左侧')
+assertIncludes(activityTableTemplate, 'label="活动标题" align="center" prop="activityName" min-width="220" fixed="left"', '活动标题列未固定在左侧')
+assertIncludes(activityTableTemplate, 'label="状态" align="center" prop="status" min-width="120" fixed="right"', '状态列未固定在右侧')
+assertIncludes(manageTemplate, '>编辑</el-button>', '活动列表操作项缺少编辑按钮')
+assertIncludes(manageTemplate, '{{ activityTypeLabels(scope.row)[0].label }}', '活动列表未默认展示第一个活动类型')
+assertIncludes(manageTemplate, '@click="showActivityTypes(scope.row)"', '活动列表缺少更多活动类型入口')
+assertIncludes(manageTemplate, 'title="全部活动类型"', '活动列表缺少全部活动类型弹窗')
+assertIncludes(manageTemplate, '<el-table-column label="序号"', '全部活动类型弹窗缺少序号字段')
+assertIncludes(manageTemplate, '<el-table-column label="活动类型"', '全部活动类型弹窗缺少活动类型字段')
+assertIncludes(manageScript, 'activityTypeLabels(row)', '活动列表缺少多活动类型转换方法')
+assertIncludes(manageScript, 'showActivityTypes(row)', '活动列表缺少全部活动类型弹窗方法')
+assertIncludes(manageStyle, '.activity-type-text', '活动列表缺少普通活动类型文字样式')
+assertIncludes(manageStyle, 'color: #303133;', '活动标题或活动类型未使用黑色文字')
+assertIncludes(activityApi, 'activityTag:', '活动列表假数据缺少活动标签')
+assertIncludes(activityApi, 'splitQueryValues(query.activityTag)', '活动列表假数据未接入活动标签筛选')
+assertIncludes(activityApi, 'activityTypes,', '活动列表假数据缺少多活动类型')
+assertIncludes(activityApi, 'index % 5 === 0', '活动列表未限制为20%的活动展示多个活动类型')
+assertIncludes(activityApi, 'operatorName:', '活动列表假数据缺少最后操作人')
+assertIncludes(activityApi, "['admin', 'xiuxiu', 'xiaoyang', 'yolo', 'charles', 'clark', 'mike', 'bill']", '活动列表最后操作人未使用指定系统账号')
+assertIncludes(activityApi, "name: '旺财体育'", '活动列表假数据缺少旺财体育站点')
+assertIncludes(activityApi, "name: '财神体育'", '活动列表假数据缺少财神体育站点')
+assertIncludes(activityApi, "name: 'DW体育'", '活动列表假数据缺少DW体育站点')
+assertIncludes(activityApi, "name: '星河体育'", '活动列表假数据缺少星河体育站点')
+if (activityApi.includes("name: '演示总站'")) {
+  throw new Error('活动列表假数据仍包含演示总站')
+}
 assertIncludes(schemas, '在活动期间有效投注额达标，按档位发放奖励', '选择活动类型弹窗中的有效投注额副标题不正确')
 assertIncludes(activityScript, 'normalizedType === CUMULATIVE_RECHARGE_ACTIVITY_TYPE_LABEL', '累充活动未接入前端展示配置')
 assertIncludes(activityScript, 'normalizedType === DAILY_AMOUNT_ACTIVITY_TYPE_LABEL', '每日投注额度+笔数未接入前端展示配置')
@@ -65,6 +181,34 @@ assertIncludes(activityTemplate, ':show-activity-editor="false"', '累充活动�
 assertIncludes(activityTemplate, ':show-rule-switches="false"', '累充活动和有效投注额仍展示规则开关模块')
 assertIncludes(activityTemplate, ':show-site-venue-rules="usesSharedSiteVenueRules"', '累充活动和有效投注额未共用站点、场馆及奖励档位配置')
 assertIncludes(activityTemplate, ':is-cumulative-recharge-rules="isCumulativeRechargeActivity"', '累充活动规则配置缺少类型标识')
+const sharedRewardRules = firstDepositForm.slice(
+  firstDepositForm.indexOf('v-if="showSiteVenueRules"'),
+  firstDepositForm.indexOf('<slot name="rules"')
+)
+assertIncludes(sharedRewardRules, 'label="提现流水倍数"', '累充活动和有效投注额缺少统一提现流水倍数字段')
+assertIncludes(sharedRewardRules, 'v-model="extra.withdrawTurnoverMultiple"', '提现流水倍数未绑定共享配置')
+assertIncludes(sharedRewardRules, '提现所需有效投注 = 奖金 × 倍数', '提现流水倍数说明文案不正确')
+assertIncludes(sharedRewardRules, 'class="shared-claim-fields"', '提现流水倍数和领取时间未并排展示')
+assertIncludes(sharedRewardRules, 'label="达标后可领取时间（天）"', '累充活动和有效投注额缺少达标后可领取时间')
+assertIncludes(sharedRewardRules, 'v-model="extra.claimValidDays"', '达标后可领取时间未绑定共享配置')
+assertIncludes(sharedRewardRules, '超过此天数奖励过期，不可领取', '达标后可领取时间提示文案不正确')
+assertIncludes(sharedRewardRules, 'label="派发规则"', '累充活动和有效投注额缺少派发规则')
+assertIncludes(sharedRewardRules, 'label="提现流水倍数" label-width="128px"', '提现流水倍数未与统计周期左对齐')
+assertIncludes(sharedRewardRules, 'label="达标后可领取时间（天）" label-width="160px"', '达标后可领取时间标签宽度不合适')
+assertIncludes(sharedRewardRules, 'label="派发规则" label-width="80px"', '派发规则标签宽度不合适')
+assertIncludes(sharedRewardRules, 'v-model="extra.dispatchRule"', '派发规则未绑定共享配置')
+assertIncludes(sharedRewardRules, 'label="系统自动派发"', '派发规则缺少系统自动派发选项')
+assertIncludes(sharedRewardRules, 'label="手动派发"', '派发规则缺少手动派发选项')
+if (sharedRewardRules.includes('label="流水要求（倍）"')) {
+  throw new Error('累充活动和有效投注额奖励档位仍包含流水要求字段')
+}
+assertIncludes(firstDepositForm, '.withdraw-turnover-field {\n  width: 260px;', '提现流水倍数输入框未与统计周期保持相同宽度')
+assertIncludes(firstDepositForm, '.withdraw-turnover-hint,', '提现流水倍数缺少提示样式')
+assertIncludes(firstDepositForm, 'color: #a0a6b1;', '提现流水倍数提示文字颜色不够弱')
+assertIncludes(firstDepositForm, '.claim-valid-days-field {\n  width: 260px;', '达标后可领取时间输入框未与提现流水倍数保持相同宽度')
+assertIncludes(firstDepositForm, '.dispatch-rule-select {\n  width: 260px;', '派发规则下拉框未与统计周期保持相同宽度')
+assertIncludes(firstDepositForm, 'flex-wrap: nowrap;', '共享领取规则字段未固定在同一行')
+assertIncludes(firstDepositForm, 'white-space: nowrap;', '共享领取规则字段名称仍可能换行')
 assertIncludes(activityTemplate, 'v-if="!isFirstDepositActivity && !usesSharedSiteVenueRules"', '累充活动或有效投注额仍展示旧规则配置')
 assertIncludes(activityScript, 'isCumulativeRechargeActivity()', '累充活动缺少独立类型判断')
 assertIncludes(activityScript, 'isDailyAmountActivity()', '有效投注额缺少独立类型判断')
@@ -100,12 +244,11 @@ assertIncludes(firstDepositForm, 'font-size: 12px;', '有效投注额统计周�
 assertIncludes(firstDepositForm, 'class="valid-bet-reward-heading"', '有效投注额规则配置缺少奖励档位标题区域')
 assertIncludes(firstDepositForm, '>奖励档位</div>', '有效投注额规则配置缺少奖励档位标题')
 assertIncludes(firstDepositForm, '@click="handleAddReward">增加档位</el-button>', '有效投注额规则配置缺少增加档位按钮')
-;['有效投注金额（元）', '奖励金额（元）', '流水要求（倍）'].forEach(label => {
+;['有效投注金额（元）', '奖励金额（元）', '操作'].forEach(label => {
   assertIncludes(firstDepositForm, label, '有效投注额奖励档位表格缺少字段')
 })
 assertIncludes(firstDepositForm, 'class="valid-bet-threshold-input"', '有效投注金额输入框缺少起投条件展示')
 assertIncludes(firstDepositForm, '<span class="valid-bet-threshold-input__symbol">≥</span>', '有效投注金额输入框前缺少大于等于符号')
-assertIncludes(firstDepositForm, 'v-model="row.extraConfig.turnoverMultiple"', '有效投注额奖励档位缺少流水倍数配置')
 assertIncludes(firstDepositForm, 'overflow-x: hidden;', '有效投注额奖励档位表格仍可能显示横向滚动条')
 assertIncludes(firstDepositForm, '{{ $index + 1 }}', '有效投注额奖励档位序号未自动生成')
 assertIncludes(firstDepositForm, ':disabled="rewardItems.length <= 1"', '有效投注额奖励档位最后一行仍可删除')
