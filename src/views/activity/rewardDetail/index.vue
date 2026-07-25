@@ -111,6 +111,22 @@
             />
           </el-form-item>
 
+          <el-form-item v-if="isManualPayout" class="filter-item" prop="payoutDateRange">
+            <template slot="label">
+              <span class="filter-label"><i class="el-icon-time"></i><span>派彩时间</span></span>
+            </template>
+            <el-date-picker
+              v-model="payoutDateRange"
+              type="datetimerange"
+              range-separator="~"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="yyyy/MM/dd HH:mm:ss"
+              value-format="yyyy-MM-dd HH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
+
           <el-form-item class="filter-item" prop="receivingDateRange">
             <template slot="label">
               <span class="filter-label"><i class="el-icon-time"></i><span>领取时间</span></span>
@@ -127,7 +143,7 @@
             />
           </el-form-item>
 
-          <div class="filter-action-cell">
+          <div :class="['filter-action-cell', { 'filter-action-cell--manual': isManualPayout }]">
             <el-button class="action-button action-button--secondary" @click="resetQuery">重置</el-button>
             <el-button type="primary" class="action-button action-button--primary" @click="handleQuery">查询</el-button>
           </div>
@@ -142,12 +158,28 @@
           <span class="detail-card__badge">共 {{ total }} 条</span>
         </div>
         <div class="detail-card__tools">
-          <el-button type="text" class="detail-card__refresh" icon="el-icon-refresh" @click="handleRefresh"></el-button>
+          <el-button
+            v-if="!isManualPayout"
+            type="text"
+            class="detail-card__refresh"
+            icon="el-icon-refresh"
+            @click="handleRefresh"
+          ></el-button>
+          <el-button
+            v-if="isManualPayout && selectedManualPayoutRows.length > 0"
+            type="primary"
+            size="mini"
+            class="detail-card__batch-payout"
+            :loading="batchPayoutLoading"
+            @click="handleBatchManualPayout"
+          >
+            批量手动派彩（{{ selectedManualPayoutRows.length }}）
+          </el-button>
           <el-button
             type="success"
             size="mini"
             class="detail-card__export"
-            icon="el-icon-download"
+            :icon="isManualPayout ? '' : 'el-icon-download'"
             :loading="exportLoading"
             @click="handleExport"
           >
@@ -157,6 +189,7 @@
       </div>
 
       <el-table
+        ref="manualPayoutTable"
         v-loading="loading"
         :data="list"
         class="detail-table"
@@ -164,7 +197,15 @@
         :header-cell-style="headerCellStyle"
         :summary-method="getSummaries"
         show-summary
+        @selection-change="handleManualPayoutSelectionChange"
       >
+        <el-table-column
+          v-if="isManualPayout"
+          type="selection"
+          width="52"
+          align="center"
+          :selectable="isManualPayoutRowSelectable"
+        />
         <el-table-column label="日期区间" prop="createTime" min-width="180" align="left">
           <template slot-scope="{ row }">
             <span class="date-range-text">{{ resolveDateRangeText(row) }}</span>
@@ -318,10 +359,6 @@ const MANUAL_PAYOUT_SITES = [
   { code: 'XH', name: '星河体育' }
 ]
 const MANUAL_PAYOUT_ACTIVITIES = [
-  { type: '新人礼', name: '720新人礼活动' },
-  { type: '签到', name: '世界杯签到活动' },
-  { type: '首存活动', name: '体育首存送68%最高2000元' },
-  { type: '通用活动', name: '周末限时送彩金' },
   { type: '累充活动', name: '累计充值奖励活动' },
   { type: '有效投注额', name: '有效投注额达标奖励' }
 ]
@@ -332,7 +369,7 @@ const MANUAL_PAYOUT_STATUS = {
 }
 
 function createManualPayoutRows() {
-  return Array.from({ length: 280 }, (_, index) => {
+  return Array.from({ length: 200 }, (_, index) => {
     const sequence = index + 1
     const site = MANUAL_PAYOUT_SITES[index % MANUAL_PAYOUT_SITES.length]
     const activity = MANUAL_PAYOUT_ACTIVITIES[index % MANUAL_PAYOUT_ACTIVITIES.length]
@@ -368,8 +405,10 @@ export default {
     return {
       loading: false,
       exportLoading: false,
+      batchPayoutLoading: false,
       total: 0,
       list: [],
+      selectedManualPayoutRows: [],
       summaryTotals: {},
       meta: {
         siteReadonly: false,
@@ -380,6 +419,7 @@ export default {
       },
       queryParams: createDefaultQuery(),
       createDateRange: createDefaultCreateDateRange(),
+      payoutDateRange: [],
       receivingDateRange: [],
       manualPayoutRows: createManualPayoutRows()
     }
@@ -472,12 +512,15 @@ export default {
       }
       params.createStartDate = Array.isArray(this.createDateRange) && this.createDateRange.length === 2 ? this.createDateRange[0] : undefined
       params.createEndDate = Array.isArray(this.createDateRange) && this.createDateRange.length === 2 ? this.createDateRange[1] : undefined
+      params.payoutStartDate = Array.isArray(this.payoutDateRange) && this.payoutDateRange.length === 2 ? this.payoutDateRange[0] : undefined
+      params.payoutEndDate = Array.isArray(this.payoutDateRange) && this.payoutDateRange.length === 2 ? this.payoutDateRange[1] : undefined
       params.receivingStartDate = Array.isArray(this.receivingDateRange) && this.receivingDateRange.length === 2 ? this.receivingDateRange[0] : undefined
       params.receivingEndDate = Array.isArray(this.receivingDateRange) && this.receivingDateRange.length === 2 ? this.receivingDateRange[1] : undefined
       return params
     },
     async getList(includeSummary = false) {
       if (this.isManualPayout) {
+        this.clearManualPayoutSelection()
         this.loadManualPayoutList()
         return
       }
@@ -497,6 +540,8 @@ export default {
     loadManualPayoutList() {
       const query = this.queryParams
       const keywordIncludes = (value, keyword) => !keyword || String(value || '').toLowerCase().includes(String(keyword).toLowerCase())
+      const payoutStartDate = Array.isArray(this.payoutDateRange) && this.payoutDateRange.length === 2 ? this.payoutDateRange[0] : ''
+      const payoutEndDate = Array.isArray(this.payoutDateRange) && this.payoutDateRange.length === 2 ? this.payoutDateRange[1] : ''
       const filtered = this.manualPayoutRows.filter(row => {
         return (!query.siteCode || row.siteCode === query.siteCode) &&
           keywordIncludes(row.agentName, query.agentKeyword) &&
@@ -504,7 +549,9 @@ export default {
           keywordIncludes(row.memberUserId, query.memberUserId) &&
           keywordIncludes(row.activityName, query.activityName) &&
           (!query.activityType || row.activityType === query.activityType) &&
-          (query.bonusStatus === '' || query.bonusStatus === null || Number(row.bonusStatus) === Number(query.bonusStatus))
+          (query.bonusStatus === '' || query.bonusStatus === null || Number(row.bonusStatus) === Number(query.bonusStatus)) &&
+          (!payoutStartDate || (row.payoutTime && row.payoutTime >= payoutStartDate)) &&
+          (!payoutEndDate || (row.payoutTime && row.payoutTime <= payoutEndDate))
       })
       const start = (query.pageNum - 1) * query.pageSize
       this.list = filtered.slice(start, start + query.pageSize)
@@ -557,6 +604,7 @@ export default {
       nextQuery.bonusStatus = ''
       this.queryParams = nextQuery
       this.createDateRange = createDefaultCreateDateRange()
+      this.payoutDateRange = []
       this.receivingDateRange = []
       this.$nextTick(() => {
         if (this.$refs.queryForm) {
@@ -626,7 +674,7 @@ export default {
     },
     bonusStatusClass(status) {
       if (Number(status) === 1) {
-        return 'status-pill--success'
+        return 'status-pill--primary'
       }
       if (Number(status) === 2) {
         return 'status-pill--warning'
@@ -642,6 +690,27 @@ export default {
     canManualPayout(row) {
       return Number(row && row.bonusStatus) === 1 || String(row && row.bonusStatusLabel) === '已达标'
     },
+    isManualPayoutRowSelectable(row) {
+      return this.canManualPayout(row)
+    },
+    handleManualPayoutSelectionChange(rows) {
+      this.selectedManualPayoutRows = (Array.isArray(rows) ? rows : []).filter(row => this.canManualPayout(row))
+    },
+    clearManualPayoutSelection() {
+      this.selectedManualPayoutRows = []
+      this.$nextTick(() => {
+        if (this.$refs.manualPayoutTable) {
+          this.$refs.manualPayoutTable.clearSelection()
+        }
+      })
+    },
+    applyManualPayout(rows, payoutTime) {
+      ;(Array.isArray(rows) ? rows : []).forEach(row => {
+        this.$set(row, 'bonusStatus', 2)
+        this.$set(row, 'bonusStatusLabel', '已派彩')
+        this.$set(row, 'payoutTime', payoutTime)
+      })
+    },
     async handleManualPayout(row) {
       try {
         await this.$confirm(
@@ -654,14 +723,41 @@ export default {
           }
         )
         const payoutTime = this.parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}')
-        this.$set(row, 'bonusStatus', 2)
-        this.$set(row, 'bonusStatusLabel', '已派彩')
-        this.$set(row, 'payoutTime', payoutTime)
+        this.applyManualPayout([row], payoutTime)
+        this.clearManualPayoutSelection()
         this.$modal.msgSuccess('手动派彩成功')
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
           throw error
         }
+      }
+    },
+    async handleBatchManualPayout() {
+      const payoutCount = this.selectedManualPayoutRows.length
+      if (!payoutCount) {
+        return
+      }
+      try {
+        await this.$confirm(
+          `确认对已选中的 ${payoutCount} 条已达标数据进行批量手动派彩吗？`,
+          '批量手动派彩确认',
+          {
+            confirmButtonText: '确认派彩',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        )
+        this.batchPayoutLoading = true
+        const payoutTime = this.parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}')
+        this.applyManualPayout(this.selectedManualPayoutRows, payoutTime)
+        this.clearManualPayoutSelection()
+        this.$modal.msgSuccess(`批量手动派彩成功，共派彩 ${payoutCount} 条数据`)
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+          throw error
+        }
+      } finally {
+        this.batchPayoutLoading = false
       }
     }
   }
@@ -726,6 +822,16 @@ export default {
   gap: 10px;
   align-self: end;
   padding-bottom: 2px;
+}
+
+.filter-action-cell--manual {
+  grid-column: -2 / -1;
+  grid-template-columns: repeat(2, 84px);
+  justify-content: end;
+}
+
+.filter-action-cell .el-button + .el-button {
+  margin-left: 0;
 }
 
 .action-button {
@@ -802,6 +908,12 @@ export default {
   border-radius: 10px;
   background: linear-gradient(135deg, #33c56f 0%, #26b563 100%);
   border-color: transparent;
+}
+
+.detail-card__batch-payout {
+  min-width: 154px;
+  height: 34px;
+  border-radius: 10px;
 }
 
 .detail-table {
@@ -881,6 +993,11 @@ export default {
 .status-pill--success {
   background: #eafaf2;
   color: #1ca56d;
+}
+
+.status-pill--primary {
+  background: #edf5ff;
+  color: #2f7df6;
 }
 
 .status-pill--warning {
