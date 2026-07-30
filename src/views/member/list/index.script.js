@@ -25,9 +25,60 @@ const DEFAULT_QUERY_PARAMS = {
   userId: '',
   name: '',
   realName: '',
+  realNameStatus: '',
   parentAgentName: '',
   status: '',
+  googleStatus: '',
   riskTagId: ''
+}
+
+function createDemoMemberRows() {
+  const sites = [
+    { code: '8888', name: 'DW体育' },
+    { code: '1001', name: '旺财体育' },
+    { code: '1002', name: '财神体育' },
+    { code: '1003', name: '星河体育' }
+  ]
+  return Array.from({ length: 50 }, (_, index) => {
+    const id = 1867 - index
+    const site = sites[index % sites.length]
+    const memberName = `dw666s${String(index % 8 + 1).padStart(2, '0')}m${String(index % 7).padStart(2, '0')}`
+    const realName = index % 4 === 0 ? ['苏速度', '飞机场', '离箭头', '返水大哥'][index % 4] : ''
+    return {
+      id,
+      userId: id,
+      name: memberName,
+      realName,
+      realNameStatus: realName ? '1' : '0',
+      parentAgentId: 1840 - Math.floor(index / 3),
+      parentAgentName: `dw666s0${index % 5}${String.fromCharCode(97 + index % 4)}`,
+      parentAgentLevel: 1,
+      parentAgentStarLevel: 1,
+      isAgent: index % 9 === 0 ? 1 : 0,
+      agentLevel: index % 9 === 0 ? 1 : '',
+      starLevel: index % 9 === 0 ? 1 : '',
+      centerBalanceCnySum: Number((index * 86.35).toFixed(2)),
+      venueBalanceCnySum: Number((index % 6 * 30.5).toFixed(2)),
+      amountValidCnySum: Number((1000 + index * 278.9).toFixed(2)),
+      siteCode: site.code,
+      siteName: site.name,
+      status: index % 12 === 0 ? 0 : 1,
+      googleStatus: index % 3 === 0 ? '1' : '0',
+      vipLevel: index % 8,
+      inviteCode: `IDW666S${String(index + 1).padStart(4, '0')}`,
+      phone: realName ? `+86138${String(10000000 + index).slice(-8)}` : '',
+      qq: '',
+      wechat: '',
+      riskTagId: index % 10 === 0 ? 'attention' : '',
+      riskTags: index % 10 === 0 ? [{ id: 'attention', name: '重点关注', type: 'warning' }] : [],
+      fromIp: `103.28.${index % 20}.${20 + index}`,
+      fromIpRegion: index % 2 === 0 ? '越南/胡志明市' : '中国/广东',
+      regTime: `2026-06-${String(index % 28 + 1).padStart(2, '0')} 09:00:00`,
+      lastLoginIp: `103.29.${index % 18}.${40 + index}`,
+      lastLoginRegion: index % 2 === 0 ? '越南/河内' : '中国/上海',
+      lastLoginTime: `2026-07-${String(index % 28 + 1).padStart(2, '0')} 18:30:00`
+    }
+  })
 }
 
 export default {
@@ -106,9 +157,22 @@ export default {
     },
     getList() {
       this.listLoading = true
-      listAdminMember(this.buildPageParams(), this.buildQueryPayload()).then((response) => {
-        this.listData = this.extractRows(response)
-        this.total = this.extractTotal(response)
+      Promise.resolve().then(() => {
+        const keyword = value => String(value || '').trim().toLowerCase()
+        const rows = createDemoMemberRows().filter(row =>
+          (!this.queryParams.siteCode || String(row.siteCode) === String(this.queryParams.siteCode)) &&
+          (!keyword(this.queryParams.userId) || String(row.id).includes(keyword(this.queryParams.userId))) &&
+          (!keyword(this.queryParams.name) || row.name.toLowerCase().includes(keyword(this.queryParams.name))) &&
+          (!keyword(this.queryParams.realName) || row.realName.toLowerCase().includes(keyword(this.queryParams.realName))) &&
+          (!this.queryParams.realNameStatus || row.realNameStatus === this.queryParams.realNameStatus) &&
+          (!keyword(this.queryParams.parentAgentName) || row.parentAgentName.toLowerCase().includes(keyword(this.queryParams.parentAgentName))) &&
+          (!this.queryParams.status || String(row.status) === String(this.queryParams.status)) &&
+          (!this.queryParams.googleStatus || row.googleStatus === this.queryParams.googleStatus) &&
+          (!this.queryParams.riskTagId || row.riskTagId === this.queryParams.riskTagId)
+        )
+        this.total = rows.length
+        const start = (this.queryParams.pageNum - 1) * this.queryParams.pageSize
+        this.listData = rows.slice(start, start + this.queryParams.pageSize)
         this.selectedRows = []
         this.$nextTick(() => {
           if (this.$refs.memberTable) {

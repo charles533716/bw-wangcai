@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getResourceCatalogPage } from '@/mock/resourceCatalog'
 
 const baseUrl = '/api/admin/sms'
 
@@ -16,6 +17,8 @@ function buildListRequest(query) {
 
 // 查询短信发送记录列表
 export function listSmsLog(query) {
+  const prototypeResponse = getResourceCatalogPage('/resources/smsLog', query)
+  if (prototypeResponse) return prototypeResponse
   const { params, data } = buildListRequest(query)
   return request({
     url: `${baseUrl}/getSmsSendLogList`,

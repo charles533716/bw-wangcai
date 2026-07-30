@@ -19,9 +19,20 @@
         <i class="el-icon-present"></i>
         彩金发放记录
       </button>
+      <button
+        type="button"
+        class="ledger-tab ledger-tab--interest"
+        :class="{ 'ledger-tab--active': activeLedgerTab === 'yuebaoInterest' }"
+        @click="switchLedgerTab('yuebaoInterest')"
+      >
+        <i class="el-icon-bank-card"></i>
+        余额宝利息发放记录
+      </button>
     </div>
 
-    <div class="toolbar">
+    <yuebao-interest-ledger v-if="isYuebaoInterestTab" />
+
+    <div v-show="!isYuebaoInterestTab" class="toolbar">
       <div class="toolbar__title">
         <span>{{ pageTitle }}</span>
         <small>{{ pageSubtitle }}</small>
@@ -46,7 +57,7 @@
       </div>
     </div>
 
-    <section class="summary-grid">
+    <section v-show="!isYuebaoInterestTab" class="summary-grid">
       <div class="summary-card">
         <span class="summary-card__label">{{ summaryLabels.headquarters }}</span>
         <strong>{{ summaryText(summary.headquarters, 'packetCount') }}</strong>
@@ -64,7 +75,7 @@
       </div>
     </section>
 
-    <section class="record-panel">
+    <section v-show="!isYuebaoInterestTab" class="record-panel">
       <el-form :inline="true" size="small" :model="queryParams" class="filter-form">
         <el-form-item>
           <el-input
@@ -90,7 +101,12 @@
         <el-form-item v-if="isActivityCashTab">
           <el-select v-model="queryParams.bonusType" clearable placeholder="彩金类型" class="type-select">
             <el-option label="全部彩金类型" value="" />
-            <el-option label="活动彩金" :value="31" />
+            <el-option
+              v-for="item in bonusTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -240,9 +256,17 @@
 </template>
 
 <script>
-import { getActivityCashRecord, getActivityCashSummary, listActivityCashClaims, listActivityCashRecords } from '@/api/funds/activityCashRecord'
+import { getActivityCashRecord, listActivityCashClaims } from '@/api/funds/activityCashRecord'
 import { activateRedPacket, createRedPacket, getRedPacket, getRedPacketSummary, listRedPacketClaims, listRedPacketMembers, listRedPackets } from '@/api/funds/redPacket'
 import { listSiteOptions } from '@/api/site/site'
+import YuebaoInterestLedger from './YuebaoInterestLedger'
+import activityCashMock from './activityCashMock'
+
+const {
+  BONUS_TYPE_OPTIONS,
+  listActivityCashMock,
+  summarizeActivityCashMock
+} = activityCashMock
 
 function defaultQuery() {
   return {
@@ -270,6 +294,7 @@ function defaultRedPacketForm() {
 
 export default {
   name: 'FundsRedPacketRecord',
+  components: { YuebaoInterestLedger },
   data() {
     return {
       loading: false,
@@ -289,6 +314,7 @@ export default {
       memberOptions: [],
       claims: [],
       detail: {},
+      bonusTypeOptions: BONUS_TYPE_OPTIONS,
       redPacketForm: defaultRedPacketForm(),
       summary: {
         headquarters: {},
@@ -307,6 +333,9 @@ export default {
   computed: {
     isActivityCashTab() {
       return this.activeLedgerTab === 'activityCash'
+    },
+    isYuebaoInterestTab() {
+      return this.activeLedgerTab === 'yuebaoInterest'
     },
     pageTitle() {
       return this.isActivityCashTab ? '彩金发放记录' : '红包发放记录'
@@ -343,6 +372,7 @@ export default {
       this.total = 0
       this.detail = {}
       this.claims = []
+      if (tab === 'yuebaoInterest') return
       this.refreshPage()
     },
     refreshPage() {
@@ -362,8 +392,14 @@ export default {
     },
     getList() {
       this.loading = true
-      const request = this.isActivityCashTab ? listActivityCashRecords : listRedPackets
-      request(this.buildParams()).then(res => {
+      if (this.isActivityCashTab) {
+        const result = listActivityCashMock(this.buildParams())
+        this.records = result.rows
+        this.total = result.total
+        this.loading = false
+        return
+      }
+      listRedPackets(this.buildParams()).then(res => {
         this.records = (res && res.rows) || []
         this.total = (res && res.total) || 0
       }).finally(() => {
@@ -371,8 +407,11 @@ export default {
       })
     },
     getSummary() {
-      const request = this.isActivityCashTab ? getActivityCashSummary : getRedPacketSummary
-      request(this.buildParams()).then(res => {
+      if (this.isActivityCashTab) {
+        this.summary = summarizeActivityCashMock(this.buildParams())
+        return
+      }
+      getRedPacketSummary(this.buildParams()).then(res => {
         this.summary = Object.assign({ headquarters: {}, siteAdmin: {}, agent: {} }, (res && res.data) || {})
       })
     },
@@ -541,6 +580,10 @@ export default {
 
 .ledger-tab--cash.ledger-tab--active {
   color: #7c3cff;
+}
+
+.ledger-tab--interest.ledger-tab--active {
+  color: #059669;
 }
 
 .toolbar,

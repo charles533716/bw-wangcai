@@ -51,6 +51,11 @@ module.exports = {
 
   configureWebpack: {
     name: name,
+    performance: {
+      // Vue2 + Element UI 后台原型的合理构建上限，超出时仍会继续告警。
+      maxAssetSize: 1.5 * 1024 * 1024,
+      maxEntrypointSize: 3 * 1024 * 1024
+    },
     resolve: {
       alias: {
         '@': resolve('src')

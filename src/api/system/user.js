@@ -134,3 +134,41 @@ export function deptTreeSelect() {
     method: 'get'
   })
 }
+
+export function getDomain() {
+  return request({
+    url: '/system/user/domain',
+    method: 'get'
+  })
+}
+
+export function getTelegramPromotionLinks() {
+  return request({
+    url: '/system/user/telegramPromotionLinks',
+    method: 'get'
+  })
+}
+
+export function getGoogleAuthQrCode(userName, siteTitle) {
+  return request({
+    url: '/system/user/googleAuth/qrCode',
+    method: 'get',
+    params: { userName, siteTitle }
+  })
+}
+
+export function verifyGoogleCode(googleKey, googleCode) {
+  return request({
+    url: '/system/user/googleAuth/verify',
+    method: 'post',
+    data: { googleKey, googleCode }
+  })
+}
+
+export function updateUserGoogleAuth(data) {
+  return request({
+    url: '/system/user/googleAuth',
+    method: 'put',
+    data
+  })
+}

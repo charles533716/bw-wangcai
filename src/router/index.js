@@ -110,19 +110,6 @@ export const constantRoutes = [
 // 前端本地业务菜单
 export const manualRoutes = [
   {
-    path: '/revisionNotes',
-    component: Layout,
-    meta: { title: '本周需求说明', icon: 'documentation', prepend: true },
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/revisionNotes/index'),
-        name: 'RevisionNotes',
-        meta: { title: '本周需求说明', icon: 'documentation' }
-      }
-    ]
-  },
-  {
     path: '/system',
     component: Layout,
     alwaysShow: true,
@@ -147,7 +134,22 @@ export const manualRoutes = [
         path: 'realNameBinding',
         component: () => import('@/views/member/realNameBinding/index'),
         name: 'MemberRealNameBinding',
+        hidden: true,
         meta: { title: '实名信息绑定记录', icon: 'list' }
+      }
+    ]
+  },
+  {
+    path: '/resources',
+    component: Layout,
+    alwaysShow: true,
+    meta: { title: '资源管理', icon: 'list', mergeByTitle: true, mergeOnly: true },
+    children: [
+      {
+        path: 'gameList',
+        component: () => import('@/views/game/index'),
+        name: 'ResourceGameList',
+        meta: { title: '游戏列表', icon: 'list' }
       }
     ]
   },
@@ -274,6 +276,30 @@ export const manualRoutes = [
         component: () => import('@/views/agent/earningBoard/index'),
         name: 'AgentEarningBoard',
         meta: { title: '代理收益看板', icon: 'chart' }
+      },
+      {
+        path: 'negativeProfitSettlement',
+        component: () => import('@/views/agent/negativeProfitSettlement/index'),
+        name: 'AgentNegativeProfitSettlement',
+        meta: { title: '负盈利代理佣金结算', icon: 'money' }
+      },
+      {
+        path: 'negativeProfitReport',
+        component: () => import('@/views/agent/negativeProfitReport/index'),
+        name: 'AgentNegativeProfitReport',
+        meta: { title: '负盈利代理佣金报表', icon: 'chart' }
+      },
+      {
+        path: 'teamManagement',
+        component: () => import('@/views/agent/placeholder/index'),
+        name: 'AgentTeamManagement',
+        meta: { title: '团队代理管理', icon: 'peoples' }
+      },
+      {
+        path: 'relationChangeRecord',
+        component: () => import('@/views/agent/relationChangeRecord/index'),
+        name: 'AgentRelationChangeRecord',
+        meta: { title: '修改代理关系记录', icon: 'edit' }
       }
     ]
   },
@@ -288,6 +314,20 @@ export const manualRoutes = [
         component: () => import('@/views/report/dropSignAnalysis/index'),
         name: 'DropSignAnalysis',
         meta: { title: '掉签分析', icon: 'phone' }
+      }
+    ]
+  },
+  {
+    path: '/telegram',
+    component: Layout,
+    alwaysShow: true,
+    meta: { title: 'Telegram管理', icon: 'message', mergeByTitle: true },
+    children: [
+      {
+        path: 'config',
+        component: () => import('@/views/telegram/index'),
+        name: 'TelegramConfig',
+        meta: { title: 'telegram配置', icon: 'documentation' }
       }
     ]
   },

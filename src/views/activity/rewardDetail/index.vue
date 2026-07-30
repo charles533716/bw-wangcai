@@ -4,6 +4,24 @@
       <h1 class="page-title">{{ pageTitle }}</h1>
     </section>
 
+    <div v-if="!isManualPayout" class="reward-tabs">
+      <button
+        type="button"
+        :class="['reward-tab', { 'reward-tab--active': activeTab === 'reward' }]"
+        @click="activeTab = 'reward'"
+      >
+        奖励明细
+      </button>
+      <button
+        type="button"
+        :class="['reward-tab', { 'reward-tab--active': activeTab === 'firstDeposit' }]"
+        @click="activeTab = 'firstDeposit'"
+      >
+        首存参与记录
+      </button>
+    </div>
+
+    <div v-show="isManualPayout || activeTab === 'reward'">
     <section class="filter-card">
       <el-form ref="queryForm" :model="queryParams" class="filter-form" @submit.native.prevent>
         <div class="filter-grid">
@@ -308,11 +326,15 @@
         />
       </div>
     </section>
+    </div>
+
+    <first-deposit-participation v-if="!isManualPayout && activeTab === 'firstDeposit'" />
   </div>
 </template>
 
 <script>
 import { getActivityRewardDetailMeta, getActivityRewardDetailSummary, listActivityRewardDetails } from '@/api/activity/rewardDetail'
+import FirstDepositParticipation from './FirstDepositParticipation'
 
 function createDefaultQuery() {
   return {
@@ -401,8 +423,12 @@ function createManualPayoutRows() {
 
 export default {
   name: 'ActivityRewardDetail',
+  components: {
+    FirstDepositParticipation
+  },
   data() {
     return {
+      activeTab: 'reward',
       loading: false,
       exportLoading: false,
       batchPayoutLoading: false,
@@ -780,6 +806,39 @@ export default {
   line-height: 1.2;
   font-weight: 700;
   color: #1f2d3d;
+}
+
+.reward-tabs {
+  display: flex;
+  gap: 28px;
+  margin: -2px 0 14px;
+  padding: 0 2px;
+  border-bottom: 1px solid #dfe7f2;
+}
+
+.reward-tab {
+  position: relative;
+  padding: 0 0 12px;
+  border: 0;
+  background: transparent;
+  color: #56657a;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.reward-tab--active {
+  color: #2f7df6;
+  font-weight: 600;
+}
+
+.reward-tab--active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: #2f7df6;
+  content: '';
 }
 
 .filter-card,

@@ -16,6 +16,11 @@
               回首页
             </router-link>
           </li>
+          <li v-if="permissionPreview">
+            <el-button type="primary" size="small" @click="exitPermissionPreview">
+              退出“{{ permissionPreview.roleName }}”权限预览
+            </el-button>
+          </li>
         </ul>
       </el-col>
       <el-col :span="12">
@@ -27,12 +32,15 @@
 
 <script>
 import errGif from '@/assets/401_images/401.gif'
+import { clearPermissionPreview, getPermissionPreview } from '@/utils/prototypePermission'
+import { resolvePrototypePath } from '@/utils/prototypeBackend'
 
 export default {
   name: 'Page401',
   data() {
     return {
-      errGif: errGif + '?' + +new Date()
+      errGif: errGif + '?' + +new Date(),
+      permissionPreview: getPermissionPreview()
     }
   },
   methods: {
@@ -42,6 +50,10 @@ export default {
       } else {
         this.$router.go(-1)
       }
+    },
+    exitPermissionPreview() {
+      clearPermissionPreview()
+      window.location.href = resolvePrototypePath('/system/role')
     }
   }
 }

@@ -86,3 +86,11 @@ export function getDashboardSiteOptions() {
     method: 'get'
   })
 }
+
+export function getAgentExpenseDetails(params) {
+  return request({
+    url: '/report/dashboard/agent/expense-details',
+    method: 'get',
+    params
+  })
+}

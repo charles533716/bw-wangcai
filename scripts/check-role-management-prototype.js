@@ -4,16 +4,19 @@ const path = require('path')
 const root = path.resolve(__dirname, '..')
 const dataPath = path.join(root, 'src/views/system/role/prototypeData.js')
 const viewPath = path.join(root, 'src/views/system/role/index.vue')
+const catalogPath = path.join(root, 'src/views/system/role/permissionCatalog.js')
+const manifestPath = path.join(root, 'docs/permissions/role-permission-list.md')
 
 const dataSource = fs.readFileSync(dataPath, 'utf8')
 const viewSource = fs.readFileSync(viewPath, 'utf8')
+const catalogSource = fs.readFileSync(catalogPath, 'utf8')
 
 const expectedRoles = [
-  ['1', '超级管理员', 'admin', '2025-08-27 14:15:38'],
-  ['8', '测试角色权限', '测试', '2026-06-25 21:31:46'],
-  ['7', '技术', 'jishu', '2026-02-13 17:56:04'],
-  ['4', '超级权限', '超级权限', '2025-12-30 17:21:05'],
-  ['5', '财务', 'caiwu', '2026-02-12 09:12:34']
+  ['超级管理员', 'admin', '拥有总站后台全部菜单和操作权限'],
+  ['运营人员', 'operator', '负责活动、内容、公告和运营报表等业务'],
+  ['财务人员', 'finance', '负责充值、提款、资金审核及财务报表'],
+  ['风控人员', 'risk', '负责会员风控、风险审核和黑名单管理'],
+  ['客服人员', 'service', '负责会员查询、订单查询和客服处理']
 ]
 
 expectedRoles.forEach(values => {
@@ -26,16 +29,8 @@ expectedRoles.forEach(values => {
 
 const requiredDataTokens = [
   'buildRoleMenuTree',
-  "[M] ",
-  "[C] ",
-  "[F] 查询",
-  "[F] 新增",
-  "[F] 修改",
-  "[F] 删除",
-  "[F] 导出",
-  "实名信息绑定记录",
-  "[F] 实名信息全明文",
-  "[F] 实名信息半脱敏"
+  'mergeStoredRoles',
+  'buildPresetPermissions'
 ]
 
 requiredDataTokens.forEach(token => {
@@ -47,14 +42,49 @@ requiredDataTokens.forEach(token => {
 const requiredViewTokens = [
   'prototypeRoleRows',
   'buildRoleMenuTree',
-  'role-dialog',
   'permission-tree',
-  '菜单权限'
+  '权限配置',
+  '序号',
+  '搜索菜单、页面或权限名称',
+  '全选',
+  '取消全选',
+  '展开全部',
+  '收起全部',
+  '已选择：',
+  '查看',
+  '编辑',
+  '复制',
+  '删除',
+  '启用',
+  '导出权限清单'
 ]
 
 requiredViewTokens.forEach(token => {
   if (!viewSource.includes(token)) {
     throw new Error(`Role view is missing: ${token}`)
+  }
+})
+
+if (!catalogSource.includes('buildPermissionManifest')) {
+  throw new Error('Permission catalog must expose a unified manifest builder.')
+}
+
+if (!fs.existsSync(manifestPath)) {
+  throw new Error('Permission manifest document is missing.')
+}
+
+const manifestSource = fs.readFileSync(manifestPath, 'utf8')
+;[
+  '| 一级菜单 | 二级菜单/页面 | 权限名称 | 权限标识 |',
+  '活动列表',
+  '会员列表',
+  '奖励发放记录',
+  '游戏自动下架日志',
+  '负盈利代理佣金结算',
+  '修改代理关系记录'
+].forEach(token => {
+  if (!manifestSource.includes(token)) {
+    throw new Error(`Permission manifest is missing: ${token}`)
   }
 })
 

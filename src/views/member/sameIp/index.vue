@@ -148,8 +148,6 @@
 <script>
 import { parseTime } from '@/utils/ruoyi'
 import { checkPermi } from '@/utils/permission'
-import { listSite } from '@/api/site/site'
-import { listAdminSameIpMembers, listAdminSameIpSummaries } from '@/api/member/adminMember'
 
 const DEFAULT_STATUS_OPTIONS = [
   { dictLabel: '正常', dictValue: '1' },
@@ -163,6 +161,47 @@ const DEFAULT_QUERY_PARAMS = {
   fromIp: ''
 }
 
+const DEMO_SITES = [
+  { value: '8888', label: '8888/DW体育', name: 'DW体育' },
+  { value: '1001', label: '1001/旺财体育', name: '旺财体育' },
+  { value: '1002', label: '1002/财神体育', name: '财神体育' },
+  { value: '1003', label: '1003/星河体育', name: '星河体育' }
+]
+
+function createSameIpSummaries() {
+  const regions = ['越南/胡志明市', '中国/广东', '越南/河内', '泰国/曼谷']
+  return Array.from({ length: 20 }, (_, index) => {
+    const site = DEMO_SITES[index % DEMO_SITES.length]
+    return {
+      id: index + 1,
+      siteCode: site.value,
+      siteName: site.name,
+      fromIp: `103.${28 + index % 4}.${Math.floor(index / 4) + 10}.${20 + index}`,
+      fromIpRegion: regions[index % regions.length],
+      memberCount: 2 + index % 7
+    }
+  })
+}
+
+function createSameIpMembers(summary) {
+  const count = Number(summary.memberCount) || 0
+  return Array.from({ length: count }, (_, index) => ({
+    id: summary.id * 100 + index + 1,
+    userId: 2000 + summary.id * 10 + index,
+    name: `sameip${String(summary.id).padStart(2, '0')}m${String(index + 1).padStart(2, '0')}`,
+    siteCode: summary.siteCode,
+    siteName: summary.siteName,
+    agentCode: `agent${String(summary.id % 6 + 1).padStart(2, '0')}`,
+    parentAgentName: `代理${summary.id % 6 + 1}`,
+    fromIp: summary.fromIp,
+    fromIpRegion: summary.fromIpRegion,
+    vipLevel: `VIP${index % 5}`,
+    status: index % 6 === 0 ? 0 : 1,
+    regTime: `2026-07-${String(summary.id % 28 + 1).padStart(2, '0')} ${String(8 + index).padStart(2, '0')}:15:00`,
+    lastLoginTime: `2026-07-${String(summary.id % 28 + 1).padStart(2, '0')} ${String(16 + index).padStart(2, '0')}:30:00`
+  }))
+}
+
 export default {
   name: 'MemberSameIpPage',
   data() {
@@ -172,9 +211,10 @@ export default {
       memberDialogVisible: false,
       memberDialogLoading: false,
       memberDialogTitle: '同IP会员详情',
+      allSummaries: createSameIpSummaries(),
       listData: [],
-      total: 0,
-      siteOptions: [],
+      total: 20,
+      siteOptions: DEMO_SITES.map(item => ({ value: item.value, label: item.label })),
       statusOptions: DEFAULT_STATUS_OPTIONS.map(item => ({ ...item })),
       queryParams: { ...DEFAULT_QUERY_PARAMS },
       memberDialogList: [],
@@ -193,27 +233,20 @@ export default {
   },
   methods: {
     getSiteOptions() {
-      listSite({ pageNum: 1, pageSize: 1000 }).then((response) => {
-        const rows = this.extractRows(response)
-        this.siteOptions = rows.map((site) => {
-          const value = site.code || site.siteCode || site.id
-          const code = site.code || site.siteCode || site.id
-          const name = site.nameZn || site.siteName || site.siteNameZn || site.name
-          return {
-            value,
-            label: this.formatSiteCodeName(code, name)
-          }
-        }).filter(item => item.value !== undefined && item.value !== null && item.value !== '')
-      }).catch(() => {
-        this.siteOptions = []
-      })
+      this.siteOptions = DEMO_SITES.map(item => ({ value: item.value, label: item.label }))
     },
     getList() {
       this.listLoading = true
-      listAdminSameIpSummaries(this.buildPageParams(), this.buildQueryPayload()).then((response) => {
-        this.listData = this.extractRows(response)
-        this.total = this.extractTotal(response)
-      }).finally(() => {
+      const siteCode = String(this.queryParams.siteCode || '')
+      const fromIp = String(this.queryParams.fromIp || '').trim()
+      const filtered = this.allSummaries.filter(row =>
+        (!siteCode || String(row.siteCode) === siteCode) &&
+        (!fromIp || row.fromIp.includes(fromIp))
+      )
+      const start = (this.queryParams.pageNum - 1) * this.queryParams.pageSize
+      this.total = filtered.length
+      this.listData = filtered.slice(start, start + this.queryParams.pageSize)
+      this.$nextTick(() => {
         this.listLoading = false
       })
     },
@@ -224,23 +257,15 @@ export default {
         return
       }
       this.memberDialogLoading = true
-      listAdminSameIpMembers(
-        {
-          pageNum: this.memberDialogQuery.pageNum,
-          pageSize: this.memberDialogQuery.pageSize
-        },
-        {
-          fromIp: this.memberDialogQuery.fromIp,
-          siteCode: this.memberDialogQuery.siteCode
-        }
-      ).then((response) => {
-        this.memberDialogList = this.extractRows(response)
-        this.memberDialogTotal = this.extractTotal(response)
-      }).catch(() => {
-        this.memberDialogList = []
-        this.memberDialogTotal = 0
-        this.$modal.msgError('获取同IP会员详情失败')
-      }).finally(() => {
+      const summary = this.allSummaries.find(row =>
+        row.fromIp === this.memberDialogQuery.fromIp &&
+        (!this.memberDialogQuery.siteCode || String(row.siteCode) === String(this.memberDialogQuery.siteCode))
+      )
+      const members = summary ? createSameIpMembers(summary) : []
+      const start = (this.memberDialogQuery.pageNum - 1) * this.memberDialogQuery.pageSize
+      this.memberDialogTotal = members.length
+      this.memberDialogList = members.slice(start, start + this.memberDialogQuery.pageSize)
+      this.$nextTick(() => {
         this.memberDialogLoading = false
       })
     },

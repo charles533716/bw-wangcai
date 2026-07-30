@@ -38,6 +38,10 @@ export function listRedPacketClaims(id) {
   })
 }
 
+export function getRedPacketClaims(id) {
+  return listRedPacketClaims(id)
+}
+
 export function createRedPacket(data) {
   return request({
     url: '/funds/red-packet',

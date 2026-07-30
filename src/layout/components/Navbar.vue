@@ -6,6 +6,10 @@
     <top-nav v-if="topNav" id="topmenu-container" class="topmenu-container" />
 
     <div class="right-menu">
+      <div v-if="permissionPreview" class="permission-preview">
+        <span>权限预览：{{ permissionPreview.roleName }}</span>
+        <button type="button" @click="exitPermissionPreview">退出预览</button>
+      </div>
       <template v-if="device!=='mobile'">
         <search id="header-search" class="right-menu-item" />
 
@@ -73,6 +77,7 @@ import Search from '@/components/HeaderSearch'
 import RuoYiGit from '@/components/RuoYi/Git'
 import RuoYiDoc from '@/components/RuoYi/Doc'
 import { BACKEND_OPTIONS, getBackendMeta, resolvePrototypePath, setBackendContext } from '@/utils/prototypeBackend'
+import { clearPermissionPreview, getPermissionPreview } from '@/utils/prototypePermission'
 
 export default {
   emits: ['setLayout'],
@@ -114,6 +119,11 @@ export default {
       return getBackendMeta(this.backendMode).title
     }
   },
+  data() {
+    return {
+      permissionPreview: getPermissionPreview()
+    }
+  },
   methods: {
     toggleSideBar() {
       this.$store.dispatch('app/toggleSideBar')
@@ -133,6 +143,13 @@ export default {
         this.$message.success(`已切换到${meta.title}`)
         window.location.href = resolvePrototypePath(meta.homePath || '/')
       })
+    },
+    exitPermissionPreview() {
+      clearPermissionPreview()
+      this.$message.success('已退出权限预览')
+      setTimeout(() => {
+        window.location.href = resolvePrototypePath('/system/role')
+      }, 200)
     },
     logout() {
       this.$confirm('确定注销并退出系统吗？', '提示', {
@@ -218,6 +235,30 @@ export default {
       vertical-align: top;
 
       .backend-switch__label {
+        cursor: pointer;
+      }
+    }
+
+    .permission-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 30px;
+      margin: 10px 8px 0 0;
+      padding: 0 10px;
+      color: #8a5b00;
+      font-size: 13px;
+      line-height: 30px;
+      vertical-align: top;
+      background: #fff7e6;
+      border: 1px solid #ffd591;
+      border-radius: 4px;
+
+      button {
+        padding: 0;
+        color: #409eff;
+        background: transparent;
+        border: 0;
         cursor: pointer;
       }
     }

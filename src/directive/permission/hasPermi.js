@@ -4,6 +4,7 @@
  */
 
 import store from '@/store'
+import { hasPrototypePermission, getPermissionPreview } from '@/utils/prototypePermission'
 
 function matchesWildcardPermission(granted, required) {
   if (!granted || !required || granted.indexOf('*') === -1) {
@@ -25,8 +26,11 @@ export default {
 
     if (value && value instanceof Array && value.length > 0) {
       const permissionFlag = value
+      const routePath = vnode.context && vnode.context.$route ? vnode.context.$route.path : ''
 
-      const hasPermissions = permissions.some(permission => {
+      const hasPermissions = getPermissionPreview()
+        ? hasPrototypePermission(permissionFlag, routePath)
+        : permissions.some(permission => {
         return all_permission === permission || permissionFlag.some((required) => {
           return required === permission || matchesWildcardPermission(permission, required)
         })

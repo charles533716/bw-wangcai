@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getResourceCatalogPage } from '@/mock/resourceCatalog'
 
 function normalizeIds(ids) {
   if (Array.isArray(ids)) {
@@ -14,6 +15,8 @@ function normalizeIds(ids) {
 }
 
 export function listGameLine(query) {
+  const prototypeResponse = getResourceCatalogPage('/resources/gameLine', query)
+  if (prototypeResponse) return prototypeResponse
   const pageNum = query && query.pageNum ? query.pageNum : 1
   const pageSize = query && query.pageSize ? query.pageSize : 10
   const data = Object.assign({}, query)

@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getResourceCatalogPage } from '@/mock/resourceCatalog'
 
 const baseUrl = '/api/admin/sms'
 
@@ -16,6 +17,8 @@ function buildListRequest(query) {
 
 // 查询区号配置列表
 export function listAreaCode(query) {
+  const prototypeResponse = getResourceCatalogPage('/resources/areaCode', query)
+  if (prototypeResponse) return prototypeResponse
   const { params, data } = buildListRequest(query)
   return request({
     url: `${baseUrl}/getSmsAreaCodeList`,

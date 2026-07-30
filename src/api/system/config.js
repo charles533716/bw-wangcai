@@ -25,6 +25,13 @@ export function getConfigKey(configKey) {
   })
 }
 
+export function getConfigKeyObj(configKey) {
+  return request({
+    url: '/system/config/configKeyObj/' + configKey,
+    method: 'get'
+  })
+}
+
 // 新增参数配置
 export function addConfig(data) {
   return request({

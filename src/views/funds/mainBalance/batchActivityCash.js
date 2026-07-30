@@ -1,4 +1,6 @@
-const ALLOWED_BONUS_TYPES = ['推广彩金', '活动彩金', '平台彩金']
+const STANDARD_BONUS_TYPES = ['推广彩金', '活动彩金', '平台彩金']
+const OFFLINE_FIRST_DEPOSIT_BONUS = '代理线下首存'
+const ALLOWED_BONUS_TYPES = STANDARD_BONUS_TYPES.concat(OFFLINE_FIRST_DEPOSIT_BONUS)
 
 const DEMO_SITE_CONFIGS = [
   { siteName: '旺财体育', memberPrefix: 'wc_batch_' },
@@ -11,7 +13,7 @@ function createGeneratedDemoValidRows(count) {
     const site = DEMO_SITE_CONFIGS[index % DEMO_SITE_CONFIGS.length]
     return {
       siteName: site.siteName,
-      bonusType: ALLOWED_BONUS_TYPES[index % ALLOWED_BONUS_TYPES.length],
+      bonusType: STANDARD_BONUS_TYPES[index % STANDARD_BONUS_TYPES.length],
       memberAccount: `${site.memberPrefix}${String(index + 1).padStart(4, '0')}`,
       amount: 100 + (index % 20) * 10,
       turnoverMultiple: index % 13
@@ -22,8 +24,19 @@ function createGeneratedDemoValidRows(count) {
 const DEMO_VALID_ROWS = [
   { siteName: '旺财体育', bonusType: '活动彩金', memberAccount: 'wc10086', amount: 500, turnoverMultiple: 12 },
   { siteName: '旺财体育', bonusType: '推广彩金', memberAccount: 'wc10086', amount: 80, turnoverMultiple: 1 },
-  { siteName: 'DW体育', bonusType: '平台彩金', memberAccount: 'dw20008', amount: 120, turnoverMultiple: 0 }
-].concat(createGeneratedDemoValidRows(227))
+  { siteName: 'DW体育', bonusType: '平台彩金', memberAccount: 'dw20008', amount: 120, turnoverMultiple: 0 },
+  { siteName: '旺财体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'wc_offline_normal_0004', amount: 200, turnoverMultiple: 3 },
+  { siteName: 'DW体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'dw_offline_normal_0005', amount: 168, turnoverMultiple: 1 }
+].concat(createGeneratedDemoValidRows(225))
+
+const DEMO_WARNING_ROWS = [
+  { siteName: '旺财体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'wc_offline_0001', amount: 688, turnoverMultiple: 12, latestDepositUsedFirstBonus: true },
+  { siteName: 'DW体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'dw_offline_0002', amount: 500, turnoverMultiple: 8, latestDepositUsedFirstBonus: true },
+  { siteName: '财神体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'cs_offline_0003', amount: 300, turnoverMultiple: 5, latestDepositUsedFirstBonus: true },
+  { siteName: '旺财体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'wc_offline_0004', amount: 200, turnoverMultiple: 3, latestDepositUsedFirstBonus: true },
+  { siteName: 'DW体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'dw_offline_0005', amount: 168, turnoverMultiple: 1, latestDepositUsedFirstBonus: true },
+  { siteName: '财神体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'cs_offline_0006', amount: 100, turnoverMultiple: 0, latestDepositUsedFirstBonus: true }
+]
 
 const SITE_MEMBERS = {
   旺财体育: ['wc10001', 'wc10086', 'wc88888'],
@@ -36,11 +49,17 @@ DEMO_VALID_ROWS.forEach(row => {
     SITE_MEMBERS[row.siteName].push(row.memberAccount)
   }
 })
+DEMO_WARNING_ROWS.forEach(row => {
+  if (!SITE_MEMBERS[row.siteName].includes(row.memberAccount)) {
+    SITE_MEMBERS[row.siteName].push(row.memberAccount)
+  }
+})
 
 const TEMPLATE_ROWS = [
   { siteName: '旺财体育', bonusType: '活动彩金', memberAccount: 'wc10086', amount: 500, turnoverMultiple: 12 },
   { siteName: 'DW体育', bonusType: '推广彩金', memberAccount: 'dw20008', amount: 100.5, turnoverMultiple: 1 },
-  { siteName: '财神体育', bonusType: '平台彩金', memberAccount: 'cs30001', amount: 200, turnoverMultiple: 0 }
+  { siteName: '财神体育', bonusType: '平台彩金', memberAccount: 'cs30001', amount: 200, turnoverMultiple: 0 },
+  { siteName: '旺财体育', bonusType: OFFLINE_FIRST_DEPOSIT_BONUS, memberAccount: 'wc10001', amount: 300, turnoverMultiple: 6 }
 ]
 
 const DEMO_INVALID_ROWS = [
@@ -59,7 +78,7 @@ const DEMO_INVALID_ROWS = [
   { siteName: '旺财体育', bonusType: '活动彩金', memberAccount: 'wc10086', amount: 260, turnoverMultiple: 5 }
 ]
 
-const DEMO_IMPORT_ROWS = DEMO_VALID_ROWS.concat(DEMO_INVALID_ROWS)
+const DEMO_IMPORT_ROWS = DEMO_VALID_ROWS.concat(DEMO_WARNING_ROWS, DEMO_INVALID_ROWS)
 
 function text(value) {
   return String(value === undefined || value === null ? '' : value).trim()
@@ -76,7 +95,8 @@ function normalizeRow(row, index) {
     bonusType: text(row.bonusType),
     memberAccount: text(row.memberAccount),
     amount: row.amount,
-    turnoverMultiple: row.turnoverMultiple
+    turnoverMultiple: row.turnoverMultiple,
+    latestDepositUsedFirstBonus: row.latestDepositUsedFirstBonus === true
   }
 }
 
@@ -99,7 +119,7 @@ function validateBatchActivityCashRows(rows) {
       errors.push('该站点下查询无此会员')
     }
     if (row.bonusType && !ALLOWED_BONUS_TYPES.includes(row.bonusType)) {
-      errors.push('彩金类型仅支持推广彩金、活动彩金、平台彩金')
+      errors.push('彩金类型仅支持推广彩金、活动彩金、平台彩金、代理线下首存')
     }
 
     const amount = Number(row.amount)
@@ -127,19 +147,49 @@ function validateBatchActivityCashRows(rows) {
     }
     if (hasCompleteDuplicateKey) seenKeys.add(key)
 
+    const warning = errors.length === 0 &&
+      row.bonusType === OFFLINE_FIRST_DEPOSIT_BONUS &&
+      row.latestDepositUsedFirstBonus
     return Object.assign({}, row, {
       amount: Number.isFinite(amount) ? amount : row.amount,
       turnoverMultiple: Number.isFinite(turnoverMultiple) ? turnoverMultiple : row.turnoverMultiple,
       errors,
       errorText: errors.join('；'),
-      valid: errors.length === 0
+      valid: errors.length === 0,
+      warning
     })
   })
 
-  const validRows = allRows.filter(row => row.valid)
+  const validRows = allRows.filter(row => row.valid && !row.warning)
+  const warningRows = allRows.filter(row => row.valid && row.warning)
   const invalidRows = allRows.filter(row => !row.valid)
   const validAmount = validRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
-  return { allRows, validRows, invalidRows, validAmount }
+  return { allRows, validRows, warningRows, invalidRows, validAmount }
+}
+
+function rebuildResult(result, updates) {
+  const next = Object.assign({}, result, updates)
+  next.validAmount = next.validRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  return next
+}
+
+function markWarningRowNormal(result, rowNo) {
+  const target = result.warningRows.find(row => row.rowNo === rowNo)
+  if (!target) return result
+  const normalRow = Object.assign({}, target, { warning: false, latestDepositUsedFirstBonus: false })
+  return rebuildResult(result, {
+    allRows: result.allRows.map(row => row.rowNo === rowNo ? normalRow : row),
+    validRows: [normalRow].concat(result.validRows),
+    warningRows: result.warningRows.filter(row => row.rowNo !== rowNo)
+  })
+}
+
+function deleteWarningRow(result, rowNo) {
+  if (!result.warningRows.some(row => row.rowNo === rowNo)) return result
+  return rebuildResult(result, {
+    allRows: result.allRows.filter(row => row.rowNo !== rowNo),
+    warningRows: result.warningRows.filter(row => row.rowNo !== rowNo)
+  })
 }
 
 function paginateBatchRows(rows, page, pageSize) {
@@ -170,5 +220,7 @@ module.exports = {
   getBatchActivityCashDemoRows,
   getBatchActivityCashTemplateRows,
   paginateBatchRows,
-  getBatchRowSequence
+  getBatchRowSequence,
+  markWarningRowNormal,
+  deleteWarningRow
 }

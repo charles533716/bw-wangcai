@@ -8,7 +8,9 @@ const {
   getBatchActivityCashDemoRows,
   getBatchActivityCashTemplateRows,
   paginateBatchRows,
-  getBatchRowSequence
+  getBatchRowSequence,
+  markWarningRowNormal,
+  deleteWarningRow
 } = require(batchModulePath)
 
 function testDuplicateRule() {
@@ -52,7 +54,7 @@ function testDemoAndTemplateRows() {
     '提现所需流水倍数不能为空',
     '查询无此站点',
     '该站点下查询无此会员',
-    '彩金类型仅支持推广彩金、活动彩金、平台彩金',
+    '彩金类型仅支持推广彩金、活动彩金、平台彩金、代理线下首存',
     '彩金金额必须为数字',
     '彩金金额必须大于0',
     '流水倍数必须为数字',
@@ -61,13 +63,33 @@ function testDemoAndTemplateRows() {
   ]
   const actualErrors = demo.invalidRows.map(row => row.errorText)
   assert.strictEqual(demo.validRows.length, 230, '演示导入应包含 230 条正常数据')
+  assert.strictEqual(demo.warningRows.length, 6, '演示导入应包含 6 条代理线下首存警告数据')
   assert.strictEqual(demo.invalidRows.length, 13, '演示导入应保留 13 类异常数据')
-  assert.strictEqual(demo.allRows.length, 243, '演示导入总数应为 243 条')
+  assert.strictEqual(demo.allRows.length, 249, '演示导入总数应为 249 条')
+  assert.strictEqual(demo.validRows[3].bonusType, '代理线下首存', '正常数据第4条应为代理线下首存')
+  assert.strictEqual(demo.validRows[4].bonusType, '代理线下首存', '正常数据第5条应为代理线下首存')
+  assert(demo.warningRows.every(row => row.bonusType === '代理线下首存'), '警告数据彩金类型应全部为代理线下首存')
   assert.deepStrictEqual(actualErrors, expectedErrors, '演示异常数据应覆盖全部场景且每类仅展示一次')
   assert(demo.invalidRows.every(row => row.errors.length === 1), '每条演示异常数据只应对应一个异常原因')
   assert.strictEqual(new Set(actualErrors).size, actualErrors.length, '演示异常原因不应重复')
   assert(templateRows.length >= 3, '示例 Excel 应包含至少三条正确示例')
+  assert(templateRows.some(row => row.bonusType === '代理线下首存'), '示例 Excel 应包含代理线下首存示例')
   assert(demo.validAmount > 0, '正常数据应能汇总彩金金额')
+}
+
+function testWarningRowActions() {
+  const initial = validateBatchActivityCashRows(getBatchActivityCashDemoRows())
+  const warning = initial.warningRows[0]
+  const marked = markWarningRowNormal(initial, warning.rowNo)
+  assert.strictEqual(marked.warningRows.length, 5, '标记正常后警告数据应减少一条')
+  assert.strictEqual(marked.validRows.length, 231, '标记正常后正常数据应增加一条')
+  assert.strictEqual(marked.validRows[0].rowNo, warning.rowNo, '标记正常的数据应排列在正常列表首位')
+  assert.strictEqual(marked.allRows.length, 249, '标记正常不应改变导入总数')
+
+  const removed = deleteWarningRow(initial, warning.rowNo)
+  assert.strictEqual(removed.warningRows.length, 5, '删除后警告数据应减少一条')
+  assert.strictEqual(removed.validRows.length, 230, '删除警告数据不应改变正常数据')
+  assert.strictEqual(removed.allRows.length, 248, '删除警告数据后导入总数应减少一条')
 }
 
 function testPaginationRules() {
@@ -82,12 +104,17 @@ function testPaginationRules() {
 function testBatchInterfaceCopy() {
   const viewPath = path.resolve(__dirname, '../src/views/funds/mainBalance/index.vue')
   const viewSource = fs.readFileSync(viewPath, 'utf8')
-  ;['批量导入', '下载示例Excel', '正常数据', '异常数据', '确认批量发放'].forEach(copy => {
+  ;['批量导入', '下载示例Excel', '正常数据', '警告数据', '异常数据', '确认批量发放（正常数据'].forEach(copy => {
     assert(viewSource.includes(copy), `页面缺少批量导入文案：${copy}`)
   })
-  assert.strictEqual((viewSource.match(/label="序号"/g) || []).length, 2, '正常和异常列表都应展示序号')
-  assert.strictEqual((viewSource.match(/:page-sizes="\[20, 50, 100\]"/g) || []).length, 2, '正常和异常列表都应支持 20、50、100 条分页')
+  assert(viewSource.includes('最新存款订单已参与官网首存活动'), '警告列表应说明官网首存活动冲突风险')
+  assert(viewSource.includes('标记正常'), '警告列表应提供标记正常操作')
+  const markWarningMethod = viewSource.match(/markBatchWarningNormal\(row\) \{[\s\S]*?\n    \},\n    deleteBatchWarning/) || []
+  assert(markWarningMethod[0] && !markWarningMethod[0].includes("this.batchResultTab = 'valid'"), '标记正常后应继续停留在警告数据列表')
+  assert.strictEqual((viewSource.match(/label="序号"/g) || []).length, 3, '正常、警告和异常列表都应展示序号')
+  assert.strictEqual((viewSource.match(/:page-sizes="\[20, 50, 100\]"/g) || []).length, 3, '正常、警告和异常列表都应支持 20、50、100 条分页')
   assert(viewSource.includes('batchValidPageSize: 20'), '正常数据分页默认应为 20 条')
+  assert(viewSource.includes('batchWarningPageSize: 20'), '警告数据分页默认应为 20 条')
   assert(viewSource.includes('batchInvalidPageSize: 20'), '异常数据分页默认应为 20 条')
   assert(/<el-upload[\s\S]*?v-if="!batchImportFileName"/.test(viewSource), '导入完成后应隐藏 Excel 上传区域')
   assert(viewSource.includes('class="batch-reupload"'), '导入完成后应保留紧凑的重新导入入口')
@@ -101,6 +128,11 @@ function testBatchInterfaceCopy() {
   assert.strictEqual((viewSource.match(/领取有效期（天）/g) || []).length >= 2, true, '单笔和批量领取有效期字段名称应包含单位“天”')
   assert.strictEqual(viewSource.includes('class="validity-days-unit"'), false, '领取有效期输入框右侧不应重复展示“天”')
   assert(viewSource.includes('validateValidityDays'), '领取有效期应校验为大于0的整数天数')
+  ;['test001', 'member001', 'laoli001', 'tt001', 'member002'].forEach(account => {
+    assert(viewSource.includes(`targetName: '${account}'`), `单笔会员联想缺少账号：${account}`)
+  })
+  assert(viewSource.includes('requiresOfflineFirstDepositConfirmation'), '单笔代理线下首存应包含风险确认判断')
+  assert(viewSource.includes('当前用户最新存款订单已参与官网首存活动，请确认是否继续发放代理线下首存彩金。'), '单笔风险确认文案应完整')
 }
 
 function testRevisionNoteCopy() {
@@ -125,6 +157,7 @@ function testRevisionNoteCopy() {
 testDuplicateRule()
 testValidationRules()
 testDemoAndTemplateRows()
+testWarningRowActions()
 testPaginationRules()
 testBatchInterfaceCopy()
 testRevisionNoteCopy()

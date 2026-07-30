@@ -238,6 +238,7 @@
             <el-option label="推广彩金" value="promotion" />
             <el-option label="活动彩金" value="activity" />
             <el-option label="平台彩金" value="platform" />
+            <el-option label="代理线下首存" value="agentOfflineFirstDeposit" />
           </el-select>
         </el-form-item>
 
@@ -396,7 +397,7 @@
 
         <template v-if="batchImportFileName">
           <el-alert
-            :title="`文件“${batchImportFileName}”校验完成，正常数据可继续发放，异常数据不会参与发放。`"
+            :title="`文件“${batchImportFileName}”校验完成，正常数据可继续发放，警告数据需确认处理，异常数据不会参与发放。`"
             type="success"
             :closable="false"
             show-icon
@@ -411,6 +412,10 @@
             <div class="batch-stat-item batch-stat-item--success">
               <span>正常数据</span>
               <strong>{{ batchImportResult.validRows.length }}</strong>
+            </div>
+            <div class="batch-stat-item batch-stat-item--warning">
+              <span>警告数据</span>
+              <strong>{{ batchImportResult.warningRows.length }}</strong>
             </div>
             <div class="batch-stat-item batch-stat-item--danger">
               <span>异常数据</span>
@@ -449,6 +454,44 @@
                   :total="batchImportResult.validRows.length"
                   @size-change="handleBatchValidSizeChange"
                   @current-change="handleBatchValidPageChange"
+                />
+              </div>
+            </el-tab-pane>
+            <el-tab-pane :label="`警告数据（${batchImportResult.warningRows.length}）`" name="warning">
+              <div class="batch-warning-copy">
+                以下用户的<strong>最新存款订单已参与官网首存活动，请确认是否继续发放代理线下首存彩金。</strong>
+              </div>
+              <el-table :data="pagedBatchWarningRows" border stripe height="360">
+                <el-table-column label="序号" width="62" align="center">
+                  <template slot-scope="scope">{{ batchSequence(batchWarningPage, batchWarningPageSize, scope.$index) }}</template>
+                </el-table-column>
+                <el-table-column prop="rowNo" label="行号" width="62" align="center" />
+                <el-table-column prop="siteName" label="所属站点" min-width="125" />
+                <el-table-column prop="bonusType" label="彩金类型" min-width="125" />
+                <el-table-column prop="memberAccount" label="会员账号" min-width="130" />
+                <el-table-column prop="amount" label="单会员活动彩金金额" min-width="160" align="right">
+                  <template slot-scope="scope">¥{{ money(scope.row.amount) }}</template>
+                </el-table-column>
+                <el-table-column prop="turnoverMultiple" label="提现所需流水倍数" min-width="145" align="center">
+                  <template slot-scope="scope">{{ scope.row.turnoverMultiple }} 倍</template>
+                </el-table-column>
+                <el-table-column label="操作" width="150" align="center">
+                  <template slot-scope="scope">
+                    <el-button type="text" @click="markBatchWarningNormal(scope.row)">标记正常</el-button>
+                    <el-button type="text" class="batch-delete-action" @click="deleteBatchWarning(scope.row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="batch-table-pagination">
+                <el-pagination
+                  background
+                  layout="total, sizes, prev, pager, next"
+                  :current-page="batchWarningPage"
+                  :page-size="batchWarningPageSize"
+                  :page-sizes="[20, 50, 100]"
+                  :total="batchImportResult.warningRows.length"
+                  @size-change="handleBatchWarningSizeChange"
+                  @current-change="handleBatchWarningPageChange"
                 />
               </div>
             </el-tab-pane>
@@ -549,7 +592,7 @@
               class="batch-submit"
               :loading="batchSubmitting"
               @click="submitBatchActivityCash"
-            >确认批量发放（{{ batchImportResult.validRows.length }}笔）</el-button>
+            >确认批量发放（正常数据{{ batchImportResult.validRows.length }}笔）</el-button>
           </div>
         </template>
       </div>
@@ -567,7 +610,9 @@ const {
   getBatchActivityCashDemoRows,
   getBatchActivityCashTemplateRows,
   paginateBatchRows,
-  getBatchRowSequence
+  getBatchRowSequence,
+  markWarningRowNormal,
+  deleteWarningRow
 } = require('./batchActivityCash')
 
 function defaultRecordQuery() {
@@ -596,7 +641,7 @@ function defaultRedPacketForm() {
 }
 
 function defaultBatchImportResult() {
-  return { allRows: [], validRows: [], invalidRows: [], validAmount: 0 }
+  return { allRows: [], validRows: [], warningRows: [], invalidRows: [], validAmount: 0 }
 }
 
 export default {
@@ -617,6 +662,8 @@ export default {
       batchImportResult: defaultBatchImportResult(),
       batchValidPage: 1,
       batchValidPageSize: 20,
+      batchWarningPage: 1,
+      batchWarningPageSize: 20,
       batchInvalidPage: 1,
       batchInvalidPageSize: 20,
       batchIssueMode: 'now',
@@ -705,6 +752,9 @@ export default {
     },
     pagedBatchValidRows() {
       return paginateBatchRows(this.batchImportResult.validRows, this.batchValidPage, this.batchValidPageSize)
+    },
+    pagedBatchWarningRows() {
+      return paginateBatchRows(this.batchImportResult.warningRows, this.batchWarningPage, this.batchWarningPageSize)
     },
     pagedBatchInvalidRows() {
       return paginateBatchRows(this.batchImportResult.invalidRows, this.batchInvalidPage, this.batchInvalidPageSize)
@@ -804,6 +854,8 @@ export default {
       this.batchImportResult = defaultBatchImportResult()
       this.batchValidPage = 1
       this.batchValidPageSize = 20
+      this.batchWarningPage = 1
+      this.batchWarningPageSize = 20
       this.batchInvalidPage = 1
       this.batchInvalidPageSize = 20
       this.batchIssueMode = 'now'
@@ -826,9 +878,10 @@ export default {
       this.batchImportFileName = name
       this.batchImportResult = validateBatchActivityCashRows(getBatchActivityCashDemoRows())
       this.batchValidPage = 1
+      this.batchWarningPage = 1
       this.batchInvalidPage = 1
-      this.batchResultTab = this.batchImportResult.validRows.length ? 'valid' : 'invalid'
-      this.$message.success(`校验完成：正常 ${this.batchImportResult.validRows.length} 条，异常 ${this.batchImportResult.invalidRows.length} 条`)
+      this.batchResultTab = this.batchImportResult.validRows.length ? 'valid' : (this.batchImportResult.warningRows.length ? 'warning' : 'invalid')
+      this.$message.success(`校验完成：正常 ${this.batchImportResult.validRows.length} 条，警告 ${this.batchImportResult.warningRows.length} 条，异常 ${this.batchImportResult.invalidRows.length} 条`)
     },
     batchSequence(page, pageSize, pageIndex) {
       return getBatchRowSequence(page, pageSize, pageIndex)
@@ -840,12 +893,46 @@ export default {
     handleBatchValidPageChange(page) {
       this.batchValidPage = page
     },
+    handleBatchWarningSizeChange(size) {
+      this.batchWarningPageSize = size
+      this.batchWarningPage = 1
+    },
+    handleBatchWarningPageChange(page) {
+      this.batchWarningPage = page
+    },
     handleBatchInvalidSizeChange(size) {
       this.batchInvalidPageSize = size
       this.batchInvalidPage = 1
     },
     handleBatchInvalidPageChange(page) {
       this.batchInvalidPage = page
+    },
+    markBatchWarningNormal(row) {
+      this.$confirm(
+        `确认将会员“${row.memberAccount}”标记为正常数据并继续参与批量发放吗？`,
+        '确认标记正常',
+        { confirmButtonText: '确认标记', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        this.batchImportResult = markWarningRowNormal(this.batchImportResult, row.rowNo)
+        this.batchValidPage = 1
+        this.adjustBatchWarningPage()
+        this.$message.success('已标记为正常数据，并排列在正常数据列表前列')
+      }).catch(() => {})
+    },
+    deleteBatchWarning(row) {
+      this.$confirm(
+        `确认从本次导入结果中删除会员“${row.memberAccount}”的警告数据吗？`,
+        '确认删除',
+        { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        this.batchImportResult = deleteWarningRow(this.batchImportResult, row.rowNo)
+        this.adjustBatchWarningPage()
+        this.$message.success('警告数据已删除')
+      }).catch(() => {})
+    },
+    adjustBatchWarningPage() {
+      const maxPage = Math.max(1, Math.ceil(this.batchImportResult.warningRows.length / this.batchWarningPageSize))
+      this.batchWarningPage = Math.min(this.batchWarningPage, maxPage)
     },
     setBatchIssueMode(mode) {
       this.batchIssueMode = mode
@@ -903,7 +990,7 @@ export default {
         return
       }
       this.$confirm(
-        `确认按当前配置批量生成 ${count} 笔活动彩金发放订单吗？异常数据不会参与发放。`,
+        `确认按当前配置批量生成 ${count} 笔活动彩金发放订单吗？警告和异常数据不会参与发放。`,
         '确认批量发放',
         { confirmButtonText: '确认发放', cancelButtonText: '取消', type: 'warning' }
       ).then(() => {
@@ -956,12 +1043,31 @@ export default {
         this.memberOptions = []
         return
       }
+      const normalizedKeyword = String(keyword).trim().toLowerCase()
+      const demoMembers = [
+        { targetId: 'test001', targetName: 'test001', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'member001', targetName: 'member001', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'laoli001', targetName: 'laoli001', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'tt001', targetName: 'tt001', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'member002', targetName: 'member002', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'test002', targetName: 'test002', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'laoli002', targetName: 'laoli002', siteCode: this.redPacketForm.siteCode },
+        { targetId: 'charles003', targetName: 'charles003', siteCode: this.redPacketForm.siteCode }
+      ].filter(item => item.targetName.toLowerCase().includes(normalizedKeyword))
       this.memberLoading = true
       listRedPacketMembers({
         siteCode: this.redPacketForm.siteCode,
         keyword
       }).then(res => {
-        this.memberOptions = (res && res.data) || []
+        const responseMembers = (res && res.data) || []
+        const mergedMembers = demoMembers.concat(responseMembers)
+        const seen = new Set()
+        this.memberOptions = mergedMembers.filter(item => {
+          const key = String(item.targetName || item.memberName || item.name || item.targetId || '').toLowerCase()
+          if (!key || seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
       }).finally(() => {
         this.memberLoading = false
       })
@@ -973,16 +1079,39 @@ export default {
           this.$message.warning('请选择发放时间')
           return
         }
-        const payload = this.buildRedPacketPayload()
-        this.redPacketLoading = true
-        const request = this.isActivityCashMode ? createActivityCash(payload) : createRedPacket(payload)
-        request.then(() => {
-          this.$message.success(this.isActivityCashMode ? '活动彩金已发放' : '红包已发放')
-          this.redPacketOpen = false
-          this.refreshPage()
-        }).finally(() => {
-          this.redPacketLoading = false
-        })
+        if (this.requiresOfflineFirstDepositConfirmation()) {
+          this.$confirm(
+            '当前用户最新存款订单已参与官网首存活动，请确认是否继续发放代理线下首存彩金。',
+            '发放确认',
+            {
+              confirmButtonText: '确认继续发放',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          ).then(() => this.performRedPacketSubmit()).catch(() => {})
+          return
+        }
+        this.performRedPacketSubmit()
+      })
+    },
+    requiresOfflineFirstDepositConfirmation() {
+      if (!this.isActivityCashMode || this.redPacketForm.bonusType !== 'agentOfflineFirstDeposit') return false
+      const selected = this.memberOptions.find(item => String(item.targetId) === String(this.redPacketForm.targetMember))
+      const account = selected
+        ? (selected.targetName || selected.memberName || selected.name || selected.targetId)
+        : this.redPacketForm.targetMember
+      return String(account || '').trim().toLowerCase() === 'member002'
+    },
+    performRedPacketSubmit() {
+      const payload = this.buildRedPacketPayload()
+      this.redPacketLoading = true
+      const request = this.isActivityCashMode ? createActivityCash(payload) : createRedPacket(payload)
+      request.then(() => {
+        this.$message.success(this.isActivityCashMode ? '活动彩金已发放' : '红包已发放')
+        this.redPacketOpen = false
+        this.refreshPage()
+      }).finally(() => {
+        this.redPacketLoading = false
       })
     },
     buildRedPacketPayload() {
@@ -1136,7 +1265,7 @@ export default {
 .batch-import-actions { display: flex; align-items: center; gap: 8px; }
 .batch-upload { margin-bottom: 16px; }
 .batch-result-alert { margin-bottom: 14px; }
-.batch-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.batch-stat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .batch-stat-item {
   display: flex; align-items: center; justify-content: space-between; min-height: 68px; padding: 0 16px;
   border: 1px solid #e5ebf3; border-radius: 8px; background: #f8fafc;
@@ -1145,11 +1274,18 @@ export default {
 .batch-stat-item strong { color: #172033; font-size: 24px; }
 .batch-stat-item--success { border-color: #bdebd6; background: #f2fbf7; }
 .batch-stat-item--success strong { color: #059669; }
+.batch-stat-item--warning { border-color: #fbd38d; background: #fffaf0; }
+.batch-stat-item--warning strong { color: #d97706; }
 .batch-stat-item--danger { border-color: #ffd0d6; background: #fff6f7; }
 .batch-stat-item--danger strong { color: #e11d48; }
 .batch-stat-item--amount { border-color: #c7dcff; background: #f2f7ff; }
 .batch-stat-item--amount strong { color: #2563ff; font-size: 20px; }
 .batch-result-tabs { margin-bottom: 16px; }
+.batch-warning-copy {
+  margin-bottom: 10px; padding: 10px 12px; border-left: 3px solid #ef4444;
+  background: #fff5f5; color: #ef4444; font-size: 13px; line-height: 1.6;
+}
+.batch-delete-action { color: #ef4444; }
 .batch-invalid-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #8a98ad; font-size: 13px; }
 .batch-table-pagination { display: flex; justify-content: flex-end; padding-top: 12px; }
 .batch-error-text { color: #e11d48; }

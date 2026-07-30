@@ -5,9 +5,13 @@
         <div class="page-title">掉签分析</div>
         <div class="page-subtitle">识别 iOS 掉签后未再登录的疑似流失用户，辅助运营安排电话召回。</div>
       </div>
-      <el-button type="primary" icon="el-icon-download" :loading="exportLoading" @click="handleExport">
-        导出演示数据
-      </el-button>
+      <div class="head-actions">
+        <el-button icon="el-icon-document" @click="openDropSignRecords">掉签记录</el-button>
+        <el-button type="primary" icon="el-icon-download" :loading="exportLoading" @click="handleExport">
+          导出数据
+        </el-button>
+        <el-button icon="el-icon-folder" disabled>下载文件</el-button>
+      </div>
     </div>
 
     <el-card shadow="never" class="filter-card">
@@ -85,6 +89,43 @@
           <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
+    </el-card>
+
+    <el-card shadow="never" class="node-card">
+      <div class="node-title-row">
+        <strong>掉签时间输入</strong>
+        <span>选择掉签站点并填写掉签时间，生成本次 iOS 掉签节点。</span>
+      </div>
+      <el-form :inline="true" :model="nodeForm" label-width="92px" class="node-form">
+        <el-form-item label="掉签站点" required>
+          <el-select
+            v-model="nodeForm.siteCodes"
+            multiple
+            filterable
+            collapse-tags
+            placeholder="可多选站点"
+            class="node-site-select"
+          >
+            <el-option v-for="item in siteOptions" :key="item.siteCode" :label="item.siteName" :value="item.siteCode" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="掉签时间" required>
+          <el-date-picker
+            v-model="nodeForm.dropSignTime"
+            type="datetime"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            placeholder="请选择掉签时间"
+            class="node-time-picker"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model.trim="nodeForm.remark" maxlength="100" placeholder="选填" class="node-remark" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="el-icon-time" @click="generateDropSignNode">生成掉签节点</el-button>
+        </el-form-item>
+      </el-form>
+      <div class="node-tip">生成后按所选站点更新当前掉签判断，同一会员只保留最新节点记录。</div>
     </el-card>
 
     <div class="summary-grid">
@@ -222,6 +263,26 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog title="掉签记录" :visible.sync="recordVisible" width="790px" append-to-body>
+      <el-table :data="pagedNodeRecords" border stripe>
+        <el-table-column label="掉签站点" prop="siteName" min-width="120" />
+        <el-table-column label="客户端" prop="clientType" width="80" />
+        <el-table-column label="掉签时间" prop="dropSignTime" min-width="165" />
+        <el-table-column label="命中会员数" prop="hitCount" width="105" align="right" />
+        <el-table-column label="创建人" prop="creator" width="100" />
+        <el-table-column label="创建时间" prop="createTime" min-width="165" />
+        <el-table-column label="备注" prop="remark" min-width="100">
+          <template slot-scope="{ row }">{{ showDash(row.remark) }}</template>
+        </el-table-column>
+      </el-table>
+      <pagination
+        v-show="nodeRecords.length > 0"
+        :total="nodeRecords.length"
+        :page.sync="recordPage.pageNum"
+        :limit.sync="recordPage.pageSize"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -238,6 +299,7 @@ import {
 } from './mock'
 
 const STORAGE_KEY = 'master-admin-prototype:drop-sign-analysis:v4'
+const RECORD_STORAGE_KEY = 'master-admin-prototype:drop-sign-node-records:v1'
 
 export default {
   name: 'DropSignAnalysis',
@@ -249,6 +311,17 @@ export default {
       activeRow: null,
       followVisible: false,
       detailVisible: false,
+      recordVisible: false,
+      nodeRecords: [],
+      recordPage: {
+        pageNum: 1,
+        pageSize: 10
+      },
+      nodeForm: {
+        siteCodes: [],
+        dropSignTime: '',
+        remark: ''
+      },
       followForm: {
         followStatus: 'pending',
         followRemark: ''
@@ -280,10 +353,16 @@ export default {
         { label: '已恢复用户数', value: `${all.filter(row => this.signStatusValue(row) === 'recovered').length} 人`, desc: '掉签后已重新登录', className: 'text-green' },
         { label: '待跟进用户数', value: `${all.filter(row => row.followStatus === 'pending').length} 人`, desc: '建议运营优先外呼', className: 'text-amber' }
       ]
+    },
+    pagedNodeRecords() {
+      const start = (this.recordPage.pageNum - 1) * this.recordPage.pageSize
+      return this.nodeRecords.slice(start, start + this.recordPage.pageSize)
     }
   },
   created() {
     this.loadRows()
+    this.loadNodeRecords()
+    this.nodeForm.dropSignTime = this.nowText()
   },
   methods: {
     defaultQuery() {
@@ -317,6 +396,27 @@ export default {
     },
     saveRows() {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.rows))
+    },
+    loadNodeRecords() {
+      const cached = window.localStorage.getItem(RECORD_STORAGE_KEY)
+      if (cached) {
+        try {
+          this.nodeRecords = JSON.parse(cached)
+          return
+        } catch (e) {
+          window.localStorage.removeItem(RECORD_STORAGE_KEY)
+        }
+      }
+      this.nodeRecords = [
+        { id: 1, siteCode: '2222', siteName: '旺财体育', clientType: 'iOS', dropSignTime: '2026-07-29 22:27:23', hitCount: 51, creator: 'admin', createTime: '2026-07-29 23:27:28', remark: '123' },
+        { id: 2, siteCode: '2222', siteName: '旺财体育', clientType: 'iOS', dropSignTime: '2026-07-01 02:00:00', hitCount: 0, creator: 'admin', createTime: '2026-07-01 20:56:42', remark: '' },
+        { id: 3, siteCode: 'SITE002', siteName: 'DW体育', clientType: 'iOS', dropSignTime: '2026-07-01 00:00:00', hitCount: 6, creator: 'admin', createTime: '2026-07-03 14:54:35', remark: '' },
+        { id: 4, siteCode: '2222', siteName: '旺财体育', clientType: 'iOS', dropSignTime: '2026-07-01 00:00:00', hitCount: 14, creator: 'admin', createTime: '2026-07-03 14:54:16', remark: '222' }
+      ]
+      this.saveNodeRecords()
+    },
+    saveNodeRecords() {
+      window.localStorage.setItem(RECORD_STORAGE_KEY, JSON.stringify(this.nodeRecords))
     },
     matchRow(row) {
       const keyword = this.queryParams.keyword.toLowerCase()
@@ -368,6 +468,45 @@ export default {
     openDetail(row) {
       this.activeRow = row
       this.detailVisible = true
+    },
+    openDropSignRecords() {
+      this.recordPage.pageNum = 1
+      this.recordVisible = true
+    },
+    generateDropSignNode() {
+      if (!this.nodeForm.siteCodes.length) {
+        this.$message.warning('请选择掉签站点')
+        return
+      }
+      if (!this.nodeForm.dropSignTime) {
+        this.$message.warning('请选择掉签时间')
+        return
+      }
+      const createTime = this.nowText()
+      const records = this.nodeForm.siteCodes.map(siteCode => {
+        const site = this.siteOptions.find(item => item.siteCode === siteCode)
+        const hitRows = this.rows.filter(row => row.siteCode === siteCode && row.clientType === 'iOS')
+        hitRows.forEach(row => {
+          row.dropSignTime = this.nodeForm.dropSignTime
+        })
+        return {
+          id: Date.now() + Math.random(),
+          siteCode,
+          siteName: site ? site.siteName : siteCode,
+          clientType: 'iOS',
+          dropSignTime: this.nodeForm.dropSignTime,
+          hitCount: hitRows.length,
+          creator: 'admin',
+          createTime,
+          remark: this.nodeForm.remark
+        }
+      })
+      this.nodeRecords = records.concat(this.nodeRecords)
+      this.saveRows()
+      this.saveNodeRecords()
+      this.nodeForm.siteCodes = []
+      this.nodeForm.remark = ''
+      this.$message.success(`已生成 ${records.length} 个掉签节点`)
     },
     handleExport() {
       this.exportLoading = true
@@ -441,6 +580,10 @@ export default {
 .page-head {
   margin-bottom: 14px;
 }
+.head-actions {
+  display: flex;
+  gap: 10px;
+}
 .page-title {
   color: #17233d;
   font-size: 22px;
@@ -453,9 +596,39 @@ export default {
   font-size: 13px;
 }
 .filter-card,
+.node-card,
 .table-card {
   margin-bottom: 14px;
   border-radius: 8px;
+}
+.node-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 14px;
+  color: #17233d;
+}
+.node-title-row span,
+.node-tip {
+  color: #8492a6;
+  font-size: 12px;
+}
+.node-form {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.node-site-select {
+  width: 250px;
+}
+.node-time-picker {
+  width: 220px;
+}
+.node-remark {
+  width: 220px;
+}
+.node-tip {
+  margin-left: 8px;
 }
 .w-select,
 .w-input {

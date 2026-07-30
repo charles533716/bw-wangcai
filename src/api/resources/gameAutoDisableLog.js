@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getResourceCatalogPage, getResourceCatalogRecord } from '@/mock/resourceCatalog'
 
 function cleanParams(params) {
   const result = {}
@@ -24,6 +25,9 @@ function buildListRequest(query) {
 }
 
 export function listGameAutoDisableLog(query) {
+  const prototypeResponse = getResourceCatalogPage('/resources/gameAutoDisableLog', query)
+  if (prototypeResponse) return prototypeResponse
+
   const { params, data } = buildListRequest(query)
   return request({
     url: '/api/admin/game/autoDisableLog/list',
@@ -34,6 +38,9 @@ export function listGameAutoDisableLog(query) {
 }
 
 export function getGameAutoDisableLog(id) {
+  const prototypeResponse = getResourceCatalogRecord('/resources/gameAutoDisableLog', id)
+  if (prototypeResponse) return prototypeResponse
+
   return request({
     url: '/api/admin/game/autoDisableLog/detail',
     method: 'post',

@@ -6,6 +6,8 @@ import ParentView from '@/components/ParentView'
 import InnerLink from '@/layout/components/InnerLink'
 import { deriveHomeContext, normalizeRoleKeys } from '@/utils/homeContext'
 import { getCurrentBackendMode } from '@/utils/prototypeBackend'
+import { filterRoutesForPreview } from '@/utils/prototypePermission'
+import { alignRoutesWithTestEnvironment } from '@/utils/testEnvironmentMenu'
 
 const permission = {
   state: {
@@ -46,12 +48,16 @@ const permission = {
           const roles = normalizeRoleKeys(rootState.user?.roles || [])
           const sdata = JSON.parse(JSON.stringify(res.data))
           const rdata = JSON.parse(JSON.stringify(res.data))
-          const sidebarRoutes = filterAsyncRouter(sdata)
-          const rewriteRoutes = filterAsyncRouter(rdata, false, true)
+          const sidebarRoutes = alignRoutesWithTestEnvironment(filterAsyncRouter(sdata))
+          const rewriteRoutes = alignRoutesWithTestEnvironment(filterAsyncRouter(rdata, false, true))
           const sourceLocalRoutes = backendMode === 'master' ? manualRoutes : (backendManualRoutes[backendMode] || [])
           const localRoutes = filterManualRoutes(cloneRouteTree(sourceLocalRoutes))
-          const sidebarAccessRoutes = mergeRouteTrees(sidebarRoutes, cloneRouteTree(localRoutes))
-          const accessRoutes = mergeRouteTrees(rewriteRoutes, localRoutes)
+          const sidebarAccessRoutes = filterRoutesForPreview(
+            alignRoutesWithTestEnvironment(mergeRouteTrees(sidebarRoutes, cloneRouteTree(localRoutes)))
+          )
+          const accessRoutes = filterRoutesForPreview(
+            alignRoutesWithTestEnvironment(mergeRouteTrees(rewriteRoutes, localRoutes))
+          )
           const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
           accessRoutes.push({ path: '*', redirect: '/404', hidden: true })
           router.addRoutes(asyncRoutes)
@@ -85,6 +91,10 @@ function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
       route.children = filterChildren(route.children)
     }
     if (route.component) {
+      const sourceComponent = route.component
+      if (!['Layout', 'ParentView', 'InnerLink'].includes(sourceComponent)) {
+        route.meta = { ...(route.meta || {}), prototypeComponent: sourceComponent }
+      }
       // Layout ParentView 组件特殊处理
       if (route.component === 'Layout') {
         route.component = Layout
@@ -112,6 +122,72 @@ function normalizeRouteTitle(route = {}) {
   }
   const component = String(route.component || '')
   const routePath = String(route.path || '')
+  if (routePath === '/game') {
+    route.meta.title = '场馆游戏报表'
+    route.meta.icon = 'chart'
+    route.children = [
+      {
+        path: 'venueReport',
+        name: 'VenueSummaryReport',
+        component: 'report/venueSummary/index',
+        meta: { title: '场馆报表', icon: 'chart' }
+      },
+      {
+        path: 'venueGameReport',
+        name: 'VenueGameReport',
+        component: 'report/venueGame/index',
+        meta: { title: '场馆游戏报表', icon: 'chart' }
+      },
+      {
+        path: 'venueMemberProfit',
+        name: 'VenueGameMemberProfitReport',
+        component: 'report/venueMemberProfit/index',
+        meta: { title: '场馆游戏会员盈亏报表', icon: 'chart' }
+      }
+    ]
+  }
+  if (routePath === '/member') {
+    route.meta.title = '会员管理'
+    route.meta.icon = 'peoples'
+    route.children = [
+      {
+        path: 'list',
+        name: 'MemberListPage',
+        component: 'member/list/index',
+        meta: { title: '会员列表', icon: 'user' }
+      },
+      {
+        path: 'sameIp',
+        name: 'MemberSameIpList',
+        component: 'member/sameIp/index',
+        meta: { title: '同IP会员列表', icon: 'peoples' }
+      },
+      {
+        path: 'vip',
+        name: 'MemberVipSettings',
+        component: 'member/vip/index',
+        meta: { title: 'VIP会员设置', icon: 'star' }
+      },
+      {
+        path: 'promotion',
+        name: 'MemberPromotionSettings',
+        component: 'member/promotion/index',
+        meta: { title: '会员推广邀请奖励设置', icon: 'tree' }
+      },
+      {
+        path: 'realNameReview',
+        name: 'MemberRealNameReview',
+        component: 'member/realNameReview/index',
+        meta: { title: '会员实名审核列表', icon: 'user' }
+      },
+      {
+        path: 'withdrawTurnover',
+        name: 'MemberWithdrawTurnover',
+        component: 'member/withdrawTurnover/index',
+        meta: { title: '会员提现流水查询', icon: 'search' }
+      }
+    ]
+  }
   if (routePath === '/activity' && Array.isArray(route.children)) {
     const rewardDetailIndex = route.children.findIndex(child => child.component === 'activity/rewardDetail/index')
     const hasManualPayout = route.children.some(child => String(child.path || '').includes('manualPayout'))
@@ -131,6 +207,13 @@ function normalizeRouteTitle(route = {}) {
     route.children.forEach(child => {
       if (child.meta && child.component === 'activity/manage/index') {
         child.meta.title = '活动列表'
+      }
+      if (
+        child.meta &&
+        child.component === 'activity/rewardDetail/index' &&
+        !String(child.path || '').includes('manualPayout')
+      ) {
+        child.meta.title = '活动奖励明细'
       }
     })
   }
@@ -274,11 +357,12 @@ export function filterDynamicRoutes(routes) {
 }
 
 export const loadView = (view) => {
+  const normalizedView = String(view || '').replace(/\.vue$/, '')
   if (process.env.NODE_ENV === 'development') {
-    return (resolve) => require([`@/views/${view}`], resolve)
+    return (resolve) => require([`@/views/${normalizedView}.vue`], resolve)
   } else {
     // 使用 import 实现生产环境的路由懒加载
-    return () => import(`@/views/${view}`)
+    return () => import(`@/views/${normalizedView}.vue`)
   }
 }
 
