@@ -39,7 +39,7 @@ const DEMO_WARNING_ROWS = [
 ]
 
 const SITE_MEMBERS = {
-  旺财体育: ['wc10001', 'wc10086', 'wc88888'],
+  旺财体育: ['wc10001', 'wc10086', 'wc88888', 'charles003'],
   DW体育: ['dw20001', 'dw20008', 'dw_repeat'],
   财神体育: ['cs30001', 'cs30009', 'cs88888']
 }
@@ -63,6 +63,14 @@ const TEMPLATE_ROWS = [
 ]
 
 const DEMO_INVALID_ROWS = [
+  {
+    siteName: '旺财体育',
+    bonusType: OFFLINE_FIRST_DEPOSIT_BONUS,
+    memberAccount: 'charles003',
+    amount: 200,
+    turnoverMultiple: 3,
+    offlineFirstDepositAlreadyIssued: true
+  },
   { siteName: '', bonusType: '活动彩金', memberAccount: 'wc10001', amount: 100, turnoverMultiple: 1 },
   { siteName: '旺财体育', bonusType: '', memberAccount: 'wc10001', amount: 100, turnoverMultiple: 1 },
   { siteName: '旺财体育', bonusType: '活动彩金', memberAccount: '', amount: 100, turnoverMultiple: 1 },
@@ -96,7 +104,8 @@ function normalizeRow(row, index) {
     memberAccount: text(row.memberAccount),
     amount: row.amount,
     turnoverMultiple: row.turnoverMultiple,
-    latestDepositUsedFirstBonus: row.latestDepositUsedFirstBonus === true
+    latestDepositUsedFirstBonus: row.latestDepositUsedFirstBonus === true,
+    offlineFirstDepositAlreadyIssued: row.offlineFirstDepositAlreadyIssued === true
   }
 }
 
@@ -120,6 +129,12 @@ function validateBatchActivityCashRows(rows) {
     }
     if (row.bonusType && !ALLOWED_BONUS_TYPES.includes(row.bonusType)) {
       errors.push('彩金类型仅支持推广彩金、活动彩金、平台彩金、代理线下首存')
+    }
+    if (
+      row.bonusType === OFFLINE_FIRST_DEPOSIT_BONUS &&
+      row.offlineFirstDepositAlreadyIssued
+    ) {
+      errors.push('当前用户已发放代理线下首存彩金，不可重复发放')
     }
 
     const amount = Number(row.amount)

@@ -47,6 +47,7 @@ function testDemoAndTemplateRows() {
   const demo = validateBatchActivityCashRows(getBatchActivityCashDemoRows())
   const templateRows = getBatchActivityCashTemplateRows()
   const expectedErrors = [
+    '当前用户已发放代理线下首存彩金，不可重复发放',
     '所属站点不能为空',
     '彩金类型不能为空',
     '会员账号不能为空',
@@ -64,8 +65,10 @@ function testDemoAndTemplateRows() {
   const actualErrors = demo.invalidRows.map(row => row.errorText)
   assert.strictEqual(demo.validRows.length, 230, '演示导入应包含 230 条正常数据')
   assert.strictEqual(demo.warningRows.length, 6, '演示导入应包含 6 条代理线下首存警告数据')
-  assert.strictEqual(demo.invalidRows.length, 13, '演示导入应保留 13 类异常数据')
-  assert.strictEqual(demo.allRows.length, 249, '演示导入总数应为 249 条')
+  assert.strictEqual(demo.invalidRows.length, 14, '演示导入应保留 14 类异常数据')
+  assert.strictEqual(demo.allRows.length, 250, '演示导入总数应为 250 条')
+  assert.strictEqual(demo.invalidRows[0].bonusType, '代理线下首存', '重复发放异常彩金类型应为代理线下首存')
+  assert.strictEqual(demo.invalidRows[0].errorText, expectedErrors[0], '重复发放异常应排列在异常数据第一位')
   assert.strictEqual(demo.validRows[3].bonusType, '代理线下首存', '正常数据第4条应为代理线下首存')
   assert.strictEqual(demo.validRows[4].bonusType, '代理线下首存', '正常数据第5条应为代理线下首存')
   assert(demo.warningRows.every(row => row.bonusType === '代理线下首存'), '警告数据彩金类型应全部为代理线下首存')
@@ -84,12 +87,12 @@ function testWarningRowActions() {
   assert.strictEqual(marked.warningRows.length, 5, '标记正常后警告数据应减少一条')
   assert.strictEqual(marked.validRows.length, 231, '标记正常后正常数据应增加一条')
   assert.strictEqual(marked.validRows[0].rowNo, warning.rowNo, '标记正常的数据应排列在正常列表首位')
-  assert.strictEqual(marked.allRows.length, 249, '标记正常不应改变导入总数')
+  assert.strictEqual(marked.allRows.length, 250, '标记正常不应改变导入总数')
 
   const removed = deleteWarningRow(initial, warning.rowNo)
   assert.strictEqual(removed.warningRows.length, 5, '删除后警告数据应减少一条')
   assert.strictEqual(removed.validRows.length, 230, '删除警告数据不应改变正常数据')
-  assert.strictEqual(removed.allRows.length, 248, '删除警告数据后导入总数应减少一条')
+  assert.strictEqual(removed.allRows.length, 249, '删除警告数据后导入总数应减少一条')
 }
 
 function testPaginationRules() {
@@ -133,6 +136,9 @@ function testBatchInterfaceCopy() {
   })
   assert(viewSource.includes('requiresOfflineFirstDepositConfirmation'), '单笔代理线下首存应包含风险确认判断')
   assert(viewSource.includes('当前用户最新存款订单已参与官网首存活动，请确认是否继续发放代理线下首存彩金。'), '单笔风险确认文案应完整')
+  assert(viewSource.includes('isOfflineFirstDepositAlreadyIssued'), '单笔代理线下首存应包含重复发放判断')
+  assert(viewSource.includes('当前用户已发放代理线下首存彩金，不可重复发放。'), '单笔重复发放 Toast 文案应完整')
+  assert(viewSource.includes("=== 'charles003'"), 'charles003 应触发代理线下首存重复发放拦截')
 }
 
 function testRevisionNoteCopy() {

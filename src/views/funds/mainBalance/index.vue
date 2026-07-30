@@ -1079,6 +1079,10 @@ export default {
           this.$message.warning('请选择发放时间')
           return
         }
+        if (this.isOfflineFirstDepositAlreadyIssued()) {
+          this.$message.error('当前用户已发放代理线下首存彩金，不可重复发放。')
+          return
+        }
         if (this.requiresOfflineFirstDepositConfirmation()) {
           this.$confirm(
             '当前用户最新存款订单已参与官网首存活动，请确认是否继续发放代理线下首存彩金。',
@@ -1094,13 +1098,19 @@ export default {
         this.performRedPacketSubmit()
       })
     },
-    requiresOfflineFirstDepositConfirmation() {
-      if (!this.isActivityCashMode || this.redPacketForm.bonusType !== 'agentOfflineFirstDeposit') return false
+    selectedMemberAccount() {
       const selected = this.memberOptions.find(item => String(item.targetId) === String(this.redPacketForm.targetMember))
-      const account = selected
+      return selected
         ? (selected.targetName || selected.memberName || selected.name || selected.targetId)
         : this.redPacketForm.targetMember
-      return String(account || '').trim().toLowerCase() === 'member002'
+    },
+    isOfflineFirstDepositAlreadyIssued() {
+      if (!this.isActivityCashMode || this.redPacketForm.bonusType !== 'agentOfflineFirstDeposit') return false
+      return String(this.selectedMemberAccount() || '').trim().toLowerCase() === 'charles003'
+    },
+    requiresOfflineFirstDepositConfirmation() {
+      if (!this.isActivityCashMode || this.redPacketForm.bonusType !== 'agentOfflineFirstDeposit') return false
+      return String(this.selectedMemberAccount() || '').trim().toLowerCase() === 'member002'
     },
     performRedPacketSubmit() {
       const payload = this.buildRedPacketPayload()
