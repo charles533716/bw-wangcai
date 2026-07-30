@@ -5,6 +5,7 @@ Vue.use(Router)
 
 /* Layout */
 import Layout from '@/layout'
+import ParentView from '@/components/ParentView'
 
 /**
  * Note: 路由配置项
@@ -116,11 +117,48 @@ export const manualRoutes = [
     meta: { title: '系统管理', icon: 'system', mergeByTitle: true, mergeOnly: true },
     children: [
       {
+        path: 'message',
+        component: () => import('@/views/message/index'),
+        name: 'SystemMessage',
+        permissions: ['system:message:list'],
+        meta: { title: '站内信管理', icon: 'message' }
+      },
+      {
+        path: 'log',
+        component: ParentView,
+        name: 'SystemLog',
+        redirect: 'noRedirect',
+        alwaysShow: true,
+        meta: { title: '日志管理', icon: 'log' },
+        children: [
+          {
+            path: 'operlog',
+            component: () => import('@/views/monitor/operlog/index'),
+            name: 'SystemOperlog',
+            permissions: ['monitor:operlog:list'],
+            meta: { title: '管理员操作日志', icon: 'form' }
+          },
+          {
+            path: 'logininfor',
+            component: () => import('@/views/monitor/logininfor/index'),
+            name: 'SystemLogininfor',
+            permissions: ['monitor:logininfor:list'],
+            meta: { title: '登录日志', icon: 'logininfor' }
+          }
+        ]
+      },
+      {
         path: 'feedback',
         component: () => import('@/views/system/feedback/index'),
         name: 'SystemFeedback',
         permissions: ['system:feedback:list'],
         meta: { title: '意见反馈', icon: 'message' }
+      },
+      {
+        path: 'maintenance',
+        component: () => import('@/views/system/placeholder/index'),
+        name: 'SystemMaintenance',
+        meta: { title: '系统维护管理', icon: 'monitor' }
       }
     ]
   },

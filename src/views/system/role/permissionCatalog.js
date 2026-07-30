@@ -100,7 +100,28 @@ const ACTION_LABELS = {
   apply: '申请',
   sort: '调整排序',
   fulltext: '实名信息全明文',
-  masked: '实名信息半脱敏'
+  masked: '实名信息半脱敏',
+  copy: '复制',
+  permission: '配置权限',
+  confirm: '确认发放',
+  records: '查看记录',
+  'batch-grant': '批量发放',
+  'manual-unlock': '人工解锁',
+  'refresh-turnover': '刷新流水',
+  'start-maintenance': '开启维护',
+  'stop-maintenance': '停止维护',
+  'batch-start-maintenance': '批量开启维护',
+  'batch-stop-maintenance': '批量停止维护',
+  'authorize-site': '授权站点',
+  'revoke-site': '取消授权',
+  'batch-import': '批量导入',
+  'grant-bonus': '发放红利',
+  'download-template': '下载模板',
+  'create-whitelist': '新增白名单',
+  'delete-whitelist': '删除白名单',
+  'mark-normal': '标记正常',
+  'no-grant': '不发放',
+  'modify-grant': '修改发放'
 }
 
 const TITLE_OVERRIDES = {
@@ -127,6 +148,19 @@ const TITLE_OVERRIDES = {
     ['config', '余额宝规则配置'],
     ['export', '导出']
   ],
+  红利管理: [
+    ['grant-bonus', '发放红利'],
+    ['batch-import', '批量导入'],
+    ['download-template', '下载模板'],
+    ['upload', '上传文件'],
+    ['export', '导出历史记录']
+  ],
+  奖励发放记录: [
+    ['grant', '发放红包'],
+    ['batch-import', '批量导入活动彩金'],
+    ['detail', '查看详情'],
+    ['export', '导出']
+  ],
   会员列表: [
     ['detail', '查看详情'],
     ['edit', '编辑'],
@@ -151,6 +185,14 @@ const TITLE_OVERRIDES = {
     ['detail', '查看详情'],
     ['export', '导出']
   ],
+  游戏列表: [
+    ['create', '新增游戏'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['sync', '同步'],
+    ['status', '启用/禁用'],
+    ['export', '导出']
+  ],
   负盈利代理佣金结算: [
     ['export', '导出'],
     ['confirm', '确认发放'],
@@ -172,6 +214,60 @@ const TITLE_OVERRIDES = {
     ['delete', '删除'],
     ['status', '启用/禁用'],
     ['export', '导出']
+  ],
+  风控类型: [
+    ['create', '新增风控类型'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['status', '启用/禁用'],
+    ['export', '导出']
+  ],
+  风控规则: [
+    ['create', '新增规则'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['status', '启用/禁用'],
+    ['export', '导出']
+  ],
+  风控记录: [
+    ['detail', '查看详情'],
+    ['freeze', '封禁用户'],
+    ['unfreeze', '解封用户'],
+    ['export', '导出']
+  ],
+  会员黑名单: [
+    ['detail', '查看会员及风控记录'],
+    ['freeze', '封禁'],
+    ['unfreeze', '解封']
+  ],
+  IP白名单管理: [
+    ['create', '新增IP白名单'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['status', '启用/禁用']
+  ],
+  用户白名单管理: [
+    ['create', '新增用户白名单'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['status', '启用/禁用']
+  ],
+  系统维护管理: [
+    ['start-maintenance', '开启维护'],
+    ['stop-maintenance', '停止维护'],
+    ['batch-start-maintenance', '批量开启维护'],
+    ['batch-stop-maintenance', '批量停止维护'],
+    ['create-whitelist', '新增系统维护白名单用户'],
+    ['delete-whitelist', '删除系统维护白名单用户']
+  ],
+  站内信: [
+    ['create', '新增站内信模板'],
+    ['edit', '修改站内信模板'],
+    ['delete', '删除'],
+    ['authorize-site', '授权站点'],
+    ['revoke-site', '取消授权'],
+    ['detail', '查看应用站点'],
+    ['status', '启用/禁用']
   ],
   角色管理: [
     ['create', '新增角色'],

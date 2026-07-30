@@ -4,6 +4,9 @@
       <el-form-item label="角色名称" prop="roleName">
         <el-input v-model="queryParams.roleName" clearable placeholder="请输入角色名称" @keyup.enter.native="handleQuery" />
       </el-form-item>
+      <el-form-item label="权限字符" prop="roleKey">
+        <el-input v-model="queryParams.roleKey" clearable placeholder="请输入权限字符" @keyup.enter.native="handleQuery" />
+      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" clearable placeholder="全部状态">
           <el-option label="启用" value="0" />
@@ -17,8 +20,9 @@
     </el-form>
 
     <div class="table-toolbar">
-      <el-button size="small" icon="el-icon-download" @click="exportPermissionCatalog">导出权限清单</el-button>
-      <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">新增角色</el-button>
+      <el-button v-hasPermi="['system:role:export']" size="small" icon="el-icon-view" @click="openPermissionManifest">查看权限清单</el-button>
+      <el-button v-hasPermi="['system:role:export']" size="small" icon="el-icon-download" @click="exportPermissionCatalog">导出权限清单</el-button>
+      <el-button v-hasPermi="['system:role:add']" type="primary" size="small" icon="el-icon-plus" @click="handleAdd">新增角色</el-button>
     </div>
 
     <el-table v-loading="loading" :data="roleList" border>
@@ -28,22 +32,24 @@
         </template>
       </el-table-column>
       <el-table-column label="角色名称" prop="roleName" min-width="130" />
+      <el-table-column label="权限字符" prop="roleKey" min-width="140" />
+      <el-table-column label="角色顺序" prop="roleSort" width="100" align="center" />
       <el-table-column label="角色描述" prop="remark" min-width="260" show-overflow-tooltip />
       <el-table-column label="用户数量" prop="userCount" width="100" align="center" />
       <el-table-column label="状态" width="110" align="center">
         <template slot-scope="{ row }">
-          <el-switch v-model="row.status" active-value="0" inactive-value="1" :disabled="row.locked" @change="handleStatusChange(row)" />
+          <el-switch v-hasPermi="['system:role:edit']" v-model="row.status" active-value="0" inactive-value="1" :disabled="row.locked" @change="handleStatusChange(row)" />
         </template>
       </el-table-column>
       <el-table-column label="创建时间" prop="createTime" width="170" align="center" />
       <el-table-column label="更新时间" prop="updateTime" width="170" align="center" />
       <el-table-column label="操作" width="300" align="center" fixed="right">
         <template slot-scope="{ row }">
-          <el-button type="text" @click="handleView(row)">查看</el-button>
-          <el-button type="text" :disabled="row.locked" @click="handleUpdate(row)">编辑</el-button>
-          <el-button type="text" @click="handleCopy(row)">复制</el-button>
-          <el-button type="text" class="danger-action" :disabled="row.locked" @click="handleDelete(row)">删除</el-button>
-          <el-button type="text" :disabled="row.locked" @click="handleStatusChangeFromAction(row)">
+          <el-button v-hasPermi="['system:role:query']" type="text" @click="handleView(row)">查看</el-button>
+          <el-button v-hasPermi="['system:role:edit']" type="text" :disabled="row.locked" @click="handleUpdate(row)">编辑</el-button>
+          <el-button v-hasPermi="['system:role:add']" type="text" @click="handleCopy(row)">复制</el-button>
+          <el-button v-hasPermi="['system:role:remove']" type="text" class="danger-action" :disabled="row.locked" @click="handleDelete(row)">删除</el-button>
+          <el-button v-hasPermi="['system:role:edit']" type="text" :disabled="row.locked" @click="handleStatusChangeFromAction(row)">
             {{ row.status === '0' ? '禁用' : '启用' }}
           </el-button>
         </template>
@@ -58,7 +64,20 @@
           <el-form-item label="角色名称" prop="roleName">
             <el-input v-model="form.roleName" :disabled="formMode === 'view'" placeholder="请输入角色名称" />
           </el-form-item>
-          <el-form-item label="角色状态">
+          <el-form-item label="权限字符" prop="roleKey">
+            <el-input v-model="form.roleKey" :disabled="formMode === 'view'" placeholder="请输入权限字符" />
+          </el-form-item>
+          <el-form-item label="角色顺序" prop="roleSort">
+            <el-input-number
+              v-model="form.roleSort"
+              controls-position="right"
+              :min="1"
+              :max="999"
+              :disabled="formMode === 'view'"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
             <el-radio-group v-model="form.status" :disabled="formMode === 'view'">
               <el-radio label="0">启用</el-radio>
               <el-radio label="1">禁用</el-radio>
@@ -98,7 +117,7 @@
               :expand-on-click-node="false"
               :check-strictly="false"
               :default-expanded-keys="defaultExpandedMenuKeys"
-              @check-change="handlePermissionCheck"
+              @check="handlePermissionCheck"
             >
               <span slot-scope="{ data }" class="permission-node">
                 <span>{{ data.label }}</span>
@@ -112,6 +131,34 @@
         <el-button v-if="formMode === 'view'" type="primary" @click="applyRolePreview">应用此角色预览</el-button>
         <el-button v-else type="primary" @click="submitForm">保存</el-button>
         <el-button @click="cancel">关闭</el-button>
+      </div>
+    </el-dialog>
+
+    <el-dialog title="角色权限清单" :visible.sync="permissionManifestVisible" width="960px" append-to-body>
+      <div class="manifest-toolbar">
+        <el-input
+          v-model="permissionManifestKeyword"
+          prefix-icon="el-icon-search"
+          clearable
+          placeholder="搜索一级菜单、页面、权限名称或权限标识"
+        />
+        <span>
+          覆盖 {{ permissionValidation.pageCount }} 个页面，
+          共 {{ filteredPermissionManifestRows.length }} 项权限
+        </span>
+        <el-tag v-if="permissionValidation.valid" size="small" type="success">标识校验通过</el-tag>
+        <el-tag v-else size="small" type="danger">存在重复或缺失</el-tag>
+      </div>
+      <el-table :data="filteredPermissionManifestRows" border height="520">
+        <el-table-column prop="firstMenu" label="一级菜单" min-width="130" />
+        <el-table-column prop="page" label="二级菜单/页面" min-width="180" />
+        <el-table-column prop="permissionName" label="权限名称" min-width="150" />
+        <el-table-column prop="permissionCode" label="权限标识" min-width="260">
+          <template slot-scope="{ row }"><code>{{ row.permissionCode }}</code></template>
+        </el-table-column>
+      </el-table>
+      <div slot="footer">
+        <el-button @click="permissionManifestVisible = false">关闭</el-button>
       </div>
     </el-dialog>
   </div>
@@ -130,7 +177,8 @@ import {
   buildPermissionManifest,
   collectPermissionCodes,
   filterPermissionTree,
-  flattenPermissionTree
+  flattenPermissionTree,
+  validatePermissionTree
 } from './permissionCatalog'
 import { applyPermissionPreview } from '@/utils/prototypePermission'
 import { resolvePrototypePath } from '@/utils/prototypeBackend'
@@ -147,17 +195,29 @@ export default {
       total: 0,
       roleList: [],
       prototypeRoleRows: clonePrototypeRoles(),
-      queryParams: { pageNum: 1, pageSize: 10, roleName: '', status: '' },
+      queryParams: { pageNum: 1, pageSize: 10, roleName: '', roleKey: '', status: '' },
       open: false,
       formMode: 'add',
       form: {},
       menuOptions: [],
       permissionKeyword: '',
+      permissionManifestVisible: false,
+      permissionManifestKeyword: '',
+      permissionManifestRows: [],
+      permissionValidation: {
+        valid: true,
+        duplicatePermissions: [],
+        pagesWithoutView: [],
+        permissionCount: 0,
+        pageCount: 0
+      },
       defaultExpandedMenuKeys: [],
       permissionSyncing: false,
       defaultProps: { children: 'children', label: 'label' },
       rules: {
         roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }],
+        roleKey: [{ required: true, message: '权限字符不能为空', trigger: 'blur' }],
+        roleSort: [{ required: true, message: '角色顺序不能为空', trigger: 'change' }],
         remark: [{ required: true, message: '角色描述不能为空', trigger: 'blur' }]
       }
     }
@@ -171,6 +231,14 @@ export default {
     },
     selectedPermissionCount() {
       return (this.form.permissionCodes || []).length
+    },
+    filteredPermissionManifestRows() {
+      const keyword = String(this.permissionManifestKeyword || '').trim().toLowerCase()
+      if (!keyword) return this.permissionManifestRows
+      return this.permissionManifestRows.filter(row => (
+        [row.firstMenu, row.page, row.permissionName, row.permissionCode]
+          .some(value => String(value || '').toLowerCase().includes(keyword))
+      ))
     }
   },
   watch: {
@@ -192,6 +260,10 @@ export default {
     ensurePermissionTree() {
       const routes = this.$store.state.permission.sidebarRouters || []
       this.menuOptions = buildRoleMenuTree(routes)
+      this.permissionValidation = validatePermissionTree(this.menuOptions)
+      if (!this.permissionValidation.valid) {
+        console.warn('角色权限目录校验未通过', this.permissionValidation)
+      }
       this.defaultExpandedMenuKeys = this.menuOptions.slice(0, 4).map(item => item.id)
     },
     resetFormData() {
@@ -199,6 +271,7 @@ export default {
         roleId: undefined,
         roleName: '',
         roleKey: '',
+        roleSort: 1,
         status: '0',
         userCount: 0,
         remark: '',
@@ -244,11 +317,32 @@ export default {
       this.getList()
     },
     resetQuery() {
-      this.queryParams = { pageNum: 1, pageSize: 10, roleName: '', status: '' }
+      this.queryParams = { pageNum: 1, pageSize: 10, roleName: '', roleKey: '', status: '' }
       this.getList()
     },
     getSelectedPermissionCodes() {
+      this.syncPermissionCodesFromTree()
       return [...new Set(this.form.permissionCodes || [])]
+    },
+    syncPermissionCodesFromTree() {
+      if (!this.$refs.permissionTree) return
+      const checkedVisibleCodes = this.$refs.permissionTree
+        .getCheckedNodes(false, false)
+        .filter(node => node.type === 'permission')
+        .map(node => node.permission)
+      if (!String(this.permissionKeyword || '').trim()) {
+        this.form.permissionCodes = [...new Set(checkedVisibleCodes)]
+        return
+      }
+      const visiblePermissionCodes = new Set(
+        flattenPermissionTree(this.filteredMenuOptions, [])
+          .filter(node => node.type === 'permission')
+          .map(node => node.permission)
+      )
+      const mergedCodes = new Set(this.form.permissionCodes || [])
+      visiblePermissionCodes.forEach(code => mergedCodes.delete(code))
+      checkedVisibleCodes.forEach(code => mergedCodes.add(code))
+      this.form.permissionCodes = [...mergedCodes]
     },
     selectAllPermissions() {
       this.form.permissionCodes = collectPermissionCodes(this.menuOptions)
@@ -261,22 +355,33 @@ export default {
     expandAll(expanded) {
       Object.values(this.$refs.permissionTree.store.nodesMap).forEach(node => { node.expanded = expanded })
     },
-    handlePermissionCheck(data, checked) {
-      if (this.permissionSyncing || this.formMode === 'view' || data.type !== 'permission') return
-      const flat = flattenPermissionTree(this.menuOptions, [])
-      const page = flat.find(node => node.type === 'page' && node.routePath === data.routePath)
-      if (!page) return
-      this.permissionSyncing = true
-      const keys = new Set(this.form.permissionCodes || [])
-      if (checked) keys.add(data.permission)
-      else keys.delete(data.permission)
-      if (data.action !== 'view' && checked) keys.add(page.viewPermission)
-      if (data.action === 'view' && !checked) {
-        ;(page.children || []).forEach(child => keys.delete(child.id))
-      }
-      this.$refs.permissionTree.setCheckedKeys([...keys])
-      this.form.permissionCodes = [...keys]
-      this.permissionSyncing = false
+    handlePermissionCheck(data, checkedState) {
+      if (this.permissionSyncing || this.formMode === 'view') return
+      this.$nextTick(() => {
+        if (!this.$refs.permissionTree) return
+        this.permissionSyncing = true
+        const flat = flattenPermissionTree(this.menuOptions, [])
+        const checked = checkedState.checkedKeys.includes(data.id)
+        this.syncPermissionCodesFromTree()
+        const keys = new Set(this.form.permissionCodes || [])
+        if (data.type === 'permission') {
+          const page = flat.find(node => node.type === 'page' && node.routePath === data.routePath)
+          if (page) {
+            if (checked && data.action !== 'view') keys.add(page.viewPermission)
+            if (!checked && data.action === 'view') {
+              ;(page.children || []).forEach(child => keys.delete(child.id))
+            }
+          }
+        }
+        this.form.permissionCodes = [...keys]
+        const visiblePermissionIds = new Set(
+          flattenPermissionTree(this.filteredMenuOptions, []).map(node => node.id)
+        )
+        this.$refs.permissionTree.setCheckedKeys(
+          [...keys].filter(key => visiblePermissionIds.has(key))
+        )
+        this.permissionSyncing = false
+      })
     },
     submitForm() {
       this.$refs.form.validate(valid => {
@@ -333,6 +438,12 @@ export default {
       URL.revokeObjectURL(link.href)
       this.$modal.msgSuccess(`已导出${rows.length - 1}项权限`)
     },
+    openPermissionManifest() {
+      this.ensurePermissionTree()
+      this.permissionManifestRows = buildPermissionManifest(this.menuOptions)
+      this.permissionManifestKeyword = ''
+      this.permissionManifestVisible = true
+    },
     applyRolePreview() {
       const previewRole = {
         ...this.form,
@@ -367,6 +478,10 @@ export default {
 .permission-tree { height: 460px; padding: 10px 12px; overflow: auto; }
 .permission-node { display: flex; align-items: center; gap: 12px; }
 .permission-node code { color: #909399; font-size: 12px; }
+.manifest-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; color: #606266; }
+.manifest-toolbar .el-input { width: 440px; }
+.manifest-toolbar span { margin-left: auto; white-space: nowrap; }
+.manifest-toolbar + .el-table code { color: #606266; font-size: 12px; }
 ::v-deep .role-permission-dialog .el-dialog__body { padding: 18px 24px 10px; }
 ::v-deep .permission-tree .el-tree-node__content { min-height: 30px; }
 ::v-deep .permission-tree--readonly .el-checkbox { pointer-events: none; }

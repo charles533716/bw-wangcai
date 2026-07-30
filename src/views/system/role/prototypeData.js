@@ -15,7 +15,7 @@ export const prototypeRoleRows = [
     createTime: '2025-08-27 14:15:38',
     updateTime: '2026-07-29 09:00:00',
     remark: '拥有总站后台全部菜单和操作权限',
-    permissionCatalogVersion: 2,
+    permissionCatalogVersion: 3,
     preset: true,
     locked: true
   },
@@ -29,7 +29,7 @@ export const prototypeRoleRows = [
     createTime: '2026-01-12 10:20:00',
     updateTime: '2026-07-28 16:42:18',
     remark: '负责活动、内容、公告和运营报表等业务',
-    permissionCatalogVersion: 2,
+    permissionCatalogVersion: 3,
     preset: true
   },
   {
@@ -42,7 +42,7 @@ export const prototypeRoleRows = [
     createTime: '2026-01-15 09:30:00',
     updateTime: '2026-07-28 14:25:36',
     remark: '负责充值、提款、资金审核及财务报表',
-    permissionCatalogVersion: 2,
+    permissionCatalogVersion: 3,
     preset: true
   },
   {
@@ -55,7 +55,7 @@ export const prototypeRoleRows = [
     createTime: '2026-02-03 11:10:00',
     updateTime: '2026-07-27 18:15:42',
     remark: '负责会员风控、风险审核和黑名单管理',
-    permissionCatalogVersion: 2,
+    permissionCatalogVersion: 3,
     preset: true
   },
   {
@@ -68,7 +68,7 @@ export const prototypeRoleRows = [
     createTime: '2026-02-08 13:45:00',
     updateTime: '2026-07-28 11:08:22',
     remark: '负责会员查询、订单查询和客服处理',
-    permissionCatalogVersion: 2,
+    permissionCatalogVersion: 3,
     preset: true
   }
 ]

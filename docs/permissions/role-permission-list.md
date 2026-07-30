@@ -10,7 +10,7 @@
 | 站点管理 | 站点场馆管理 | 查看 | site:venue:view |
 | 站点管理 | 站点素材管理 | 查看 | site:material:view |
 | 财务管理 | 奖励发放记录 | 查看 | finance:reward-record:view |
-| 财务管理 | 余额宝利息发放记录 | 查看 | finance:reward-record:view |
+| 财务管理 | 余额宝利息发放记录 | 配置 | finance:reward-record:config |
 | 运营报表 | 掉签分析 | 查看 | report:drop-analysis:view |
 | Telegram管理 | telegram配置 | 查看 | telegram:config:view |
 | 活动管理 | 活动列表 | 新增活动 | activity:list:create |

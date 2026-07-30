@@ -40,6 +40,16 @@ export const generatedComponentActions = {
       "action": "unlock",
       "label": "解锁",
       "legacy": ""
+    },
+    {
+      "action": "manual-unlock",
+      "label": "人工解锁",
+      "legacy": ""
+    },
+    {
+      "action": "refresh-turnover",
+      "label": "刷新流水",
+      "legacy": ""
     }
   ],
   "activity/rewardDetail/index": [
@@ -227,6 +237,11 @@ export const generatedComponentActions = {
       "legacy": ""
     },
     {
+      "action": "no-grant",
+      "label": "不发放",
+      "legacy": ""
+    },
+    {
       "action": "export",
       "label": "导出",
       "legacy": ""
@@ -239,6 +254,11 @@ export const generatedComponentActions = {
     {
       "action": "download",
       "label": "下载",
+      "legacy": ""
+    },
+    {
+      "action": "modify-grant",
+      "label": "修改发放",
       "legacy": ""
     }
   ],
@@ -1422,11 +1442,6 @@ export const generatedComponentActions = {
       "legacy": "system:menu:edit"
     },
     {
-      "action": "list",
-      "label": "查看",
-      "legacy": "system:user:list"
-    },
-    {
       "action": "delete",
       "label": "删除",
       "legacy": ""
@@ -1522,6 +1537,11 @@ export const generatedComponentActions = {
     }
   ],
   "backends/siteAdmin/system/role/authUser": [
+    {
+      "action": "revoke-site",
+      "label": "取消授权",
+      "legacy": ""
+    },
     {
       "action": "remove",
       "label": "删除",
@@ -1816,6 +1836,28 @@ export const generatedComponentActions = {
       "legacy": "system:account:add"
     }
   ],
+  "funds/bonusManagement/index": [
+    {
+      "action": "export",
+      "label": "导出",
+      "legacy": ""
+    },
+    {
+      "action": "upload",
+      "label": "上传",
+      "legacy": ""
+    },
+    {
+      "action": "download",
+      "label": "下载",
+      "legacy": ""
+    },
+    {
+      "action": "download-template",
+      "label": "下载模板",
+      "legacy": ""
+    }
+  ],
   "funds/center/index": [
     {
       "action": "detail",
@@ -1866,6 +1908,11 @@ export const generatedComponentActions = {
     }
   ],
   "funds/mainBalance/index": [
+    {
+      "action": "mark-normal",
+      "label": "标记正常",
+      "legacy": ""
+    },
     {
       "action": "recharge",
       "label": "补充额度",
@@ -1971,11 +2018,6 @@ export const generatedComponentActions = {
       "action": "create",
       "label": "新增",
       "legacy": ""
-    },
-    {
-      "action": "v3",
-      "label": "v3",
-      "legacy": "master-admin-prototype:pay-channel-settings:v3"
     }
   ],
   "funds/pay/withdrawChannel": [
@@ -1993,11 +2035,6 @@ export const generatedComponentActions = {
       "action": "create",
       "label": "新增",
       "legacy": ""
-    },
-    {
-      "action": "v2",
-      "label": "v2",
-      "legacy": "master-admin-prototype:withdraw-channel-settings:v2"
     }
   ],
   "funds/quotaAdjustment/index": [
@@ -2095,11 +2132,6 @@ export const generatedComponentActions = {
       "action": "download",
       "label": "下载",
       "legacy": ""
-    },
-    {
-      "action": "ss",
-      "label": "ss",
-      "legacy": "HH:mm:ss"
     }
   ],
   "funds/redPacketRecord/index": [
@@ -2415,13 +2447,6 @@ export const generatedComponentActions = {
       "legacy": "module:rebate:add"
     }
   ],
-  "member/sameIp/index": [
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "member:sameIp:query"
-    }
-  ],
   "member/team/index": [
     {
       "action": "edit",
@@ -2706,6 +2731,11 @@ export const generatedComponentActions = {
   ],
   "report/dropSignAnalysis/index": [
     {
+      "action": "records",
+      "label": "查看记录",
+      "legacy": ""
+    },
+    {
       "action": "detail",
       "label": "查看详情",
       "legacy": ""
@@ -2716,19 +2746,14 @@ export const generatedComponentActions = {
       "legacy": ""
     },
     {
-      "action": "download",
-      "label": "下载",
+      "action": "generate",
+      "label": "生成",
       "legacy": ""
     },
     {
-      "action": "v1",
-      "label": "v1",
-      "legacy": "master-admin-prototype:drop-sign-node-records:v1"
-    },
-    {
-      "action": "v4",
-      "label": "v4",
-      "legacy": "master-admin-prototype:drop-sign-analysis:v4"
+      "action": "download",
+      "label": "下载",
+      "legacy": ""
     }
   ],
   "report/funds/index": [
@@ -2841,11 +2866,6 @@ export const generatedComponentActions = {
     }
   ],
   "report/venue/feeDetail/index": [
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "venue:feeDetail:edit"
-    },
     {
       "action": "export",
       "label": "导出",
@@ -3304,6 +3324,11 @@ export const generatedComponentActions = {
       "action": "auth",
       "label": "授权",
       "legacy": "system:messageTemplate:auth"
+    },
+    {
+      "action": "authorize-site",
+      "label": "授权站点",
+      "legacy": ""
     },
     {
       "action": "create",
@@ -3966,11 +3991,6 @@ export const generatedComponentActions = {
       "legacy": "system:menu:edit"
     },
     {
-      "action": "list",
-      "label": "查看",
-      "legacy": "system:user:list"
-    },
-    {
       "action": "delete",
       "label": "删除",
       "legacy": ""
@@ -4023,6 +4043,43 @@ export const generatedComponentActions = {
       "legacy": "system:notice:add"
     }
   ],
+  "system/placeholder/index": [
+    {
+      "action": "start-maintenance",
+      "label": "开启维护",
+      "legacy": ""
+    },
+    {
+      "action": "batch-start-maintenance",
+      "label": "批量开启维护",
+      "legacy": ""
+    },
+    {
+      "action": "batch-stop-maintenance",
+      "label": "批量停止维护",
+      "legacy": ""
+    },
+    {
+      "action": "delete",
+      "label": "删除",
+      "legacy": ""
+    },
+    {
+      "action": "stop-maintenance",
+      "label": "停止维护",
+      "legacy": ""
+    },
+    {
+      "action": "create",
+      "label": "新增",
+      "legacy": ""
+    },
+    {
+      "action": "create-whitelist",
+      "label": "新增系统维护白名单用户",
+      "legacy": ""
+    }
+  ],
   "system/post/index": [
     {
       "action": "edit",
@@ -4067,6 +4124,11 @@ export const generatedComponentActions = {
   ],
   "system/role/authUser": [
     {
+      "action": "revoke-site",
+      "label": "取消授权",
+      "legacy": ""
+    },
+    {
       "action": "remove",
       "label": "删除",
       "legacy": "system:role:remove"
@@ -4075,1053 +4137,6 @@ export const generatedComponentActions = {
       "action": "add",
       "label": "新增",
       "legacy": "system:role:add"
-    }
-  ],
-  "system/role/generatedPermissionActions": [
-    {
-      "action": "bind",
-      "label": "绑定",
-      "legacy": "resources:gameGroup:bind"
-    },
-    {
-      "action": "save",
-      "label": "保存",
-      "legacy": "depositWithdrawFee:setting:save"
-    },
-    {
-      "action": "remark",
-      "label": "备注",
-      "legacy": "funds:deposit:remark"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "activity:manage:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "depositWithdrawFee:template:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "funds:nexusAddress:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "funds:operationExpense:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "funds:redpacket:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "game:config:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "game:site:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "game:siteResource:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "member:agent:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "member:promotion:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "member:team:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "member:user:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "module:rebate:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "monitor:job:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:appVersion:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:areaCode:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:gameBase:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:gameCurrency:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:gameFactory:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:gameGroup:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:gameLine:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:realNameChannel:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:skin:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "resources:smsChannel:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:account:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:commission:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:config:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:dept:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:dict:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:game:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:menu:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:message:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:messageTemplate:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:notice:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:post:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:role:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:skin:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:user:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "system:venue:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "telegram:config:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "tool:gen:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "turnover:config:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "turnover:withdraw:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "venue:feeConfig:edit"
-    },
-    {
-      "action": "edit",
-      "label": "编辑",
-      "legacy": "venue:feeDetail:edit"
-    },
-    {
-      "action": "recharge",
-      "label": "补充额度",
-      "legacy": "funds:mainBalance:recharge"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "bet:records:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "funds:deposit:query"
-    },
-    {
-      "action": "view",
-      "label": "查看",
-      "legacy": "funds:deposit:view"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "funds:nexusAddress:query"
-    },
-    {
-      "action": "view",
-      "label": "查看",
-      "legacy": "funds:record:view"
-    },
-    {
-      "action": "view",
-      "label": "查看",
-      "legacy": "funds:withdraw:view"
-    },
-    {
-      "action": "list",
-      "label": "查看",
-      "legacy": "game:config:list"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "game:site:publish:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "game:site:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "member:agent:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "member:sameIp:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "monitor:job:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "monitor:operlog:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "resources:gameAutoDisableLog:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "system:feedback:query"
-    },
-    {
-      "action": "query",
-      "label": "查看",
-      "legacy": "system:message:query"
-    },
-    {
-      "action": "list",
-      "label": "查看",
-      "legacy": "system:user:list"
-    },
-    {
-      "action": "detail",
-      "label": "查看详情",
-      "legacy": "system:gameBet:detail"
-    },
-    {
-      "action": "recall",
-      "label": "撤回",
-      "legacy": "system:message:recall"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "agent:commission:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "agent:reversalRepayment:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "agent:reversalStats:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "bet:records:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "depositWithdrawFee:report:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "funds:depositWithdrawRecord:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "funds:mainBalance:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "funds:quotaAdjustment:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "funds:record:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "funds:redpacket:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "game:report:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "game:site:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "member:agent:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "monitor:job:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "monitor:logininfor:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "monitor:operlog:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "resources:gameAutoDisableLog:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:agent:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:config:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:dict:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:feedback:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:gameBet:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:message:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:post:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:role:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "system:user:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "telegram:config:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "venue:agentFeeDetail:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "venue:feeDetail:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "vip:bonus:export"
-    },
-    {
-      "action": "export",
-      "label": "导出",
-      "legacy": "vip:rebate:export"
-    },
-    {
-      "action": "import",
-      "label": "导入",
-      "legacy": "funds:nexusAddress:import"
-    },
-    {
-      "action": "import",
-      "label": "导入",
-      "legacy": "system:user:import"
-    },
-    {
-      "action": "import",
-      "label": "导入",
-      "legacy": "tool:gen:import"
-    },
-    {
-      "action": "adjust",
-      "label": "调整余额",
-      "legacy": "funds:quotaAdjustment:adjust"
-    },
-    {
-      "action": "grant",
-      "label": "发放",
-      "legacy": "agent:commission:grant"
-    },
-    {
-      "action": "activityCash",
-      "label": "发活动彩金",
-      "legacy": "funds:mainBalance:activityCash"
-    },
-    {
-      "action": "send",
-      "label": "发送",
-      "legacy": "system:message:send"
-    },
-    {
-      "action": "googleAuth",
-      "label": "谷歌验证",
-      "legacy": "system:user:googleAuth"
-    },
-    {
-      "action": "unlock",
-      "label": "解锁",
-      "legacy": "monitor:logininfor:unlock"
-    },
-    {
-      "action": "config",
-      "label": "配置",
-      "legacy": "game:site:config"
-    },
-    {
-      "action": "changeStatus",
-      "label": "启用/禁用",
-      "legacy": "monitor:job:changeStatus"
-    },
-    {
-      "action": "forceLogout",
-      "label": "强制退出",
-      "legacy": "monitor:online:forceLogout"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "bet:records:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "depositWithdrawFee:template:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "funds:nexusAddress:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "game:config:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "game:site:publish:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "game:site:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "game:siteResource:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "member:agent:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "member:team:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "member:user:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "module:rebate:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "monitor:job:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "monitor:logininfor:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "monitor:operlog:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:appVersion:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:areaCode:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:gameBase:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:gameCurrency:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:gameFactory:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:gameGroup:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:gameLine:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:realNameChannel:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:skin:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "resources:smsChannel:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:account:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:commission:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:config:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:dept:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:dict:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:game:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:menu:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:message:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:messageTemplate:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:notice:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:post:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:role:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:skin:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:user:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "system:venue:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "telegram:config:remove"
-    },
-    {
-      "action": "remove",
-      "label": "删除",
-      "legacy": "tool:gen:remove"
-    },
-    {
-      "action": "apply",
-      "label": "申请",
-      "legacy": "game:site:apply"
-    },
-    {
-      "action": "reject",
-      "label": "审核拒绝",
-      "legacy": "funds:deposit:reject"
-    },
-    {
-      "action": "approve",
-      "label": "审核通过",
-      "legacy": "funds:deposit:approve"
-    },
-    {
-      "action": "approve",
-      "label": "审核通过",
-      "legacy": "funds:withdraw:approve"
-    },
-    {
-      "action": "approve",
-      "label": "审核通过",
-      "legacy": "game:site:approve"
-    },
-    {
-      "action": "code",
-      "label": "生成代码",
-      "legacy": "tool:gen:code"
-    },
-    {
-      "action": "release",
-      "label": "释放",
-      "legacy": "funds:nexusAddress:release"
-    },
-    {
-      "action": "auth",
-      "label": "授权",
-      "legacy": "system:messageTemplate:auth"
-    },
-    {
-      "action": "sync",
-      "label": "同步",
-      "legacy": "bet:records:sync"
-    },
-    {
-      "action": "sync",
-      "label": "同步",
-      "legacy": "system:game:sync"
-    },
-    {
-      "action": "complete",
-      "label": "完成",
-      "legacy": "funds:withdraw:complete"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "activity:manage:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "depositWithdrawFee:template:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "funds:deposit:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "funds:redpacket:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "game:config:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "game:site:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "game:site:publish:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "game:siteResource:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "member:agent:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "member:team:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "member:user:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "module:rebate:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "monitor:job:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:appVersion:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:areaCode:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:gameBase:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:gameCurrency:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:gameFactory:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:gameGroup:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:gameLine:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:realNameChannel:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:skin:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "resources:smsChannel:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:account:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:config:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:dept:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:dict:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:game:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:menu:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:message:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:messageTemplate:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:notice:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:post:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:role:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:user:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "system:venue:add"
-    },
-    {
-      "action": "add",
-      "label": "新增",
-      "legacy": "telegram:config:add"
-    },
-    {
-      "action": "preview",
-      "label": "预览",
-      "legacy": "tool:gen:preview"
-    },
-    {
-      "action": "resetPwd",
-      "label": "重置密码",
-      "legacy": "member:agent:resetPwd"
-    },
-    {
-      "action": "resetPwd",
-      "label": "重置密码",
-      "legacy": "system:user:resetPwd"
-    },
-    {
-      "action": "transfer",
-      "label": "转账",
-      "legacy": "funds:withdraw:transfer"
-    },
-    {
-      "action": "reopen",
-      "label": "reopen",
-      "legacy": "system:feedback:reopen"
-    },
-    {
-      "action": "reply",
-      "label": "reply",
-      "legacy": "system:feedback:reply"
-    },
-    {
-      "action": "v2",
-      "label": "v2",
-      "legacy": "master-admin-prototype:withdraw-channel-settings:v2"
-    },
-    {
-      "action": "v3",
-      "label": "v3",
-      "legacy": "master-admin-prototype:pay-channel-settings:v3"
-    },
-    {
-      "action": "v4",
-      "label": "v4",
-      "legacy": "master-admin-prototype:drop-sign-analysis:v4"
     }
   ],
   "system/role/index": [
@@ -5131,9 +4146,24 @@ export const generatedComponentActions = {
       "legacy": ""
     },
     {
+      "action": "edit",
+      "label": "编辑",
+      "legacy": "system:role:edit"
+    },
+    {
+      "action": "query",
+      "label": "查看",
+      "legacy": "system:role:query"
+    },
+    {
       "action": "export",
       "label": "导出",
       "legacy": ""
+    },
+    {
+      "action": "export",
+      "label": "导出",
+      "legacy": "system:role:export"
     },
     {
       "action": "status",
@@ -5146,9 +4176,19 @@ export const generatedComponentActions = {
       "legacy": ""
     },
     {
+      "action": "remove",
+      "label": "删除",
+      "legacy": "system:role:remove"
+    },
+    {
       "action": "create",
       "label": "新增",
       "legacy": ""
+    },
+    {
+      "action": "add",
+      "label": "新增",
+      "legacy": "system:role:add"
     }
   ],
   "system/user/index": [

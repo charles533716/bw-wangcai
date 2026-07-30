@@ -50,6 +50,15 @@
                   @keyup.enter.native="handleQuery"
                 />
               </el-form-item>
+              <el-form-item label="角色名称" prop="roleName">
+                <el-input
+                  v-model="queryParams.roleName"
+                  placeholder="请输入角色名称"
+                  clearable
+                  style="width: 240px"
+                  @keyup.enter.native="handleQuery"
+                />
+              </el-form-item>
               <el-form-item label="手机号码" prop="phonenumber">
                 <el-input
                   v-model="queryParams.phonenumber"
@@ -193,6 +202,14 @@
                 key="deptName"
                 prop="dept.deptName"
                 v-if="columns.deptName.visible"
+                :show-overflow-tooltip="true"
+              />
+              <el-table-column
+                label="角色名称"
+                align="center"
+                key="roleName"
+                prop="roleName"
+                v-if="columns.roleName.visible"
                 :show-overflow-tooltip="true"
               />
               <el-table-column
@@ -526,6 +543,7 @@ export default {
         pageNum: 1,
         pageSize: 10,
         userName: undefined,
+        roleName: undefined,
         phonenumber: undefined,
         status: undefined,
         deptId: undefined
@@ -536,6 +554,7 @@ export default {
         userName: { label: '用户名称', visible: true },
         nickName: { label: '用户昵称', visible: true },
         deptName: { label: '部门', visible: true },
+        roleName: { label: '角色名称', visible: true },
         phonenumber: { label: '手机号码', visible: true },
         status: { label: '状态', visible: true },
         createTime: { label: '创建时间', visible: true }
@@ -597,8 +616,19 @@ export default {
     getList() {
       this.loading = true;
       listUser(this.addDateRange(this.queryParams, this.dateRange)).then((response) => {
-        this.userList = response.rows;
-        this.total = response.total;
+        const fallbackRoles = ['超级管理员', '运营人员', '财务人员', '风控人员', '客服人员'];
+        const rows = (response.rows || []).map((row, index) => {
+          const roleName = row.roleName
+            || (Array.isArray(row.roles)
+              ? row.roles.map(role => role.roleName).filter(Boolean).join('、')
+              : '')
+            || fallbackRoles[index % fallbackRoles.length];
+          return { ...row, roleName };
+        });
+        this.userList = this.queryParams.roleName
+          ? rows.filter(row => row.roleName.includes(this.queryParams.roleName))
+          : rows;
+        this.total = this.queryParams.roleName ? this.userList.length : response.total;
         this.loading = false;
       });
     },

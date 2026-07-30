@@ -55,17 +55,41 @@ const latestPageTokens = [
   '活动奖励明细',
   '手动派彩',
   '余额宝利息发放记录',
+  '红利管理',
   '会员实名审核列表',
   '会员提现流水查询',
   '游戏自动下架日志',
   '负盈利代理佣金结算',
   '负盈利代理佣金报表',
-  '修改代理关系记录'
+  '修改代理关系记录',
+  '风控类型',
+  '风控规则',
+  '风控记录',
+  '会员黑名单',
+  'IP白名单管理',
+  '用户白名单管理',
+  '系统维护管理',
+  '站内信'
 ]
 
 latestPageTokens.forEach(token => {
   if (!catalog.includes(token)) {
     throw new Error(`Latest page permission override is missing: ${token}`)
+  }
+})
+
+;[
+  'manual-unlock',
+  'refresh-turnover',
+  'batch-grant',
+  'start-maintenance',
+  'stop-maintenance',
+  'authorize-site',
+  'batch-import',
+  'grant-bonus'
+].forEach(token => {
+  if (!catalog.includes(token)) {
+    throw new Error(`Special operation permission is missing: ${token}`)
   }
 })
 

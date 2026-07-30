@@ -6,10 +6,12 @@ const dataPath = path.join(root, 'src/views/system/role/prototypeData.js')
 const viewPath = path.join(root, 'src/views/system/role/index.vue')
 const catalogPath = path.join(root, 'src/views/system/role/permissionCatalog.js')
 const manifestPath = path.join(root, 'docs/permissions/role-permission-list.md')
+const userViewPath = path.join(root, 'src/views/system/user/index.vue')
 
 const dataSource = fs.readFileSync(dataPath, 'utf8')
 const viewSource = fs.readFileSync(viewPath, 'utf8')
 const catalogSource = fs.readFileSync(catalogPath, 'utf8')
+const userViewSource = fs.readFileSync(userViewPath, 'utf8')
 
 const expectedRoles = [
   ['超级管理员', 'admin', '拥有总站后台全部菜单和操作权限'],
@@ -45,12 +47,18 @@ const requiredViewTokens = [
   'permission-tree',
   '权限配置',
   '序号',
+  '权限字符',
+  '角色顺序',
   '搜索菜单、页面或权限名称',
   '全选',
   '取消全选',
   '展开全部',
   '收起全部',
   '已选择：',
+  '查看权限清单',
+  'permissionManifestVisible',
+  'syncPermissionCodesFromTree',
+  'getCheckedNodes',
   '查看',
   '编辑',
   '复制',
@@ -65,8 +73,24 @@ requiredViewTokens.forEach(token => {
   }
 })
 
+;[
+  'label="角色名称" prop="roleName"',
+  'key="roleName"',
+  'queryParams.roleName',
+  'columns.roleName',
+  'fallbackRoles'
+].forEach(token => {
+  if (!userViewSource.includes(token)) {
+    throw new Error(`User view is missing: ${token}`)
+  }
+})
+
 if (!catalogSource.includes('buildPermissionManifest')) {
   throw new Error('Permission catalog must expose a unified manifest builder.')
+}
+
+if (!dataSource.includes('permissionCatalogVersion: 3')) {
+  throw new Error('Preset roles must use the latest permission catalog version.')
 }
 
 if (!fs.existsSync(manifestPath)) {

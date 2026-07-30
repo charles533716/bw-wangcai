@@ -242,7 +242,12 @@ const DEFAULT_BONUS_TYPE_OPTIONS = [
   { dictLabel: '活动礼金', dictValue: '0' },
   { dictLabel: '晋升礼金', dictValue: '1' },
   { dictLabel: '周礼金', dictValue: '2' },
-  { dictLabel: '月礼金', dictValue: '3' }
+  { dictLabel: '月礼金', dictValue: '3' },
+  { dictLabel: '活动彩金', dictValue: '4' },
+  { dictLabel: '首充彩金', dictValue: '5' },
+  { dictLabel: '推广彩金', dictValue: '6' },
+  { dictLabel: '平台彩金', dictValue: '7' },
+  { dictLabel: '代理线下首存', dictValue: '8' }
 ]
 
 const DEFAULT_STATUS_OPTIONS = [
@@ -361,15 +366,11 @@ export default {
     },
     async loadDicts() {
       try {
-        const [bonusTypeRes, statusRes] = await Promise.all([
-          this.getDicts('bonus_type'),
+        const [statusRes] = await Promise.all([
           this.getDicts('issuance_status')
         ])
-        const bonusTypeRows = Array.isArray(bonusTypeRes.data) ? bonusTypeRes.data : []
         const statusRows = Array.isArray(statusRes.data) ? statusRes.data : []
-        if (bonusTypeRows.length) {
-          this.bonusTypeOptions = bonusTypeRows
-        }
+        this.bonusTypeOptions = DEFAULT_BONUS_TYPE_OPTIONS.slice()
         if (statusRows.length) {
           this.statusOptions = statusRows
         }
@@ -529,7 +530,12 @@ export default {
         0: 'type-pill--activity',
         1: 'type-pill--upgrade',
         2: 'type-pill--weekly',
-        3: 'type-pill--monthly'
+        3: 'type-pill--monthly',
+        4: 'type-pill--cash',
+        5: 'type-pill--first',
+        6: 'type-pill--promotion',
+        7: 'type-pill--platform',
+        8: 'type-pill--offline'
       }
       return map[String(value)] || 'type-pill--activity'
     },
@@ -839,6 +845,31 @@ export default {
 .type-pill--monthly {
   color: #07a66a;
   background: #e8f8f1;
+}
+
+.type-pill--cash {
+  color: #e86a12;
+  background: #fff0e6;
+}
+
+.type-pill--first {
+  color: #8b5cf6;
+  background: #f2edff;
+}
+
+.type-pill--promotion {
+  color: #0f8a8a;
+  background: #e7f8f8;
+}
+
+.type-pill--platform {
+  color: #64748b;
+  background: #eef2f7;
+}
+
+.type-pill--offline {
+  color: #b45309;
+  background: #fff7d6;
 }
 
 .amount-text {

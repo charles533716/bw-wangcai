@@ -8,6 +8,7 @@ const SITE_MENU_ORDER = ['apply', 'site', 'venue', 'resource']
 const FINANCE_MENU_TITLES = {
   redPacketRecord: '奖励发放记录'
 }
+const FINANCE_BONUS_MANAGEMENT_PATH = 'bonusManagement'
 const REPORT_MENU_ITEMS = {
   marketdata: '市场数据统计表',
   withdrawtransfer: '充提转账统计',
@@ -60,6 +61,58 @@ const AGENT_MENU_ITEMS = {
 }
 const AGENT_MENU_ORDER = Object.keys(AGENT_MENU_ITEMS)
 const AGENT_HIDDEN_PATHS = new Set(['advanceRecords'])
+const RISK_MENU_ITEMS = {
+  type: '风控类型',
+  rule: '风控规则',
+  record: '风控记录',
+  blacklist: '会员黑名单',
+  turnover: '提现流水设置',
+  tags: '风控标签管理',
+  ipWhitelist: 'IP白名单管理',
+  userWhitelist: '用户白名单管理'
+}
+const RISK_MENU_ORDER = Object.keys(RISK_MENU_ITEMS)
+const SYSTEM_MENU_ITEMS = {
+  user: '用户管理',
+  role: '角色管理',
+  menu: '菜单管理',
+  dept: '部门管理',
+  post: '岗位管理',
+  dict: '字典管理',
+  config: '参数设置',
+  notice: '通知公告',
+  message: '站内信管理',
+  log: '日志管理',
+  feedback: '意见反馈',
+  maintenance: '系统维护管理'
+}
+const SYSTEM_MENU_ORDER = Object.keys(SYSTEM_MENU_ITEMS)
+
+function createRiskTurnoverRoute() {
+  return {
+    path: 'turnover',
+    name: 'RiskWithdrawTurnover',
+    component: () => import('@/views/funds/turnover/index'),
+    meta: {
+      title: RISK_MENU_ITEMS.turnover,
+      icon: 'lock',
+      prototypeComponent: 'funds/turnover/index'
+    }
+  }
+}
+
+function createBonusManagementRoute() {
+  return {
+    path: FINANCE_BONUS_MANAGEMENT_PATH,
+    name: 'FundsBonusManagement',
+    component: () => import('@/views/funds/bonusManagement/index'),
+    meta: {
+      title: '红利管理',
+      icon: 'money',
+      prototypeComponent: 'funds/bonusManagement/index'
+    }
+  }
+}
 
 function cloneRoute(route = {}) {
   const nextRoute = {
@@ -98,7 +151,23 @@ export function alignRoutesWithTestEnvironment(routes = []) {
       }
 
       if (nextRoute.path === '/funds') {
-        nextRoute.children = (nextRoute.children || []).map(child => ({
+        const children = nextRoute.children || []
+        const existingBonusRoute = children.find(
+          child => child.path === FINANCE_BONUS_MANAGEMENT_PATH
+        )
+        const financeChildren = children.filter(
+          child => child.path !== FINANCE_BONUS_MANAGEMENT_PATH
+        )
+        const quotaAdjustmentIndex = financeChildren.findIndex(
+          child => child.path === 'quotaAdjustment'
+        )
+        financeChildren.splice(
+          quotaAdjustmentIndex >= 0 ? quotaAdjustmentIndex + 1 : financeChildren.length,
+          0,
+          existingBonusRoute || createBonusManagementRoute()
+        )
+
+        nextRoute.children = financeChildren.map(child => ({
           ...child,
           meta: Object.prototype.hasOwnProperty.call(FINANCE_MENU_TITLES, child.path)
             ? { ...(child.meta || {}), title: FINANCE_MENU_TITLES[child.path] }
@@ -236,6 +305,40 @@ export function alignRoutesWithTestEnvironment(routes = []) {
             meta: {
               ...(child.meta || {}),
               title: AGENT_MENU_ITEMS[child.path]
+            }
+          }))
+        return nextRoute
+      }
+
+      if (nextRoute.path === '/risk') {
+        const children = nextRoute.children || []
+        nextRoute.children = RISK_MENU_ORDER
+          .map(path => {
+            if (path === 'turnover') {
+              return children.find(child => child.path === path) || createRiskTurnoverRoute()
+            }
+            return children.find(child => child.path === path)
+          })
+          .filter(Boolean)
+          .map(child => ({
+            ...child,
+            meta: {
+              ...(child.meta || {}),
+              title: RISK_MENU_ITEMS[child.path]
+            }
+          }))
+        return nextRoute
+      }
+
+      if (nextRoute.path === '/system') {
+        nextRoute.children = SYSTEM_MENU_ORDER
+          .map(path => (nextRoute.children || []).find(child => child.path === path))
+          .filter(Boolean)
+          .map(child => ({
+            ...child,
+            meta: {
+              ...(child.meta || {}),
+              title: SYSTEM_MENU_ITEMS[child.path]
             }
           }))
         return nextRoute
