@@ -257,16 +257,23 @@
 
 <script>
 import { getActivityCashRecord, listActivityCashClaims } from '@/api/funds/activityCashRecord'
-import { activateRedPacket, createRedPacket, getRedPacket, getRedPacketSummary, listRedPacketClaims, listRedPacketMembers, listRedPackets } from '@/api/funds/redPacket'
+import { activateRedPacket, createRedPacket, listRedPacketMembers } from '@/api/funds/redPacket'
 import { listSiteOptions } from '@/api/site/site'
 import YuebaoInterestLedger from './YuebaoInterestLedger'
 import activityCashMock from './activityCashMock'
+import redPacketMock from './redPacketMock'
 
 const {
   BONUS_TYPE_OPTIONS,
   listActivityCashMock,
   summarizeActivityCashMock
 } = activityCashMock
+const {
+  getRedPacketMock,
+  listRedPacketClaimsMock,
+  listRedPacketMock,
+  summarizeRedPacketMock
+} = redPacketMock
 
 function defaultQuery() {
   return {
@@ -399,21 +406,17 @@ export default {
         this.loading = false
         return
       }
-      listRedPackets(this.buildParams()).then(res => {
-        this.records = (res && res.rows) || []
-        this.total = (res && res.total) || 0
-      }).finally(() => {
-        this.loading = false
-      })
+      const result = listRedPacketMock(this.buildParams())
+      this.records = result.rows
+      this.total = result.total
+      this.loading = false
     },
     getSummary() {
       if (this.isActivityCashTab) {
         this.summary = summarizeActivityCashMock(this.buildParams())
         return
       }
-      getRedPacketSummary(this.buildParams()).then(res => {
-        this.summary = Object.assign({ headquarters: {}, siteAdmin: {}, agent: {} }, (res && res.data) || {})
-      })
+      this.summary = summarizeRedPacketMock(this.buildParams())
     },
     loadSites() {
       listSiteOptions({}).then(res => {
@@ -468,8 +471,12 @@ export default {
       })
     },
     openDetail(row) {
-      const request = this.isActivityCashTab ? getActivityCashRecord : getRedPacket
-      request(row.id).then(res => {
+      if (!this.isActivityCashTab) {
+        this.detail = getRedPacketMock(row.id)
+        this.detailOpen = true
+        return
+      }
+      getActivityCashRecord(row.id).then(res => {
         this.detail = (res && res.data) || {}
         this.detailOpen = true
       })
@@ -477,8 +484,12 @@ export default {
     openClaims(row) {
       this.claimsOpen = true
       this.claimsLoading = true
-      const request = this.isActivityCashTab ? listActivityCashClaims : listRedPacketClaims
-      request(row.id).then(res => {
+      if (!this.isActivityCashTab) {
+        this.claims = listRedPacketClaimsMock(row.id)
+        this.claimsLoading = false
+        return
+      }
+      listActivityCashClaims(row.id).then(res => {
         this.claims = (res && res.data) || []
       }).finally(() => {
         this.claimsLoading = false

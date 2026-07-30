@@ -6,6 +6,7 @@ const menuSource = fs.readFileSync(path.join(rootDir, 'src/utils/testEnvironment
 const pageSource = fs.readFileSync(path.join(rootDir, 'src/views/funds/redPacketRecord/index.vue'), 'utf8')
 const interestComponentPath = path.join(rootDir, 'src/views/funds/redPacketRecord/YuebaoInterestLedger.vue')
 const activityCashMockPath = path.join(rootDir, 'src/views/funds/redPacketRecord/activityCashMock.js')
+const redPacketMockPath = path.join(rootDir, 'src/views/funds/redPacketRecord/redPacketMock.js')
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
@@ -16,6 +17,21 @@ assert(pageSource.includes("switchLedgerTab('yuebaoInterest')"), '缺少余额�
 assert(pageSource.includes('<yuebao-interest-ledger'), '未接入余额宝利息发放记录页面')
 assert(fs.existsSync(interestComponentPath), '缺少余额宝利息发放记录组件')
 assert(fs.existsSync(activityCashMockPath), '缺少彩金发放记录 Mock 数据模块')
+assert(fs.existsSync(redPacketMockPath), '缺少红包发放记录 Mock 数据模块')
+
+const redPacketMock = fs.existsSync(redPacketMockPath)
+  ? require(redPacketMockPath)
+  : {}
+const redPacketRows = redPacketMock.RED_PACKET_ROWS || []
+assert(redPacketRows.length === 100, `红包发放记录应为 100 条，当前为 ${redPacketRows.length} 条`)
+assert(
+  new Set(redPacketRows.map(row => row.senderType)).size === 3,
+  '红包发放记录应覆盖总站、站点管理员和代理三类发放主体'
+)
+assert(
+  new Set(redPacketRows.map(row => row.claimStatus)).size === 2,
+  '红包发放记录应同时包含已领取和未领取状态'
+)
 
 const activityCashMock = fs.existsSync(activityCashMockPath)
   ? require(activityCashMockPath)
