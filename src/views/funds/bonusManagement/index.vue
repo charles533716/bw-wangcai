@@ -24,16 +24,16 @@
 
             <div v-if="currentSite" class="site-summary">
               <div class="summary-item">
-                <span>站点资金池</span>
+                <span>今日可发放金额</span>
                 <strong>¥{{ formatAmount(currentSite.fundPool) }}</strong>
               </div>
               <div class="summary-item">
-                <span>今日发放金额</span>
+                <span>今日已发放金额</span>
                 <strong class="summary-issued">¥{{ formatAmount(currentSite.todayIssued) }}</strong>
               </div>
               <div class="summary-item">
-                <span>剩余可发放金额</span>
-                <strong class="summary-balance">¥{{ formatAmount(currentSite.remaining) }}</strong>
+                <span>今日剩余可发放金额</span>
+                <strong class="summary-balance">¥{{ formatAmount(siteRemainingAmount) }}</strong>
               </div>
             </div>
 
@@ -48,12 +48,10 @@
             <template v-if="form.walletType === 'center' || form.walletType === 'venue'">
               <el-form-item v-if="form.walletType === 'venue'" label="选择场馆" required>
                 <el-select
-                  v-model="form.venueCodes"
+                  v-model="form.venueCode"
                   :disabled="!form.siteCode"
                   :placeholder="form.siteCode ? '请选择场馆' : '请先选择站点'"
                   class="control-md"
-                  multiple
-                  collapse-tags
                   filterable
                   clearable
                 >
@@ -68,7 +66,7 @@
 
               <el-form-item label="操作类型" required>
                 <el-radio-group v-model="form.operationType" class="operation-switch">
-                  <el-radio-button label="single">单会员发放</el-radio-button>
+                  <el-radio-button label="single">单笔发放</el-radio-button>
                   <el-radio-button label="batch">批量发放</el-radio-button>
                 </el-radio-group>
               </el-form-item>
@@ -79,6 +77,40 @@
                   <el-option label="活动彩金" value="activity" />
                   <el-option label="平台彩金" value="platform" />
                   <el-option label="代理线下首存" value="agentFirstDeposit" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="红利标题类型">
+                <el-radio-group v-model="form.bonusTitleType" @change="handleBonusTitleTypeChange">
+                  <el-radio label="activity">选择活动</el-radio>
+                  <el-radio label="custom">自定义</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="红利标题">
+                <el-input
+                  v-if="form.bonusTitleType === 'custom'"
+                  v-model="form.bonusTitle"
+                  placeholder="请输入红利标题，最多30字"
+                  maxlength="30"
+                  show-word-limit
+                  clearable
+                  class="control-md bonus-title-control"
+                />
+                <el-select
+                  v-else
+                  v-model="form.bonusTitle"
+                  placeholder="请输入关键词搜索活动标题"
+                  filterable
+                  clearable
+                  class="control-md bonus-title-control"
+                >
+                  <el-option
+                    v-for="activity in currentActivityOptions"
+                    :key="activity.value"
+                    :label="activity.label"
+                    :value="activity.value"
+                  />
                 </el-select>
               </el-form-item>
 
@@ -125,12 +157,11 @@
               </template>
 
               <el-form-item v-else label="导入文件" required>
-                <div class="batch-file-actions">
-                  <el-button icon="el-icon-download" @click="handleDownloadTemplate">下载模板</el-button>
-                  <el-upload action="#" :auto-upload="false" :show-file-list="false" accept=".xlsx,.xls">
-                    <el-button icon="el-icon-upload2">上传文件</el-button>
-                  </el-upload>
-                </div>
+                <batch-bonus-import-panel
+                  ref="batchImportPanel"
+                  :wallet-type="form.walletType"
+                  :bonus-type="form.bonusType"
+                />
               </el-form-item>
 
               <el-form-item label="流水限制" required>
@@ -180,7 +211,7 @@
             <template v-else-if="form.walletType === 'commission'">
               <el-form-item label="操作类型" required>
                 <el-radio-group v-model="form.operationType" class="operation-switch">
-                  <el-radio-button label="single">单会员发放</el-radio-button>
+                  <el-radio-button label="single">单笔发放</el-radio-button>
                   <el-radio-button label="batch">批量发放</el-radio-button>
                 </el-radio-group>
               </el-form-item>
@@ -208,12 +239,11 @@
               </template>
 
               <el-form-item v-else-if="form.operationType === 'batch'" label="导入文件" required>
-                <div class="batch-file-actions">
-                  <el-button icon="el-icon-download" @click="handleDownloadTemplate">下载模板</el-button>
-                  <el-upload action="#" :auto-upload="false" :show-file-list="false" accept=".xlsx,.xls">
-                    <el-button icon="el-icon-upload2">上传文件</el-button>
-                  </el-upload>
-                </div>
+                <batch-bonus-import-panel
+                  ref="batchImportPanel"
+                  :wallet-type="form.walletType"
+                  :bonus-type="form.bonusType"
+                />
               </el-form-item>
 
               <el-form-item label="流水限制" required>
@@ -249,14 +279,6 @@
           <div class="history-filter-card">
             <div class="history-filter-grid">
               <div class="history-filter-item">
-                <label>订单号</label>
-                <el-input
-                  v-model="historyFilters.orderNo"
-                  placeholder="请输入订单号"
-                  clearable
-                />
-              </div>
-              <div class="history-filter-item">
                 <label>站点</label>
                 <el-select v-model="historyFilters.siteCode" placeholder="全部站点" clearable>
                   <el-option
@@ -268,20 +290,31 @@
                 </el-select>
               </div>
               <div class="history-filter-item">
-                <label>会员账号</label>
+                <label>账号</label>
                 <el-input
-                  v-model="historyFilters.memberAccount"
-                  placeholder="请输入会员账号"
+                  v-model="historyFilters.account"
+                  placeholder="请输入会员或代理账号"
                   clearable
                 />
               </div>
               <div class="history-filter-item">
-                <label>代理账号</label>
+                <label>账号类型</label>
+                <el-select v-model="historyFilters.accountType" placeholder="全部类型" clearable>
+                  <el-option label="会员" value="member" />
+                  <el-option label="代理" value="agent" />
+                </el-select>
+              </div>
+              <div class="history-filter-item">
+                <label>订单号</label>
                 <el-input
-                  v-model="historyFilters.agentAccount"
-                  placeholder="请输入代理账号"
+                  v-model="historyFilters.orderNo"
+                  placeholder="请输入订单号"
                   clearable
                 />
+              </div>
+              <div class="history-filter-item">
+                <label>上级代理</label>
+                <el-input v-model="historyFilters.parentAgent" placeholder="请输入上级代理" clearable />
               </div>
               <div class="history-filter-item">
                 <label>钱包类型</label>
@@ -292,12 +325,20 @@
                 </el-select>
               </div>
               <div class="history-filter-item">
-                <label>钱包名称</label>
-                <el-input
-                  v-model="historyFilters.walletName"
-                  placeholder="请输入钱包名称"
+                <label>场馆名称</label>
+                <el-select
+                  v-model="historyFilters.venueName"
+                  placeholder="全部场馆"
+                  filterable
                   clearable
-                />
+                >
+                  <el-option
+                    v-for="venue in historyVenueOptions"
+                    :key="venue"
+                    :label="venue"
+                    :value="venue"
+                  />
+                </el-select>
               </div>
               <div class="history-filter-item">
                 <label>红利类型</label>
@@ -306,6 +347,7 @@
                   <el-option label="活动彩金" value="activity" />
                   <el-option label="平台彩金" value="platform" />
                   <el-option label="代理线下首存" value="agentFirstDeposit" />
+                  <el-option label="VIP礼金" value="vipGift" />
                   <el-option label="代理红利" value="agentBonus" />
                 </el-select>
               </div>
@@ -330,6 +372,18 @@
                 <label>派发时间</label>
                 <el-date-picker
                   v-model="historyFilters.dispatchTime"
+                  type="datetimerange"
+                  range-separator="至"
+                  start-placeholder="开始时间"
+                  end-placeholder="结束时间"
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  clearable
+                />
+              </div>
+              <div class="history-filter-item history-filter-time">
+                <label>领取时间</label>
+                <el-date-picker
+                  v-model="historyFilters.claimTime"
                   type="datetimerange"
                   range-separator="至"
                   start-placeholder="开始时间"
@@ -370,18 +424,21 @@
             </div>
             <el-table
               :data="pagedHistoryRows"
+              :summary-method="getHistorySummaries"
               border
               stripe
+              show-summary
               class="history-table"
               empty-text="暂无数据"
             >
               <el-table-column prop="siteName" label="站点" width="110" fixed="left" />
-              <el-table-column prop="orderNo" label="订单号" width="210" fixed="left" />
-              <el-table-column prop="memberAccount" label="会员账号" width="130" />
-              <el-table-column prop="agentAccount" label="代理账号" width="130" />
+              <el-table-column prop="account" label="账号" width="140" fixed="left" />
+              <el-table-column prop="accountTypeName" label="账号类型" width="95" fixed="left" />
+              <el-table-column prop="orderNo" label="订单号" width="210" />
+              <el-table-column prop="parentAgent" label="上级代理" width="130" />
               <el-table-column prop="memberTag" label="会员标签" width="105" />
               <el-table-column prop="walletTypeName" label="钱包类型" width="105" />
-              <el-table-column prop="walletName" label="钱包名称" width="135" />
+              <el-table-column prop="venueName" label="场馆名称" width="135" />
               <el-table-column prop="bonusTypeName" label="红利类型" width="125" />
               <el-table-column prop="bonusTitle" label="红利标题" min-width="180" show-overflow-tooltip />
               <el-table-column prop="bonusInfo" label="红利信息" min-width="220" show-overflow-tooltip />
@@ -394,14 +451,15 @@
               </el-table-column>
               <el-table-column prop="turnoverMultiple" label="流水倍数" width="95" align="center">
                 <template slot-scope="{ row }">
-                  {{ row.turnoverRequired ? `${row.turnoverMultiple}倍` : '--' }}
+                  {{ row.turnoverRequired ? row.turnoverMultiple : 0 }}
                 </template>
               </el-table-column>
-              <el-table-column label="红利金额" width="120" align="right">
-                <template slot-scope="{ row }">¥{{ formatAmount(row.amount) }}</template>
+              <el-table-column label="红利金额（元）" width="135" align="right">
+                <template slot-scope="{ row }">{{ formatAmount(row.amount) }}</template>
               </el-table-column>
               <el-table-column prop="remark" label="申请备注" min-width="180" show-overflow-tooltip />
               <el-table-column prop="dispatchTime" label="派发时间" width="165" />
+              <el-table-column prop="claimTime" label="领取时间" width="165" />
               <el-table-column prop="expireTime" label="过期时间" width="165" />
               <el-table-column label="状态" width="100" fixed="right" align="center">
                 <template slot-scope="{ row }">
@@ -430,6 +488,8 @@
 </template>
 
 <script>
+import BatchBonusImportPanel from './BatchBonusImportPanel'
+
 const SITE_VENUES = {
   wc: [
     { value: 'wcSports', label: '旺财体育' },
@@ -484,6 +544,33 @@ const SITE_OPTIONS = [
   { code: 'xh', name: '星河体育', fundPool: 625000, todayIssued: 7350, remaining: 617650 }
 ]
 
+const SITE_ACTIVITY_OPTIONS = {
+  wc: [
+    '体育首存送68%最高2000元',
+    '旺财新人礼',
+    '每日有效投注额奖励',
+    '月度累充送彩金'
+  ],
+  dw: [
+    'DW体育首存专享',
+    'DW新人签到礼',
+    '有效投注额周奖励',
+    '月度累充送彩金'
+  ],
+  cs: [
+    '财神体育首存送彩金',
+    '财神新人礼',
+    '每日有效投注送彩金',
+    '累充达标奖励'
+  ],
+  xh: [
+    '星河体育首存礼',
+    '星河新人专享',
+    '有效投注额月度奖励',
+    '星河累充活动'
+  ]
+}
+
 const HISTORY_STATUS_META = {
   issued: { label: '已派发', type: 'warning' },
   claimed: { label: '已领取', type: 'success' },
@@ -495,8 +582,20 @@ const HISTORY_BONUS_TYPES = [
   { value: 'activity', label: '活动彩金', title: '限时活动红利' },
   { value: 'platform', label: '平台彩金', title: '平台关怀彩金' },
   { value: 'agentFirstDeposit', label: '代理线下首存', title: '代理线下首存红利' },
+  { value: 'vipGift', label: 'VIP礼金', title: 'VIP专属礼金' },
   { value: 'agentBonus', label: '代理红利', title: '代理业绩红利' }
 ]
+
+const HISTORY_BONUS_INFO_OPTIONS = {
+  promotion: ['邀请好友奖励', '会员推荐奖励', '代理推广奖励', '-'],
+  activity: ['新人礼', '签到奖励', '首存活动奖励', '累充活动奖励', '有效投注额奖励', '-'],
+  platform: ['平台关怀礼金', '人工补发', '节日礼金', '-'],
+  agentFirstDeposit: ['代理线下首存奖励', '-'],
+  vipGift: ['周礼金', '月礼金', '生日礼金', '晋级礼金', 'VIP返水', '-'],
+  agentBonus: ['直属会员佣金', '团队业绩佣金', '月度代理奖励', '-']
+}
+
+const HISTORY_VENUE_OPTIONS = ['熊猫体育', 'IM体育', '旺财体育', '旺财真人']
 
 function padNumber(value) {
   return String(value).padStart(2, '0')
@@ -504,13 +603,14 @@ function padNumber(value) {
 
 function createHistoryRows() {
   const memberTags = ['新会员', '活跃会员', 'VIP会员', '重点会员']
-  const venues = ['旺财体育', '熊猫体育', 'IM体育', '旺财真人', 'PG电子']
   const remarks = ['运营活动发放', '会员关怀补发', '代理业绩奖励', '线下活动审核通过', '批量红利导入']
 
   return Array.from({ length: 60 }, (_, index) => {
     const serial = index + 1
     const site = SITE_OPTIONS[index % SITE_OPTIONS.length]
     const bonus = HISTORY_BONUS_TYPES[index % HISTORY_BONUS_TYPES.length]
+    const bonusInfoOptions = HISTORY_BONUS_INFO_OPTIONS[bonus.value] || ['-']
+    const bonusInfoIndex = Math.floor(index / HISTORY_BONUS_TYPES.length) % bonusInfoOptions.length
     const walletType = bonus.value === 'agentBonus'
       ? 'commission'
       : (index % 3 === 1 ? 'venue' : 'center')
@@ -519,28 +619,39 @@ function createHistoryRows() {
     const dispatchTime = `2026-07-${padNumber(day)} ${padNumber(hour)}:${padNumber((index * 7) % 60)}:00`
     const expireDay = Math.min(day + 3, 31)
     const turnoverRequired = walletType !== 'commission' && index % 3 !== 0
+    const status = ['issued', 'claimed', 'expired'][index % 3]
+    const accountType = walletType === 'commission' ? 'agent' : 'member'
 
     return {
       siteCode: site.code,
       siteName: site.name,
       orderNo: `BN202607${padNumber(day)}${String(100000 + serial)}`,
-      memberAccount: walletType === 'commission' ? '--' : `member${String(serial).padStart(4, '0')}`,
-      agentAccount: `agent${String((index % 18) + 1).padStart(3, '0')}`,
-      memberTag: memberTags[index % memberTags.length],
+      account: accountType === 'agent'
+        ? `agent${String((index % 18) + 1).padStart(3, '0')}`
+        : `member${String(serial).padStart(4, '0')}`,
+      accountType,
+      accountTypeName: accountType === 'agent' ? '代理' : '会员',
+      parentAgent: accountType === 'agent'
+        ? `generalAgent${String((index % 5) + 1).padStart(2, '0')}`
+        : `agent${String((index % 18) + 1).padStart(3, '0')}`,
+      memberTag: accountType === 'agent' ? '-' : memberTags[index % memberTags.length],
       walletType,
       walletTypeName: walletType === 'center' ? '中心钱包' : (walletType === 'venue' ? '场馆钱包' : '佣金钱包'),
-      walletName: walletType === 'center' ? '中心钱包' : (walletType === 'venue' ? venues[index % venues.length] : '代理佣金钱包'),
+      venueName: walletType === 'venue' ? HISTORY_VENUE_OPTIONS[index % HISTORY_VENUE_OPTIONS.length] : '-',
       bonusType: bonus.value,
       bonusTypeName: bonus.label,
       bonusTitle: bonus.title,
-      bonusInfo: `${bonus.label} / ${index % 2 === 0 ? '单笔发放' : '批量发放'}`,
+      bonusInfo: bonusInfoOptions[bonusInfoIndex],
       turnoverRequired,
       turnoverMultiple: turnoverRequired ? [3, 5, 8, 10][index % 4] : 0,
       amount: 50 + (index % 12) * 25.5,
       remark: remarks[index % remarks.length],
       dispatchTime,
+      claimTime: status === 'claimed'
+        ? `2026-07-${padNumber(day)} ${padNumber(hour + 1)}:${padNumber((index * 7) % 60)}:00`
+        : '-',
       expireTime: `2026-07-${padNumber(expireDay)} ${padNumber(hour)}:${padNumber((index * 7) % 60)}:00`,
-      status: ['issued', 'claimed', 'expired'][index % 3]
+      status
     }
   })
 }
@@ -549,14 +660,16 @@ function createEmptyHistoryFilters() {
   return {
     orderNo: '',
     siteCode: '',
-    memberAccount: '',
-    agentAccount: '',
+    account: '',
+    accountType: '',
+    parentAgent: '',
     walletType: '',
-    walletName: '',
+    venueName: '',
     bonusType: '',
     bonusTitle: '',
     memberTag: '',
     dispatchTime: [],
+    claimTime: [],
     remark: '',
     status: ''
   }
@@ -564,10 +677,14 @@ function createEmptyHistoryFilters() {
 
 export default {
   name: 'BonusManagement',
+  components: {
+    BatchBonusImportPanel
+  },
   data() {
     return {
       activeTab: 'grant',
       siteOptions: SITE_OPTIONS,
+      historyVenueOptions: HISTORY_VENUE_OPTIONS,
       historyStatusMeta: HISTORY_STATUS_META,
       historyRows: createHistoryRows(),
       historyFilters: createEmptyHistoryFilters(),
@@ -577,9 +694,11 @@ export default {
       form: {
         siteCode: '',
         walletType: 'center',
-        venueCodes: [],
+        venueCode: '',
         operationType: 'single',
         bonusType: '',
+        bonusTitleType: 'custom',
+        bonusTitle: '',
         agentAccount: '',
         receiveMode: 'manual',
         validityType: 'day',
@@ -600,25 +719,39 @@ export default {
     currentVenueOptions() {
       return SITE_VENUES[this.form.siteCode] || []
     },
+    currentActivityOptions() {
+      return (SITE_ACTIVITY_OPTIONS[this.form.siteCode] || []).map(title => ({
+        label: title,
+        value: title
+      }))
+    },
+    siteRemainingAmount() {
+      if (!this.currentSite) return 0
+      return Math.max(0, Number(this.currentSite.fundPool) - Number(this.currentSite.todayIssued))
+    },
     filteredHistoryRows() {
       const filters = this.appliedHistoryFilters
       return this.historyRows.filter(row => {
         const matchesText = (value, keyword) => !keyword || String(value).toLowerCase().includes(String(keyword).trim().toLowerCase())
         const matchesDispatchTime = !filters.dispatchTime || filters.dispatchTime.length !== 2 ||
           (row.dispatchTime >= filters.dispatchTime[0] && row.dispatchTime <= filters.dispatchTime[1])
+        const matchesClaimTime = !filters.claimTime || filters.claimTime.length !== 2 ||
+          (row.claimTime !== '-' && row.claimTime >= filters.claimTime[0] && row.claimTime <= filters.claimTime[1])
 
         return matchesText(row.orderNo, filters.orderNo) &&
           (!filters.siteCode || row.siteCode === filters.siteCode) &&
-          matchesText(row.memberAccount, filters.memberAccount) &&
-          matchesText(row.agentAccount, filters.agentAccount) &&
+          matchesText(row.account, filters.account) &&
+          (!filters.accountType || row.accountType === filters.accountType) &&
+          matchesText(row.parentAgent, filters.parentAgent) &&
           (!filters.walletType || row.walletType === filters.walletType) &&
-          matchesText(row.walletName, filters.walletName) &&
+          (!filters.venueName || row.venueName === filters.venueName) &&
           (!filters.bonusType || row.bonusType === filters.bonusType) &&
           matchesText(row.bonusTitle, filters.bonusTitle) &&
           (!filters.memberTag || row.memberTag === filters.memberTag) &&
           matchesText(row.remark, filters.remark) &&
           (!filters.status || row.status === filters.status) &&
-          matchesDispatchTime
+          matchesDispatchTime &&
+          matchesClaimTime
       })
     },
     pagedHistoryRows() {
@@ -628,19 +761,28 @@ export default {
   },
   methods: {
     handleSiteChange() {
-      this.form.venueCodes = []
-      this.$message.success(`已加载${this.currentSite.name}资金信息`)
+      this.form.venueCode = ''
+      if (this.form.bonusTitleType === 'activity') {
+        this.form.bonusTitle = ''
+      }
+      if (this.currentSite) {
+        this.$message.success(`已加载${this.currentSite.name}资金信息`)
+      }
     },
     handleWalletTypeChange(walletType) {
       if (walletType !== 'venue') {
-        this.form.venueCodes = []
+        this.form.venueCode = ''
       }
       if (walletType === 'commission') {
         this.form.bonusType = 'agentBonus'
         this.form.turnoverRequired = false
+        this.form.bonusTitle = ''
       } else if (this.form.bonusType === 'agentBonus') {
         this.form.bonusType = ''
       }
+    },
+    handleBonusTitleTypeChange() {
+      this.form.bonusTitle = ''
     },
     formatAmount(value) {
       return Number(value || 0).toLocaleString('zh-CN', {
@@ -648,13 +790,22 @@ export default {
         maximumFractionDigits: 2
       })
     },
-    handleDownloadTemplate() {
-      this.$message.success('红利批量发放模板下载成功')
+    getHistorySummaries({ columns }) {
+      const sums = columns.map(() => '')
+      const amountColumnIndex = columns.findIndex(column => column.label === '红利金额（元）')
+      const totalAmount = this.filteredHistoryRows.reduce((total, row) => total + Number(row.amount || 0), 0)
+
+      sums[0] = '总计'
+      if (amountColumnIndex >= 0) {
+        sums[amountColumnIndex] = this.formatAmount(totalAmount)
+      }
+      return sums
     },
     handleHistoryQuery() {
       this.appliedHistoryFilters = {
         ...this.historyFilters,
-        dispatchTime: this.historyFilters.dispatchTime ? [...this.historyFilters.dispatchTime] : []
+        dispatchTime: this.historyFilters.dispatchTime ? [...this.historyFilters.dispatchTime] : [],
+        claimTime: this.historyFilters.claimTime ? [...this.historyFilters.claimTime] : []
       }
       this.historyPage = 1
       this.$message.success(`查询完成，共 ${this.filteredHistoryRows.length} 条记录`)
@@ -668,12 +819,37 @@ export default {
     handleHistoryExport() {
       this.$message.success(`已导出 ${this.filteredHistoryRows.length} 条红利历史记录`)
     },
+    getSubmitAmount() {
+      if (this.form.operationType === 'single') {
+        return Number(this.form.amount)
+      }
+      const batchImportPanel = this.$refs.batchImportPanel
+      return batchImportPanel && batchImportPanel.batchResult
+        ? Number(batchImportPanel.batchResult.validAmount)
+        : 0
+    },
+    updateSiteSummary(submitAmount) {
+      const currentSite = this.currentSite
+      currentSite.todayIssued = Number((currentSite.todayIssued + submitAmount).toFixed(2))
+      currentSite.remaining = Math.max(0, currentSite.fundPool - currentSite.todayIssued)
+    },
+    resetSingleGrantFields() {
+      this.form.memberAccount = ''
+      this.form.agentAccount = ''
+      this.form.amount = ''
+    },
+    resetBatchImport() {
+      const batchImportPanel = this.$refs.batchImportPanel
+      if (batchImportPanel) {
+        batchImportPanel.resetUpload()
+      }
+    },
     handleSubmit() {
       if (!this.form.siteCode) {
         this.$message.warning('请选择站点')
         return
       }
-      if (this.form.walletType === 'venue' && !this.form.venueCodes.length) {
+      if (this.form.walletType === 'venue' && !this.form.venueCode) {
         this.$message.warning('请选择场馆')
         return
       }
@@ -689,6 +865,17 @@ export default {
           this.$message.warning(this.form.walletType === 'commission' ? '请输入代理账号' : '请输入会员账号')
           return
         }
+      }
+      const submitAmount = this.getSubmitAmount()
+      if (!Number.isFinite(submitAmount) || submitAmount <= 0) {
+        this.$message.warning(this.form.operationType === 'single' ? '请输入正确的金额' : '请先上传并校验批量发放文件')
+        return
+      }
+      this.updateSiteSummary(submitAmount)
+      if (this.form.operationType === 'single') {
+        this.resetSingleGrantFields()
+      } else {
+        this.resetBatchImport()
       }
       this.$message.success(this.form.operationType === 'single' ? '红利发放申请已提交' : '批量红利文件已提交')
     }

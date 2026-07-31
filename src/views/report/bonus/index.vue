@@ -246,8 +246,7 @@ const DEFAULT_BONUS_TYPE_OPTIONS = [
   { dictLabel: '活动彩金', dictValue: '4' },
   { dictLabel: '首充彩金', dictValue: '5' },
   { dictLabel: '推广彩金', dictValue: '6' },
-  { dictLabel: '平台彩金', dictValue: '7' },
-  { dictLabel: '代理线下首存', dictValue: '8' }
+  { dictLabel: '平台彩金', dictValue: '7' }
 ]
 
 const DEFAULT_STATUS_OPTIONS = [
