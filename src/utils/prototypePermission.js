@@ -38,7 +38,11 @@ export function clearPermissionPreview() {
 }
 
 function normalizePath(path = '') {
-  return `/${String(path).replace(/^\/+|\/+$/g, '')}`
+  const segments = String(path)
+    .split('/')
+    .filter(Boolean)
+    .filter(segment => !['site-admin', 'agent-admin'].includes(segment))
+  return `/${segments.join('/')}`
 }
 
 function matchingPage(path, tree) {
@@ -71,7 +75,11 @@ export function hasPrototypePermission(requiredPermissions, routePath) {
 export function filterRoutesForPreview(routes = []) {
   const preview = getPermissionPreview()
   if (!preview || preview.roleKey === 'admin') return routes
-  const views = collectPageViewPermissions(getStoredPermissionTree())
+  const views = Object.entries(collectPageViewPermissions(getStoredPermissionTree()))
+    .reduce((result, [path, permission]) => {
+      result[normalizePath(path)] = permission
+      return result
+    }, {})
   const allowed = new Set(preview.permissionCodes || [])
 
   function filter(nodes, parent = '') {
@@ -83,7 +91,7 @@ export function filterRoutesForPreview(routes = []) {
         if (next.children.length) result.push(next)
         return result
       }
-      const view = views[path]
+      const view = views[normalizePath(path)]
       if (!view || allowed.has(view)) result.push(next)
       return result
     }, [])

@@ -111,6 +111,20 @@ export const constantRoutes = [
 // 前端本地业务菜单
 export const manualRoutes = [
   {
+    path: '/site',
+    component: Layout,
+    alwaysShow: true,
+    meta: { title: '站点管理', icon: 'site', mergeByTitle: true, mergeOnly: true },
+    children: [
+      {
+        path: 'permission',
+        component: () => import('@/views/site/permission/index'),
+        name: 'SitePermissionManagement',
+        meta: { title: '站点权限管理', icon: 'lock' }
+      }
+    ]
+  },
+  {
     path: '/system',
     component: Layout,
     alwaysShow: true,
@@ -413,6 +427,26 @@ export const manualRoutes = [
 // 站点/代理后台本地演示补充菜单
 export const backendManualRoutes = {
   site: [
+    {
+      path: '/system',
+      component: Layout,
+      alwaysShow: true,
+      meta: { title: '系统管理', icon: 'system', mergeByTitle: true, mergeOnly: true },
+      children: [
+        {
+          path: 'role',
+          component: () => import('@/views/backends/siteAdmin/system/siteRole/index'),
+          name: 'SiteAdminRoleManagement',
+          meta: { title: '角色管理', icon: 'peoples', localOverride: true }
+        },
+        {
+          path: 'user',
+          component: () => import('@/views/backends/siteAdmin/system/siteAccount/index'),
+          name: 'SiteAdminAccountManagement',
+          meta: { title: '账号管理', sitePermissionTitle: '账号管理', icon: 'user', localOverride: true }
+        }
+      ]
+    },
     {
       path: '/site-admin/agent',
       component: Layout,

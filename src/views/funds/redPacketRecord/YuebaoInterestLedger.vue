@@ -71,25 +71,31 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="pagedRows" border stripe>
+      <el-table
+        :data="pagedRows"
+        border
+        stripe
+        show-summary
+        :summary-method="getInterestSummaries"
+      >
         <el-table-column prop="settlementNo" label="利息结算单号" min-width="190" show-overflow-tooltip />
         <el-table-column prop="site" label="适用子站" min-width="110" />
         <el-table-column prop="member" label="会员账号" min-width="120" />
         <el-table-column prop="agent" label="上级代理" min-width="120" />
-        <el-table-column label="本金快照" min-width="110" align="right">
+        <el-table-column prop="principal" label="本金快照" min-width="110" align="right">
           <template slot-scope="scope">{{ money(scope.row.principal) }}</template>
         </el-table-column>
-        <el-table-column label="历史利息快照" min-width="120" align="right">
+        <el-table-column prop="historyInterest" label="历史利息快照" min-width="120" align="right">
           <template slot-scope="scope">{{ money(scope.row.historyInterest) }}</template>
         </el-table-column>
-        <el-table-column label="计息基数" min-width="110" align="right">
+        <el-table-column prop="interestBase" label="计息基数" min-width="110" align="right">
           <template slot-scope="scope">{{ money(scope.row.interestBase) }}</template>
         </el-table-column>
         <el-table-column prop="annualRate" label="年化利率" min-width="90" align="right" />
-        <el-table-column label="派发利息" min-width="100" align="right">
+        <el-table-column prop="issuedInterest" label="派发利息" min-width="100" align="right">
           <template slot-scope="scope"><strong class="interest-value">+{{ money(scope.row.issuedInterest) }}</strong></template>
         </el-table-column>
-        <el-table-column label="发放后利息余额" min-width="125" align="right">
+        <el-table-column prop="balanceAfter" label="发放后利息余额" min-width="125" align="right">
           <template slot-scope="scope">{{ money(scope.row.balanceAfter) }}</template>
         </el-table-column>
         <el-table-column prop="turnoverMultiple" label="流水倍数" min-width="90" align="center" />
@@ -222,6 +228,24 @@ export default {
       this.showRuleDialog = false
       this.$message.success('余额宝规则配置已保存')
     },
+    getInterestSummaries({ columns }) {
+      const amountFields = new Set([
+        'principal',
+        'historyInterest',
+        'interestBase',
+        'issuedInterest',
+        'balanceAfter'
+      ])
+
+      return columns.map((column, index) => {
+        if (index === 0) return '总计'
+        if (!amountFields.has(column.property)) return ''
+        const total = this.filteredRows.reduce((sum, row) => {
+          return sum + Number(row[column.property] || 0)
+        }, 0)
+        return this.money(total)
+      })
+    },
     money(value) {
       return Number(value || 0).toLocaleString('zh-CN', {
         minimumFractionDigits: 2,
@@ -303,6 +327,12 @@ export default {
 
 .interest-panel {
   padding: 14px;
+}
+
+::v-deep .el-table__footer-wrapper td {
+  color: #303133;
+  font-weight: 600;
+  background: #f5f7fa;
 }
 
 .interest-filter {

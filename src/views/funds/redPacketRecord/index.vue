@@ -132,7 +132,14 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="loading" :data="records" border stripe>
+      <el-table
+        v-loading="loading"
+        :data="records"
+        border
+        stripe
+        show-summary
+        :summary-method="getLedgerSummaries"
+      >
         <el-table-column label="业务编号" min-width="180" show-overflow-tooltip>
           <template slot-scope="scope">{{ businessNo(scope.row) }}</template>
         </el-table-column>
@@ -142,7 +149,7 @@
           <template slot-scope="scope">{{ ledgerTypeName(scope.row) }}</template>
         </el-table-column>
         <el-table-column prop="targetMemberName" label="指定发放对象" min-width="130" show-overflow-tooltip />
-        <el-table-column label="总额(CNY)" min-width="110" align="right">
+        <el-table-column prop="summaryAmount" label="总额(CNY)" min-width="110" align="right">
           <template slot-scope="scope">{{ money(rowAmount(scope.row)) }}</template>
         </el-table-column>
         <el-table-column prop="turnoverMultiple" label="流水倍数" min-width="100" align="right" />
@@ -541,6 +548,17 @@ export default {
     rowExpireTime(row) {
       return this.isActivityCashTab ? row.receiveDeadline : row.expireTime
     },
+    getLedgerSummaries({ columns }) {
+      const totalAmount = ['headquarters', 'siteAdmin', 'agent'].reduce((sum, key) => {
+        return sum + Number(this.summaryValue(this.summary[key], 'totalAmount') || 0)
+      }, 0)
+
+      return columns.map((column, index) => {
+        if (index === 0) return '总计'
+        if (column.property === 'summaryAmount') return this.money(totalAmount)
+        return ''
+      })
+    },
     money(value) {
       const num = Number(value || 0)
       return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -665,6 +683,12 @@ export default {
 
 .record-panel {
   padding: 16px;
+}
+
+::v-deep .el-table__footer-wrapper td {
+  color: #303133;
+  font-weight: 600;
+  background: #f5f7fa;
 }
 
 .filter-form {

@@ -1,10 +1,11 @@
 const SITE_MENU_ITEMS = {
   apply: '开站申请',
   site: '站点列表',
+  permission: '站点权限管理',
   venue: '站点场馆管理',
   resource: '站点素材管理'
 }
-const SITE_MENU_ORDER = ['apply', 'site', 'venue', 'resource']
+const SITE_MENU_ORDER = ['apply', 'site', 'permission', 'venue', 'resource']
 const FINANCE_MENU_TITLES = {
   redPacketRecord: '奖励发放记录'
 }
@@ -338,7 +339,7 @@ export function alignRoutesWithTestEnvironment(routes = []) {
             ...child,
             meta: {
               ...(child.meta || {}),
-              title: SYSTEM_MENU_ITEMS[child.path]
+              title: (child.meta && child.meta.sitePermissionTitle) || SYSTEM_MENU_ITEMS[child.path]
             }
           }))
         return nextRoute

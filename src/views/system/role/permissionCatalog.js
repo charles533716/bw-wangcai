@@ -155,6 +155,11 @@ const TITLE_OVERRIDES = {
     ['upload', '上传文件'],
     ['export', '导出历史记录']
   ],
+  站点权限管理: [
+    ['config', '配置单站点权限'],
+    ['batch-config', '批量配置站点权限'],
+    ['copy', '复制站点权限']
+  ],
   奖励发放记录: [
     ['grant', '发放红包'],
     ['batch-import', '批量导入活动彩金'],
@@ -279,6 +284,14 @@ const TITLE_OVERRIDES = {
     ['permission', '配置权限'],
     ['assign', '分配用户'],
     ['export', '导出']
+  ],
+  账号管理: [
+    ['create', '新增账号'],
+    ['detail', '查看有效权限'],
+    ['edit', '编辑'],
+    ['delete', '删除'],
+    ['status', '启用/禁用'],
+    ['preview', '权限预览']
   ],
   实名信息绑定记录: [
     ['fulltext', '实名信息全明文'],
