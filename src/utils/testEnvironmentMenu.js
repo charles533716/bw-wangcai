@@ -25,6 +25,7 @@ const REPORT_MENU_ITEMS = {
 }
 const REPORT_MENU_ORDER = Object.keys(REPORT_MENU_ITEMS)
 const RESOURCE_MENU_FIRST_COMPONENT = 'resources/template/index'
+const RESOURCE_VENUE_MANAGEMENT_PATH = 'venueManagement'
 const RESOURCE_GAME_LIST_PATH = 'gameList'
 const RESOURCE_SKIN_PATH = 'skin'
 const RESOURCE_MENU_ITEMS = {
@@ -196,6 +197,7 @@ export function alignRoutesWithTestEnvironment(routes = []) {
         const messageTemplate = children.find(
           child => child.meta && child.meta.prototypeComponent === RESOURCE_MENU_FIRST_COMPONENT
         )
+        const venueManagement = children.find(child => child.path === RESOURCE_VENUE_MANAGEMENT_PATH)
         const gameList = children.find(child => child.path === RESOURCE_GAME_LIST_PATH)
         const frontEndSkin = children.find(child => child.path === RESOURCE_SKIN_PATH)
         const orderedResourceChildren = RESOURCE_MENU_ORDER
@@ -211,6 +213,7 @@ export function alignRoutesWithTestEnvironment(routes = []) {
         const remainingChildren = children.filter(
           child =>
             child !== messageTemplate &&
+            child !== venueManagement &&
             child !== gameList &&
             child !== frontEndSkin &&
             !RESOURCE_MENU_ORDER.includes(child.path) &&
@@ -229,6 +232,7 @@ export function alignRoutesWithTestEnvironment(routes = []) {
               }
             ]
             : []),
+          ...(venueManagement ? [venueManagement] : []),
           ...(gameList ? [gameList] : []),
           ...(frontEndSkin
             ? [

@@ -198,6 +198,12 @@ export const manualRoutes = [
     meta: { title: '资源管理', icon: 'list', mergeByTitle: true, mergeOnly: true },
     children: [
       {
+        path: 'venueManagement',
+        component: () => import('@/views/resources/venueManagement/index'),
+        name: 'ResourceVenueManagement',
+        meta: { title: '场馆管理', icon: 'table' }
+      },
+      {
         path: 'gameList',
         component: () => import('@/views/game/index'),
         name: 'ResourceGameList',

@@ -198,6 +198,15 @@ const TITLE_OVERRIDES = {
     ['status', '启用/禁用'],
     ['export', '导出']
   ],
+  场馆管理: [
+    ['create', '新增'],
+    ['edit', '编辑'],
+    ['status', '状态切换'],
+    ['authorize', '授权'],
+    ['revoke', '取消授权'],
+    ['delete', '删除'],
+    ['adjust-site', '站点状态调整']
+  ],
   负盈利代理佣金结算: [
     ['export', '导出'],
     ['confirm', '确认发放'],

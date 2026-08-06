@@ -42,6 +42,13 @@
           />
         </el-tab-pane>
 
+        <el-tab-pane label="客户端资源配置" name="clientResource">
+          <client-resource-config
+            :site-code="siteCode"
+            v-if="activeTab === 'clientResource'"
+          />
+        </el-tab-pane>
+
         <el-tab-pane label="维护配置" name="update">
           <update-config
             :site-code="siteCode"
@@ -73,6 +80,7 @@ import GameConfig from './GameConfig'
 import VenueConfig from './VenueConfig'
 import DomainConfig from './DomainConfig'
 import ResourceConfig from './ResourceConfig'
+import ClientResourceConfig from './ClientResourceConfig'
 import UpdateConfig from './UpdateConfig'
 import ComprehensiveConfig from './ComprehensiveConfig'
 import SecuritySettings from './SecuritySettings'
@@ -85,6 +93,7 @@ export default {
     GameConfig,
     DomainConfig,
     ResourceConfig,
+    ClientResourceConfig,
     UpdateConfig,
     ComprehensiveConfig,
     SecuritySettings
