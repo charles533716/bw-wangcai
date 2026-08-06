@@ -30,7 +30,6 @@
       @check="handleCheck"
     >
       <span slot-scope="{ data }" class="tree-node">
-        <span class="node-type">{{ nodeType(data) }}</span>
         <span>{{ data.label }}</span>
         <span v-if="data.permission" class="permission-code">{{ data.permission }}</span>
       </span>
@@ -78,15 +77,22 @@ export default {
   methods: {
     syncTree() {
       if (!this.$refs.permissionTree) return
-      this.$refs.permissionTree.setCheckedKeys(this.checkedCodes)
+      this.$refs.permissionTree.setCheckedKeys(this.checkedTreeKeys())
       if (this.keyword) {
         this.expandedKeys = flattenPermissionTree(this.filteredTree, []).map(node => node.id)
       }
     },
-    nodeType(node) {
-      if (node.type === 'directory') return '[菜单]'
-      if (node.type === 'page') return '[页面]'
-      return '[权限]'
+    checkedTreeKeys() {
+      const selected = new Set(this.checkedCodes)
+      return flattenPermissionTree(this.treeData, []).reduce((keys, node) => {
+        if (node.type === 'permission') {
+          if (selected.has(node.permission)) keys.push(node.id)
+          return keys
+        }
+        const descendantCodes = collectPermissionCodes(node.children || [])
+        if (descendantCodes.length && descendantCodes.every(code => selected.has(code))) keys.push(node.id)
+        return keys
+      }, [])
     },
     emitValue(codes) {
       this.checkedCodes = [...new Set(codes)]
@@ -150,7 +156,6 @@ export default {
 .selected-count { margin-left: auto; color: #5b6b7f; font-size: 13px; white-space: nowrap; }
 .permission-tree { padding: 10px 12px; overflow: auto; }
 .tree-node { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.node-type { color: #8fa0b6; font-size: 12px; }
 .permission-code { margin-left: 8px; color: #a4afbf; font-size: 12px; }
 .permission-tree--readonly ::v-deep .el-checkbox { pointer-events: none; }
 ::v-deep .el-tree-node__content { min-height: 30px; }
