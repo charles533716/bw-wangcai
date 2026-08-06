@@ -7,7 +7,7 @@ import { getToken } from '@/utils/auth'
 import { isPathMatch } from '@/utils/validate'
 import { isRelogin } from '@/utils/request'
 import { getCurrentBackendMode, setBackendContext } from '@/utils/prototypeBackend'
-import { getPermissionPreview, hasPrototypePageAccess } from '@/utils/prototypePermission'
+import { hasPrototypePageAccess } from '@/utils/prototypePermission'
 
 NProgress.configure({ showSpinner: false })
 
@@ -82,7 +82,7 @@ router.beforeEach((to, from, next) => {
           })
       } else {
         const homePath = store.getters.homePath || '/index'
-        if (getPermissionPreview() && !['/401', '/404', '/system/role'].includes(to.path) && !hasPrototypePageAccess(to.path)) {
+        if (!['/401', '/404', '/system/role'].includes(to.path) && !hasPrototypePageAccess(to.path)) {
           next('/401')
           NProgress.done()
           return

@@ -1,45 +1,45 @@
 import request from '@/utils/request'
+import { PROTOTYPE_SITES } from '@/utils/prototypeBackend'
 
-const prototypeSiteRows = [
-  {
-    id: 1000,
-    code: '2222',
-    nameZn: '演示总站',
-    nameEn: 'Prototype Hub',
-    account: 'demo_admin',
-    status: '1',
-    applyDate: '2026-06-17 09:12:00'
-  },
-  {
-    id: 1001,
-    code: 'SITE001',
-    nameZn: '旺财总站',
-    nameEn: 'Wangcai',
-    account: 'site001_admin',
-    status: '1',
-    applyDate: '2026-06-18 10:12:00'
-  },
-  {
-    id: 1002,
-    code: 'SITE002',
-    nameZn: '星河体育',
-    nameEn: 'Galaxy Sport',
-    account: 'site002_admin',
-    status: '2',
-    applyDate: '2026-06-19 11:24:00'
+const prototypeSiteRows = PROTOTYPE_SITES.map((site, index) => ({
+  id: site.id,
+  code: site.code,
+  nameZn: site.name,
+  nameEn: site.nameEn,
+  account: site.account,
+  status: site.status,
+  applyDate: `2026-08-0${index + 1} 10:00:00`
+}))
+
+function withPrototypeSiteRows(response, query = {}) {
+  if (process.env.VUE_APP_PROTOTYPE_MOCK !== 'false') {
+    const code = String(query.code || '').trim().toLowerCase()
+    const name = String(query.nameZn || '').trim().toLowerCase()
+    const status = String(query.status || '').trim()
+    const filteredRows = prototypeSiteRows.filter(row => {
+      const matchesCode = !code || row.code.toLowerCase().includes(code)
+      const matchesName = !name || `${row.nameZn} ${row.nameEn}`.toLowerCase().includes(name)
+      const matchesStatus = !status || row.status === status
+      return matchesCode && matchesName && matchesStatus
+    })
+    const pageNum = Math.max(1, Number(query.pageNum) || 1)
+    const pageSize = Math.max(1, Number(query.pageSize) || 10)
+    const rows = filteredRows.slice((pageNum - 1) * pageSize, pageNum * pageSize).map(row => ({ ...row }))
+    return {
+      ...(response || {}),
+      rows,
+      total: filteredRows.length,
+      data: {
+        ...((response && response.data) || {}),
+        rows,
+        list: rows,
+        records: rows,
+        total: filteredRows.length
+      }
+    }
   }
-]
-
-function hasActiveSiteFilter(query = {}) {
-  return ['code', 'nameZn', 'status'].some(key => {
-    const value = query[key]
-    return value !== undefined && value !== null && value !== ''
-  })
-}
-
-function withPrototypeSiteRows(response, query) {
   const responseRows = Array.isArray(response && response.rows) ? response.rows : []
-  if (!response || responseRows.length || hasActiveSiteFilter(query)) {
+  if (!response || responseRows.length) {
     return response
   }
   const rows = prototypeSiteRows.map(row => ({ ...row }))

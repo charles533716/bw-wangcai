@@ -4,6 +4,9 @@ import {
   flattenPermissionTree,
   PROTOTYPE_PERMISSION_STORAGE_KEY
 } from '@/views/system/role/permissionCatalog'
+import { getCurrentBackendMode, getCurrentSiteCode } from '@/utils/prototypeBackend'
+import { buildSitePermissionTree } from '@/utils/sitePermissionCatalog'
+import { readSitePermissionState } from '@/utils/sitePermissionStore'
 
 const TREE_KEY = `${PROTOTYPE_PERMISSION_STORAGE_KEY}:tree`
 
@@ -54,18 +57,42 @@ function matchingPage(path, tree) {
       target.startsWith(`${normalizePath(node.routePath)}/`))
 }
 
-export function hasPrototypePageAccess(path) {
+function getEffectivePermissionScope() {
   const preview = getPermissionPreview()
-  if (!preview || preview.roleKey === 'admin') return true
-  const page = matchingPage(path, getStoredPermissionTree())
-  return !page || (preview.permissionCodes || []).includes(page.viewPermission)
+  if (getCurrentBackendMode() === 'site') {
+    const state = readSitePermissionState(buildSitePermissionTree())
+    const site = state.sites && state.sites[getCurrentSiteCode()]
+    if (site) {
+      let permissionCodes = site.permissionCodes || []
+      if (preview && preview.roleKey !== 'admin') {
+        const previewCodes = new Set(preview.permissionCodes || [])
+        permissionCodes = permissionCodes.filter(code => previewCodes.has(code))
+      }
+      return {
+        permissionCodes,
+        permissionTree: state.catalogTree || []
+      }
+    }
+  }
+  if (!preview || preview.roleKey === 'admin') return null
+  return {
+    permissionCodes: preview.permissionCodes || [],
+    permissionTree: getStoredPermissionTree()
+  }
+}
+
+export function hasPrototypePageAccess(path) {
+  const scope = getEffectivePermissionScope()
+  if (!scope) return true
+  const page = matchingPage(path, scope.permissionTree)
+  return !page || scope.permissionCodes.includes(page.viewPermission)
 }
 
 export function hasPrototypePermission(requiredPermissions, routePath) {
-  const preview = getPermissionPreview()
-  if (!preview || preview.roleKey === 'admin') return true
-  const tree = getStoredPermissionTree()
-  const granted = preview.permissionCodes || []
+  const scope = getEffectivePermissionScope()
+  if (!scope) return true
+  const tree = scope.permissionTree
+  const granted = scope.permissionCodes
   return requiredPermissions.some(required => {
     const mapped = findPermissionForLegacy(tree, routePath, required)
     return mapped && granted.includes(mapped)
@@ -73,14 +100,14 @@ export function hasPrototypePermission(requiredPermissions, routePath) {
 }
 
 export function filterRoutesForPreview(routes = []) {
-  const preview = getPermissionPreview()
-  if (!preview || preview.roleKey === 'admin') return routes
-  const views = Object.entries(collectPageViewPermissions(getStoredPermissionTree()))
+  const scope = getEffectivePermissionScope()
+  if (!scope) return routes
+  const views = Object.entries(collectPageViewPermissions(scope.permissionTree))
     .reduce((result, [path, permission]) => {
       result[normalizePath(path)] = permission
       return result
     }, {})
-  const allowed = new Set(preview.permissionCodes || [])
+  const allowed = new Set(scope.permissionCodes)
 
   function filter(nodes, parent = '') {
     return nodes.reduce((result, route) => {

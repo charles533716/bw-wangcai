@@ -76,7 +76,7 @@ import SizeSelect from '@/components/SizeSelect'
 import Search from '@/components/HeaderSearch'
 import RuoYiGit from '@/components/RuoYi/Git'
 import RuoYiDoc from '@/components/RuoYi/Doc'
-import { BACKEND_OPTIONS, getBackendMeta, resolvePrototypePath, setBackendContext } from '@/utils/prototypeBackend'
+import { BACKEND_OPTIONS, DEFAULT_SITE_CODE, getBackendMeta, resolvePrototypePath, setBackendContext } from '@/utils/prototypeBackend'
 import { clearPermissionPreview, getPermissionPreview } from '@/utils/prototypePermission'
 
 export default {
@@ -136,7 +136,7 @@ export default {
         return
       }
       const meta = setBackendContext(mode, {
-        siteCode: this.userSiteCode || undefined,
+        siteCode: mode === 'site' ? DEFAULT_SITE_CODE : (this.userSiteCode || undefined),
         agentCode: this.agentCode || undefined
       })
       this.$store.dispatch('tagsView/delAllViews').finally(() => {

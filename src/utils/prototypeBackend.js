@@ -4,6 +4,14 @@ export const BACKEND_STORAGE_KEYS = {
   agentCode: 'prototype:agentCode'
 }
 
+export const PROTOTYPE_SITES = [
+  { id: 1000, code: '2222', name: '旺财体育', nameEn: 'Wangcai Sports', account: 'wangcai_admin', status: '1' },
+  { id: 1001, code: '6666', name: '星河体育', nameEn: 'Galaxy Sports', account: 'galaxy_admin', status: '1' },
+  { id: 1002, code: '333333', name: '财神体育', nameEn: 'Fortune Sports', account: 'fortune_admin', status: '1' },
+  { id: 1003, code: '8888', name: 'DW体育', nameEn: 'DW Sports', account: 'dw_admin', status: '1' },
+  { id: 1004, code: 'TONY', name: '托尼体育', nameEn: 'Tony Sports', account: 'tony_admin', status: '1' }
+]
+
 export const BACKEND_OPTIONS = [
   {
     value: 'master',
@@ -49,6 +57,16 @@ export function normalizeBackendMode(mode) {
 export function getBackendMeta(mode) {
   const normalized = normalizeBackendMode(mode)
   return BACKEND_OPTIONS.find(item => item.value === normalized) || BACKEND_OPTIONS[0]
+}
+
+export function getPrototypeSite(siteCode = DEFAULT_SITE_CODE) {
+  return PROTOTYPE_SITES.find(site => site.code === String(siteCode)) || PROTOTYPE_SITES[0]
+}
+
+export function getBackendDisplayTitle(mode, siteCode = getCurrentSiteCode()) {
+  const normalized = normalizeBackendMode(mode)
+  if (normalized === 'site') return `${getPrototypeSite(siteCode).name}站点后台`
+  return getBackendMeta(normalized).title
 }
 
 export function resolvePrototypePath(path = '/') {

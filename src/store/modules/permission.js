@@ -64,7 +64,7 @@ const permission = {
           commit('SET_ROUTES', accessRoutes)
           const homeContext = deriveHomeContext({
             roles,
-            sidebarRoutes,
+            sidebarRoutes: sidebarAccessRoutes,
             // admin-ui 不区分站点管理员/代理，统一使用后台第一个可访问菜单作为首页
             staticHomeRoleKeys: []
           })

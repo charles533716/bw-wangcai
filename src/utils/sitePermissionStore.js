@@ -1,14 +1,10 @@
 import { collectPermissionCodes, flattenPermissionTree } from '@/views/system/role/permissionCatalog'
+import { PROTOTYPE_SITES } from '@/utils/prototypeBackend'
 
 export const SITE_PERMISSION_STORAGE_KEY = 'master-admin-prototype:site-permission-management'
-const SITE_PERMISSION_CATALOG_VERSION = 2
+const SITE_PERMISSION_CATALOG_VERSION = 3
 
-export const DEMO_SITES = [
-  { code: '2222', name: '旺财体育' },
-  { code: '333333', name: '财神体育' },
-  { code: '8888', name: 'DW体育' },
-  { code: '6666', name: '星河体育' }
-]
+export const DEMO_SITES = PROTOTYPE_SITES.map(site => ({ code: site.code, name: site.name }))
 
 function canUseStorage() {
   return typeof window !== 'undefined' && window.localStorage
@@ -110,8 +106,20 @@ export function readSitePermissionState(permissionTree = []) {
     }
   }
   const catalogChanged = permissionTree.length && catalogSignature((state && state.catalogTree) || []) !== catalogSignature(permissionTree)
-  if (!state || !state.sites || state.version !== SITE_PERMISSION_CATALOG_VERSION || catalogChanged) {
+  if (!state || !state.sites || state.version !== SITE_PERMISSION_CATALOG_VERSION) {
     state = buildDefaultState(permissionTree)
+  } else if (catalogChanged) {
+    const validCodes = new Set(collectPermissionCodes(permissionTree))
+    Object.values(state.sites).forEach(site => {
+      site.permissionCodes = (site.permissionCodes || []).filter(code => validCodes.has(code))
+    })
+    Object.keys(state.roles || {}).forEach(siteCode => {
+      state.roles[siteCode] = (state.roles[siteCode] || []).map(role => ({
+        ...role,
+        permissionCodes: (role.permissionCodes || []).filter(code => validCodes.has(code))
+      }))
+    })
+    state.catalogTree = clone(permissionTree)
   } else if (permissionTree.length && !(state.catalogTree || []).length) {
     state.catalogTree = clone(permissionTree)
   }

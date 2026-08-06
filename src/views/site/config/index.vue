@@ -35,13 +35,6 @@
           />
         </el-tab-pane>
 
-        <el-tab-pane label="资源配置" name="resource">
-          <resource-config
-            :site-code="siteCode"
-            v-if="activeTab === 'resource'"
-          />
-        </el-tab-pane>
-
         <el-tab-pane label="客户端资源配置" name="clientResource">
           <client-resource-config
             :site-code="siteCode"
@@ -79,7 +72,6 @@ import BaseConfig from './BaseConfig'
 import GameConfig from './GameConfig'
 import VenueConfig from './VenueConfig'
 import DomainConfig from './DomainConfig'
-import ResourceConfig from './ResourceConfig'
 import ClientResourceConfig from './ClientResourceConfig'
 import UpdateConfig from './UpdateConfig'
 import ComprehensiveConfig from './ComprehensiveConfig'
@@ -92,7 +84,6 @@ export default {
     VenueConfig,
     GameConfig,
     DomainConfig,
-    ResourceConfig,
     ClientResourceConfig,
     UpdateConfig,
     ComprehensiveConfig,

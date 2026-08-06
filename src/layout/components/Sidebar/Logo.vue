@@ -16,7 +16,7 @@
 <script>
 import logoImg from '@/assets/logo/logo.png'
 import variables from '@/assets/styles/variables.scss'
-import { getBackendMeta } from '@/utils/prototypeBackend'
+import { getBackendDisplayTitle } from '@/utils/prototypeBackend'
 
 export default {
   name: 'SidebarLogo',
@@ -34,7 +34,7 @@ export default {
       return this.$store.state.settings.sideTheme
     },
     title() {
-      return getBackendMeta(this.$store.getters.backendMode).title
+      return getBackendDisplayTitle(this.$store.getters.backendMode, this.$store.getters.userSiteCode || undefined)
     }
   },
   data() {
