@@ -1,4 +1,6 @@
 <div class="app-container">
+  <el-tabs v-model="activeAgentTab" class="agent-management-tabs">
+    <el-tab-pane label="代理列表" name="list">
   <el-form :model="queryParams" ref="queryForm" :inline="true" label-width="80px">
     <el-form-item label="代理账号" prop="name">
       <el-input
@@ -134,6 +136,11 @@
     :limit.sync="queryParams.pageSize"
     @pagination="getList"
   />
+    </el-tab-pane>
+    <el-tab-pane label="代理注册审核" name="registerAudit">
+      <agent-register-audit :show-site="false" :current-site-code="currentSiteCode" />
+    </el-tab-pane>
+  </el-tabs>
 
   <el-dialog :title="title" :visible.sync="open" width="640px" append-to-body @close="cancel">
     <el-form ref="form" :model="form" :rules="rules" label-width="110px">

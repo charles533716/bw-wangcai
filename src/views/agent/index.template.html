@@ -1,14 +1,6 @@
 <div class="app-container">
-  <div class="agent-page-header">
-    <div class="agent-page-title">代理管理</div>
-    <div class="agent-page-summary">
-      <div class="agent-page-count">
-        数量
-        <span class="agent-page-count__value">{{ total }}</span>
-      </div>
-    </div>
-  </div>
-
+  <el-tabs v-model="activeAgentTab" class="agent-management-tabs">
+    <el-tab-pane label="代理列表" name="list">
   <el-form :model="queryParams" ref="queryForm" :inline="true" label-width="80px">
     <el-form-item label="代理账号" prop="name">
       <el-input
@@ -187,6 +179,11 @@
     :limit.sync="queryParams.pageSize"
     @pagination="getList"
   />
+    </el-tab-pane>
+    <el-tab-pane label="代理注册审核" name="registerAudit">
+      <agent-register-audit :show-site="true" :site-options="siteOptions" />
+    </el-tab-pane>
+  </el-tabs>
 
   <el-dialog :title="title" :visible.sync="open" width="760px" append-to-body @close="cancel">
     <el-form ref="form" :model="form" :rules="rules" label-width="110px">

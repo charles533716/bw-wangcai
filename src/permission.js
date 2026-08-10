@@ -11,13 +11,18 @@ import { hasPrototypePageAccess } from '@/utils/prototypePermission'
 
 NProgress.configure({ showSpinner: false })
 
-const whiteList = ['/login', '/register']
+const whiteList = ['/login', '/register', '/agent-login']
 
 const isWhiteList = (path) => {
   return whiteList.some(pattern => isPathMatch(pattern, path))
 }
 
-function inferBackendModeByPath(path) {
+function inferBackendModeByRoute(route) {
+  const path = route && route.path ? route.path : ''
+  const query = (route && route.query) || {}
+  if ((path === '/index' || path === '/') && String(query.role || '').toLowerCase() === 'agent') {
+    return 'agent'
+  }
   if (path.startsWith('/site-admin')) {
     return 'site'
   }
@@ -30,8 +35,8 @@ function inferBackendModeByPath(path) {
   return ''
 }
 
-function syncBackendModeByPath(path) {
-  const targetMode = inferBackendModeByPath(path)
+function syncBackendModeByRoute(route) {
+  const targetMode = inferBackendModeByRoute(route)
   if (!targetMode || targetMode === getCurrentBackendMode()) {
     return
   }
@@ -44,7 +49,7 @@ function syncBackendModeByPath(path) {
 router.beforeEach((to, from, next) => {
   NProgress.start()
   if (getToken()) {
-    syncBackendModeByPath(to.path)
+    syncBackendModeByRoute(to)
     to.meta.title && store.dispatch('settings/setTitle', to.meta.title)
     /* has token*/
     if (to.path === '/login') {

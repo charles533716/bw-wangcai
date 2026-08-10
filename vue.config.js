@@ -23,6 +23,7 @@ module.exports = {
     host: '0.0.0.0',
     port: port,
     open: true,
+    historyApiFallback: true,
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
         target: baseUrl,

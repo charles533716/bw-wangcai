@@ -2,7 +2,7 @@
   <div class="tab-page">
     <el-form :inline="true" :model="query" size="small" class="filter-form">
       <el-form-item label="场馆名称"><el-input v-model="query.name" clearable placeholder="请输入中文、英文或CODE" /></el-form-item>
-      <el-form-item label="场馆类型"><el-select v-model="query.type" clearable placeholder="全部"><el-option v-for="item in types" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+      <el-form-item label="场馆类型"><el-select v-model="query.type" clearable placeholder="全部"><el-option v-for="item in venueTypeOptions" :key="item.name" :label="item.name" :value="item.name" /></el-select></el-form-item>
       <el-form-item label="状态"><el-select v-model="query.status" clearable placeholder="全部"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
       <el-form-item label="备注"><el-input v-model="query.remark" clearable placeholder="请输入备注" /></el-form-item>
       <el-form-item><el-button type="primary" @click="search">筛选</el-button><el-button @click="resetQuery">重置</el-button><el-button type="success" @click="openCreate">新增场馆</el-button></el-form-item>
@@ -36,7 +36,7 @@
         <el-form-item label="场馆CODE" required><el-input v-model.trim="form.code" name="venue-code" autocomplete="off" data-1p-ignore="true" data-bwignore="true" data-lpignore="true" placeholder="请输入场馆CODE" /></el-form-item>
         <el-form-item label="中文名称" required><el-input v-model.trim="form.nameZh" placeholder="请输入中文名称" /></el-form-item>
         <el-form-item label="场馆英文名称"><el-input v-model.trim="form.name" placeholder="请输入场馆英文名称" /></el-form-item>
-        <el-form-item label="场馆类型" required><el-select v-model="form.type" class="full"><el-option v-for="item in types" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+        <el-form-item label="场馆类型" required><el-select v-model="form.type" class="full"><el-option v-for="item in venueTypeOptions" :key="item.name" :label="item.name" :value="item.name" /></el-select></el-form-item>
         <el-form-item label="场馆钱包" required><el-select v-model="form.walletId" class="full"><el-option v-for="item in state.wallets" :key="item.id" :label="item.name" :value="item.id" /></el-select></el-form-item>
         <el-form-item label="场馆佣金比例" required><el-input-number v-model="form.commissionRate" :min="0" :max="100" :precision="4" class="full" /><div class="form-tip">用于代理佣金结算；站点设置了自定义费率时优先使用站点费率，否则使用此默认费率。</div></el-form-item>
         <el-form-item label="排序" required><el-input-number v-model="form.sort" :min="1" class="full" /></el-form-item>
@@ -92,12 +92,13 @@
 
 <script>
 import { listSite } from '@/api/site/site'
-const { TYPES, cloneState, defaultMaintenanceConfig, validateMaintenanceConfig, filterVenues, normalizeSiteRows, paginate, authorizeVenueSites, revokeVenueSites, canEnableVenue, getVenueStats, validateVenue, appendMaintenanceLog } = require('./model')
+const { cloneState, defaultMaintenanceConfig, validateMaintenanceConfig, filterVenues, normalizeSiteRows, paginate, authorizeVenueSites, revokeVenueSites, canEnableVenue, getVenueStats, validateVenue, appendMaintenanceLog } = require('./model')
 const emptyForm = () => ({ id: null, code: '', name: '', nameZh: '', type: '', walletId: null, commissionRate: 0, sort: 1, status: 'enabled', authCount: 0, authorizedSiteCodes: [], billingRateConfiguredSiteCodes: [], remark: '', updatedAt: '' })
 export default {
   name: 'VenueList', props: { state: { type: Object, required: true } },
-  data() { return { types: TYPES, statusOptions: [{ label: '启用', value: 'enabled' }, { label: '停用', value: 'disabled' }, { label: '维护中', value: 'maintenance' }], query: { name: '', type: '', status: '', remark: '' }, appliedQuery: {}, pageNum: 1, pageSize: 10, dialogVisible: false, dialogMode: 'create', editingId: null, form: emptyForm(), statusVisible: false, statusVenueId: null, statusForm: { status: 'enabled', maintenanceConfig: defaultMaintenanceConfig() }, authorizationVisible: false, authorizationMode: 'authorize', authorizationVenueId: null, siteRows: [], selectedSiteCodes: [], siteLoading: false, authorizedSitesVisible: false, authorizedSitesVenueId: null, authorizedSitesLoading: false, authorizedSitesSource: [] } },
+  data() { return { statusOptions: [{ label: '启用', value: 'enabled' }, { label: '停用', value: 'disabled' }, { label: '维护中', value: 'maintenance' }], query: { name: '', type: '', status: '', remark: '' }, appliedQuery: {}, pageNum: 1, pageSize: 10, dialogVisible: false, dialogMode: 'create', editingId: null, form: emptyForm(), statusVisible: false, statusVenueId: null, statusForm: { status: 'enabled', maintenanceConfig: defaultMaintenanceConfig() }, authorizationVisible: false, authorizationMode: 'authorize', authorizationVenueId: null, siteRows: [], selectedSiteCodes: [], siteLoading: false, authorizedSitesVisible: false, authorizedSitesVenueId: null, authorizedSitesLoading: false, authorizedSitesSource: [] } },
   computed: {
+    venueTypeOptions() { return (this.state.venueTypes || []).slice().sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)) },
     page() { return paginate(filterVenues(this.state.venues, this.appliedQuery), this.pageNum, this.pageSize) },
     currentStatusVenue() { return this.state.venues.find(item => item.id === this.statusVenueId) || null },
     currentAuthorizationVenue() { return this.state.venues.find(item => item.id === this.authorizationVenueId) || null },

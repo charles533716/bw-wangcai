@@ -1,13 +1,13 @@
 const DEMO_IMAGE = '/profile/prototype-image.svg'
 
 const DEFINITIONS = [
-  ['捕鱼', 'icon', ['AG捕鱼', '博雅捕鱼', 'PM捕鱼']],
-  ['电竞', 'detail', ['旺财电竞', 'DB电竞', 'IM电竞']],
-  ['棋牌', 'detail', ['旺财棋牌', 'DB棋牌', '博雅棋牌']],
+  ['体育', 'detail', ['IM体育', 'PM体育', 'FB体育']],
   ['真人', 'detail', ['OB真人', 'eBET真人', 'AG真人']],
   ['电子', 'icon', ['博雅电子', '5000PG电子', 'PM电子', 'PP电子']],
+  ['棋牌', 'detail', ['旺财棋牌', 'DB棋牌', '博雅棋牌']],
   ['彩票', 'detail', ['旺财彩票', 'TC彩票', 'VR彩票']],
-  ['体育', 'detail', ['IM体育', 'PM体育', 'FB体育']],
+  ['电竞', 'detail', ['旺财电竞', 'DB电竞', 'IM电竞']],
+  ['捕鱼', 'icon', ['AG捕鱼', '博雅捕鱼', 'PM捕鱼']],
   ['哈希', 'icon', ['哈希分分彩', '哈希百家乐']]
 ]
 

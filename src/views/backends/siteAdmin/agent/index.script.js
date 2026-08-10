@@ -2,10 +2,11 @@ import { listAgent, getAgent, addAgent, updateAgent, resetAgentPwd, getCurrentUs
 import { listCommissionByType, getCommission } from "@/api/agent/commission";
 import { DEFAULT_AGENT_CODE, DEFAULT_SITE_CODE, resolvePrototypePath, setBackendContext } from '@/utils/prototypeBackend'
 import AgentAdvanceRecordsDialog from '@/components/AgentAdvanceRecordsDialog'
+import AgentRegisterAudit from '@/views/agent/components/AgentRegisterAudit'
 
 export default {
   name: "Agent",
-  components: { AgentAdvanceRecordsDialog },
+  components: { AgentAdvanceRecordsDialog, AgentRegisterAudit },
   dicts: ["sys_agent_level", "sys_star_level"],
   data() {
     const validateConfirmPassword = (rule, value, callback) => {
@@ -32,6 +33,7 @@ export default {
       ids: [],
       single: true,
       advanceRecordOpen: false,
+      activeAgentTab: "list",
       total: 0,
       agentList: [],
       commissionOptions: [],
@@ -45,7 +47,7 @@ export default {
       resetPwdOpen: false,
       queryParams: {
         pageNum: 1,
-        pageSize: 10,
+        pageSize: 20,
         name: null,
         agentStatus: null
       },
@@ -586,7 +588,7 @@ export default {
     resetQuery() {
       this.queryParams = {
         pageNum: 1,
-        pageSize: 10,
+        pageSize: 20,
         name: null,
         agentStatus: null
       };

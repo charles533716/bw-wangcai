@@ -2,9 +2,11 @@ import { listAgent, getAgent, addAgent, updateAgent, resetAgentPwd } from "@/api
 import { listSite } from "@/api/site/site";
 import { getSiteComprehensiveConfig } from "@/api/site/config";
 import { listCommissionByType, getCommission } from "@/api/agent/commission";
+import AgentRegisterAudit from "./components/AgentRegisterAudit";
 
 export default {
   name: "Agent",
+  components: { AgentRegisterAudit },
   dicts: ["sys_agent_level", "sys_star_level"],
   data() {
     const validateConfirmPassword = (rule, value, callback) => {
@@ -32,12 +34,13 @@ export default {
       parentAgentOptions: [],
       exportLoading: false,
       submitLoading: false,
+      activeAgentTab: "list",
       title: "",
       open: false,
       resetPwdOpen: false,
       queryParams: {
         pageNum: 1,
-        pageSize: 10,
+        pageSize: 20,
         name: null,
         siteCode: null,
         agentStatus: null
@@ -569,7 +572,7 @@ export default {
       this.dateRange = [];
       this.queryParams = {
         pageNum: 1,
-        pageSize: 10,
+        pageSize: 20,
         name: null,
         siteCode: null,
         agentStatus: null

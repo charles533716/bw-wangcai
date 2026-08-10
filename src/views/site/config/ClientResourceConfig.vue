@@ -250,34 +250,6 @@
           </div>
 
           <div v-if="currentSecondaryConfig" class="secondary-config-panel">
-            <section class="resource-section">
-              <div class="secondary-rebate-row">
-                <div class="secondary-form-item">
-                  <span class="secondary-label secondary-label--required">返水信息</span>
-                  <el-radio-group v-model="currentSecondaryConfig.rebateVisible">
-                    <el-radio label="show">展示</el-radio>
-                    <el-radio label="hide">不展示</el-radio>
-                  </el-radio-group>
-                </div>
-
-                <div v-if="currentSecondaryConfig.rebateVisible === 'show'" class="secondary-form-item secondary-form-item--image">
-                  <span class="secondary-label secondary-label--required">场馆返水信息</span>
-                  <div>
-                    <image-upload
-                      v-model="currentSecondaryConfig.rebateImage"
-                      :limit="1"
-                      :file-size="2"
-                      :file-type="['jpg', 'jpeg', 'png']"
-                      :is-show-tip="false"
-                      :drag="false"
-                      replace-on-exceed
-                    />
-                    <p class="resource-tip">支持 JPG、JPEG、PNG，建议尺寸，单张不超过 2MB</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <section class="secondary-venue-section">
               <div class="secondary-venue-toolbar">
                 <el-button type="primary" size="mini" @click="addSecondaryVenue">新增</el-button>
@@ -446,21 +418,19 @@ export default {
     }
     const affiliatePlan = { webMainImage: '' }
     const webHome = {
-      topTabs: ['捕鱼', '电竞', '棋牌', '真人', '电子', '彩票', '体育', '哈希']
+      topTabs: ['体育', '真人', '电子', '棋牌', '彩票', '电竞', '捕鱼', '哈希']
     }
     const secondaryDropdownTabs = [
-      { label: '捕鱼下拉', value: 'fish', type: 'venue' },
-      { label: '电竞下拉', value: 'esports', type: 'venue' },
-      { label: '棋牌下拉', value: 'chess', type: 'venue' },
+      { label: '体育下拉', value: 'sports', type: 'venue' },
       { label: '真人下拉', value: 'live', type: 'venue' },
       { label: '电子下拉', value: 'slot', type: 'venue' },
+      { label: '棋牌下拉', value: 'chess', type: 'venue' },
       { label: '彩票下拉', value: 'lottery', type: 'venue' },
-      { label: '体育下拉', value: 'sports', type: 'venue' },
+      { label: '电竞下拉', value: 'esports', type: 'venue' },
+      { label: '捕鱼下拉', value: 'fish', type: 'venue' },
       { label: '哈希下拉', value: 'hash', type: 'venue' }
     ]
     const createSecondaryConfig = (prefix) => ({
-      rebateVisible: 'show',
-      rebateImage: profileImage,
       venues: [
         { id: `${prefix}-1`, venueName: 'AG捕鱼', venueImage: placeholderImage, nameImage: profileImage },
         { id: `${prefix}-2`, venueName: '博雅捕鱼1', venueImage: profileImage, nameImage: profileImage },
@@ -478,7 +448,7 @@ export default {
       loginRegister,
       appDownload,
       affiliatePlan,
-      homeTabOptions: ['哈希', '体育', '真人', '棋牌', '电竞', '彩票', '电子', '捕鱼'],
+      homeTabOptions: ['体育', '真人', '电子', '棋牌', '彩票', '电竞', '捕鱼', '哈希'],
       webHome,
       secondaryDropdownTabs,
       venueOptions: [
@@ -499,7 +469,7 @@ export default {
         '哈希竞猜'
       ],
       webSecondaryDropdown: {
-        activeTab: 'fish',
+        activeTab: 'sports',
         configs: secondaryDropdownConfigs
       },
       savedConfigs: {
@@ -583,10 +553,6 @@ export default {
       const config = this.currentSecondaryConfig
       if (!config) {
         this.$message.info('APP下拉配置待补充')
-        return
-      }
-      if (config.rebateVisible === 'show' && !config.rebateImage) {
-        this.$message.warning('请配置场馆返水信息')
         return
       }
       const invalidIndex = config.venues.findIndex(item => !item.venueName || !item.venueImage || !item.nameImage)
@@ -788,13 +754,6 @@ export default {
   border-top: 1px solid #ebeef5;
 }
 
-.secondary-rebate-row {
-  display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(420px, 1fr);
-  gap: 48px 120px;
-  padding: 12px 0 10px 8px;
-}
-
 .secondary-form-item {
   display: flex;
   align-items: center;
@@ -894,7 +853,6 @@ export default {
   .download-showcase-grid,
   .resource-grid--two,
   .home-tab-grid,
-  .secondary-rebate-row,
   .secondary-venue-row {
     grid-template-columns: minmax(240px, 1fr);
   }

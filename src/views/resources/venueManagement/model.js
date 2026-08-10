@@ -3,7 +3,7 @@ const STORAGE_KEY = 'master-admin-prototype:venue-management:v5'
 const LEGACY_STORAGE_KEYS = ['master-admin-prototype:venue-management:v4', 'master-admin-prototype:venue-management:v3', 'master-admin-prototype:venue-management:v2']
 const INITIAL_SITE_CODES = ['2222', 'SITE001', 'SITE002', 'SITE003', 'SITE004']
 const DEMO_IMAGE = '/profile/prototype-image.svg'
-const TYPES = ['捕鱼', '电竞', '棋牌', '真人', '电子', '彩票', '体育', '哈希']
+const TYPES = ['体育', '真人', '电子', '棋牌', '彩票', '电竞', '捕鱼', '哈希']
 const MAINTENANCE_OPERATORS = ['admin', 'test', 'kai01', 'Bill', 'operator01']
 
 function cloneState(value) {
@@ -64,6 +64,13 @@ function normalizeMaintenanceOperators(logs = []) {
 }
 
 function createInitialState() {
+  const venueTypes = TYPES.map((name, index) => ({
+    id: 501 + index,
+    name,
+    inactiveIcon: DEMO_IMAGE,
+    activeIcon: DEMO_IMAGE,
+    sort: index + 1
+  }))
   const names = [
     ['AG捕鱼', 'AGFISH', 'AG Fishing', '捕鱼'], ['IM电竞', 'IMES', 'IM Esports', '电竞'],
     ['DB棋牌', 'DBCHESS', 'DB Chess', '棋牌'], ['AG真人', 'AGLIVE', 'AG Live', '真人'],
@@ -124,6 +131,7 @@ function createInitialState() {
   }))
   return {
     version: VERSION,
+    venueTypes,
     venues,
     games,
     wallets,
@@ -174,7 +182,17 @@ function validateWallet(payload, rows, currentId) {
   return { valid: true, message: '' }
 }
 
+function validateVenueType(payload, rows, currentId) {
+  for (const [field, label] of [['name', '类型名称'], ['inactiveIcon', '未选中图标'], ['activeIcon', '已选中图标'], ['sort', '排序']]) {
+    if (!required(payload[field])) return invalid(`请填写${label}`)
+  }
+  if (duplicate(rows, 'name', payload.name, currentId)) return invalid('类型名称不能重复')
+  if (Number(payload.sort) < 1) return invalid('排序必须大于0')
+  return { valid: true, message: '' }
+}
+
 function contains(value, keyword) { return String(value || '').toLowerCase().includes(String(keyword || '').toLowerCase()) }
+function filterVenueTypes(rows, query = {}) { return rows.filter(row => (!query.name || contains(row.name, query.name))) }
 function filterVenues(rows, query = {}) { return rows.filter(row => (!query.name || contains(`${row.name} ${row.nameZh} ${row.code}`, query.name)) && (!query.type || row.type === query.type) && (!query.status || row.status === query.status) && (!query.remark || contains(row.remark, query.remark))) }
 function filterGames(rows, query = {}) { return rows.filter(row => (!query.name || contains(row.name, query.name)) && (!query.platform || row.platforms.includes(query.platform)) && (!query.status || row.status === query.status) && (!query.venueId || String(row.venueId) === String(query.venueId)) && (!query.venueType || row.venueType === query.venueType) && (!query.code || contains(row.code, query.code)) && (!query.brand || contains(row.brand, query.brand))) }
 function filterWallets(rows, query = {}) { return rows.filter(row => (!query.name || contains(`${row.name} ${row.code}`, query.name)) && (!query.direct || (query.direct === 'yes') === Boolean(row.direct))) }
@@ -197,10 +215,10 @@ function getGameAuthCount(game = {}) { return Array.isArray(game.authorizedSiteC
 function revokeVenueSites(venue, siteCodes = [], games = []) { const revokedCodes = uniqueCodes(siteCodes); const revoked = new Set(revokedCodes); venue.authorizedSiteCodes = uniqueCodes(venue.authorizedSiteCodes).filter(code => !revoked.has(code)); venue.billingRateConfiguredSiteCodes = uniqueCodes(venue.billingRateConfiguredSiteCodes).filter(code => venue.authorizedSiteCodes.includes(code)); venue.authCount = venue.authorizedSiteCodes.length; games.filter(game => String(game.venueId) === String(venue.id)).forEach(game => revokeGameSites(game, revokedCodes)); return venue }
 function getVenueBillingStats(venue = {}) { const authorized = uniqueCodes(venue.authorizedSiteCodes); const configured = uniqueCodes(venue.billingRateConfiguredSiteCodes).filter(code => authorized.includes(code)); return { configured: configured.length, total: authorized.length, missing: Math.max(0, authorized.length - configured.length) } }
 function canEnableVenue(venue) { return getVenueBillingStats(venue).missing === 0 }
-function migrateState(state) { const next = cloneState(state); next.version = VERSION; next.venues = (next.venues || []).map((venue, index) => { const authorized = Array.isArray(venue.authorizedSiteCodes) ? uniqueCodes(venue.authorizedSiteCodes) : INITIAL_SITE_CODES.slice(0, Math.max(0, Number(venue.authCount) || 0)); const configured = Array.isArray(venue.billingRateConfiguredSiteCodes) ? uniqueCodes(venue.billingRateConfiguredSiteCodes).filter(code => authorized.includes(code)) : authorized.slice(0, Math.max(0, authorized.length - (index % 2 === 0 && authorized.length ? 1 : 0))); return { ...venue, authCount: authorized.length, authorizedSiteCodes: authorized, billingRateConfiguredSiteCodes: configured, maintenanceConfig: { ...defaultMaintenanceConfig(), ...(venue.maintenanceConfig || {}) } } }); next.games = (next.games || []).map(game => { const venue = next.venues.find(item => String(item.id) === String(game.venueId)); const allowed = uniqueCodes(venue && venue.authorizedSiteCodes); const requested = Array.isArray(game.authorizedSiteCodes) ? uniqueCodes(game.authorizedSiteCodes) : allowed.slice(0, Math.max(0, Number(game.authCount) || 0)); const authorized = requested.filter(code => allowed.includes(code)); return { ...game, authCount: authorized.length, authorizedSiteCodes: authorized, maintenanceConfig: { ...defaultMaintenanceConfig(), ...(game.maintenanceConfig || {}) } } }); return next }
+function migrateState(state) { const next = cloneState(state); next.version = VERSION; const fallbackTypes = TYPES.map((name, index) => ({ id: 501 + index, name, inactiveIcon: DEMO_IMAGE, activeIcon: DEMO_IMAGE, sort: index + 1 })); next.venueTypes = Array.isArray(next.venueTypes) && next.venueTypes.length ? next.venueTypes.map((item, index) => ({ id: item.id || 501 + index, name: item.name || TYPES[index] || '', inactiveIcon: item.inactiveIcon || DEMO_IMAGE, activeIcon: item.activeIcon || DEMO_IMAGE, sort: Number(item.sort) || index + 1 })).filter(item => item.name) : fallbackTypes; next.venues = (next.venues || []).map((venue, index) => { const authorized = Array.isArray(venue.authorizedSiteCodes) ? uniqueCodes(venue.authorizedSiteCodes) : INITIAL_SITE_CODES.slice(0, Math.max(0, Number(venue.authCount) || 0)); const configured = Array.isArray(venue.billingRateConfiguredSiteCodes) ? uniqueCodes(venue.billingRateConfiguredSiteCodes).filter(code => authorized.includes(code)) : authorized.slice(0, Math.max(0, authorized.length - (index % 2 === 0 && authorized.length ? 1 : 0))); return { ...venue, authCount: authorized.length, authorizedSiteCodes: authorized, billingRateConfiguredSiteCodes: configured, maintenanceConfig: { ...defaultMaintenanceConfig(), ...(venue.maintenanceConfig || {}) } } }); next.games = (next.games || []).map(game => { const venue = next.venues.find(item => String(item.id) === String(game.venueId)); const allowed = uniqueCodes(venue && venue.authorizedSiteCodes); const requested = Array.isArray(game.authorizedSiteCodes) ? uniqueCodes(game.authorizedSiteCodes) : allowed.slice(0, Math.max(0, Number(game.authCount) || 0)); const authorized = requested.filter(code => allowed.includes(code)); return { ...game, authCount: authorized.length, authorizedSiteCodes: authorized, maintenanceConfig: { ...defaultMaintenanceConfig(), ...(game.maintenanceConfig || {}) } } }); return next }
 function getVenueStats(state, venueId) { const venue = state.venues.find(item => item.id === venueId) || {}; return { gameCount: state.games.filter(item => item.venueId === venueId).length, authCount: Array.isArray(venue.authorizedSiteCodes) ? venue.authorizedSiteCodes.length : Number(venue.authCount) || 0 } }
 function appendMaintenanceLog(state, payload) { state.maintenanceLogs.unshift({ id: Math.max(0, ...state.maintenanceLogs.map(item => Number(item.id))) + 1, venueId: payload.venueId || null, gameId: payload.gameId || null, startAt: payload.startAt || now(), endAt: payload.endAt || '', operator: payload.operator || '演示管理员', operatedAt: now(), reason: payload.reason || '切换维护状态' }) }
 function loadState(storage) { for (const key of [STORAGE_KEY, ...LEGACY_STORAGE_KEYS]) { try { const parsed = JSON.parse(storage.getItem(key)); if (parsed && Array.isArray(parsed.venues) && parsed.venues.length) { const migrated = migrateState(parsed); if (!Array.isArray(migrated.maintenanceLogs) || migrated.maintenanceLogs.length < 200) migrated.maintenanceLogs = createMaintenanceLogs(migrated.venues, migrated.games); migrated.maintenanceLogs = normalizeMaintenanceOperators(migrated.maintenanceLogs); saveState(storage, migrated); return migrated } } catch (error) {} } const state = createInitialState(); saveState(storage, state); return state }
 function saveState(storage, state) { if (storage && storage.setItem) storage.setItem(STORAGE_KEY, JSON.stringify(state)) }
 
-module.exports = { VERSION, STORAGE_KEY, TYPES, DEMO_IMAGE, createInitialState, cloneState, defaultMaintenanceConfig, validateMaintenanceConfig, validateVenue, validateGame, validateGameBatch, validateWallet, filterVenues, filterGames, filterWallets, filterMaintenanceLogs, filterAuthorizationSites, normalizeSiteRows, paginate, authorizeVenueSites, revokeVenueSites, authorizeGameSites, revokeGameSites, getGameAuthCount, getVenueBillingStats, canEnableVenue, migrateState, getVenueStats, appendMaintenanceLog, loadState, saveState }
+module.exports = { VERSION, STORAGE_KEY, TYPES, DEMO_IMAGE, createInitialState, cloneState, defaultMaintenanceConfig, validateMaintenanceConfig, validateVenue, validateGame, validateGameBatch, validateWallet, validateVenueType, filterVenueTypes, filterVenues, filterGames, filterWallets, filterMaintenanceLogs, filterAuthorizationSites, normalizeSiteRows, paginate, authorizeVenueSites, revokeVenueSites, authorizeGameSites, revokeGameSites, getGameAuthCount, getVenueBillingStats, canEnableVenue, migrateState, getVenueStats, appendMaintenanceLog, loadState, saveState }

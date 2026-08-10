@@ -48,7 +48,7 @@ const RECORD_MENU_ITEMS = [
 ]
 const RECORD_HIDDEN_TITLES = new Set(['消息列表'])
 const AGENT_MENU_ITEMS = {
-  index: '代理管理',
+  index: '代理列表',
   'comm/index': '返佣方案',
   'comm/grant': '代理佣金结算',
   'comm/record': '佣金记录',
