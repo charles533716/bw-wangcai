@@ -3,6 +3,11 @@ import { listSite } from "@/api/site/site";
 import { getSiteComprehensiveConfig } from "@/api/site/config";
 import { listCommissionByType, getCommission } from "@/api/agent/commission";
 import AgentRegisterAudit from "./components/AgentRegisterAudit";
+import {
+  defaultRecommenderOptions,
+  filterAndPaginateAgentRows,
+  normalizeAgentRows
+} from "./agentListPrototype";
 
 export default {
   name: "Agent",
@@ -32,6 +37,7 @@ export default {
       commissionDetailMap: {},
       siteProfitShareRateMap: {},
       parentAgentOptions: [],
+      recommenderOptions: defaultRecommenderOptions,
       exportLoading: false,
       submitLoading: false,
       activeAgentTab: "list",
@@ -41,9 +47,13 @@ export default {
       queryParams: {
         pageNum: 1,
         pageSize: 20,
+        agentId: null,
         name: null,
+        recommender: null,
         siteCode: null,
-        agentStatus: null
+        agentType: null,
+        agentStatus: null,
+        googleVerify: null
       },
       form: {},
       originalModelType: null,
@@ -56,14 +66,15 @@ export default {
       rules: {
         name: [
           { required: true, message: "代理账号不能为空", trigger: "blur" },
-          { min: 3, max: 20, message: "账号长度在 3 到 20 个字符", trigger: "blur" }
+          { min: 3, max: 20, message: "账号长度在 3 到 20 个字符", trigger: "blur" },
+          { pattern: /^[A-Za-z0-9]+$/, message: "代理账号只能包含字母和数字", trigger: "blur" }
         ],
         password: [
           { required: true, message: "密码不能为空", trigger: "blur" },
           { min: 6, max: 20, message: "密码长度在 6 到 20 个字符", trigger: "blur" }
         ],
         siteCode: [{ required: true, message: "站点编码不能为空", trigger: "change" }],
-        commissionPlanId: [{ required: true, message: "佣金方案不能为空", trigger: "change" }],
+        agentType: [{ required: true, message: "代理类型不能为空", trigger: "change" }],
         agentLevel: [{ required: true, message: "层级级别不能为空", trigger: "change" }],
         starLevel: [{ required: true, message: "星级级别不能为空", trigger: "change" }],
         agentStatus: [{ required: true, message: "代理状态不能为空", trigger: "change" }]
@@ -90,6 +101,13 @@ export default {
     };
   },
   computed: {
+    recommenderSelectOptions() {
+      const options = new Set(this.recommenderOptions);
+      this.parentAgentOptions.forEach(item => {
+        if (item.name) options.add(item.name);
+      });
+      return Array.from(options);
+    },
     selectedCommissionType() {
       return this.resolveCommissionTypeByPlanId(this.form.commissionPlanId);
     },
@@ -203,11 +221,12 @@ export default {
     },
     getList() {
       this.loading = true;
-      listAgent(this.buildQueryParams())
+      listAgent({ pageNum: 1, pageSize: 2000 })
         .then(response => {
           const table = this.unwrapTableData(response);
-          this.agentList = table.rows;
-          this.total = table.total;
+          const result = filterAndPaginateAgentRows(table.rows, this.queryParams, this.dateRange);
+          this.agentList = result.rows;
+          this.total = result.total;
         })
         .finally(() => {
           this.loading = false;
@@ -299,7 +318,7 @@ export default {
     getParentAgents() {
       listAgent({ pageNum: 1, pageSize: 2000 })
         .then(response => {
-          this.parentAgentOptions = this.unwrapTableData(response).rows;
+          this.parentAgentOptions = normalizeAgentRows(this.unwrapTableData(response).rows);
         })
         .catch(() => {
           this.parentAgentOptions = [];
@@ -424,6 +443,9 @@ export default {
       }
       return amount.toFixed(2);
     },
+    formatAgentType(type) {
+      return type === "team" ? "团队代理（副线）" : "星级代理";
+    },
     normalizeRateValue(rateValue) {
       const rate = Number(rateValue);
       if (!Number.isFinite(rate)) {
@@ -531,16 +553,6 @@ export default {
       if (this.form.bearAllOperationExpense !== 1) {
         this.form.bearAllOperationExpense = 0;
         this.form.bearOperationExpenseTypes = [];
-        return true;
-      }
-      if (!Array.isArray(this.form.bearOperationExpenseTypes) || this.form.bearOperationExpenseTypes.length === 0) {
-        this.$modal.msgError("承担全部运营费用时至少选择一个运营费用种类");
-        return false;
-      }
-      this.form.bearOperationExpenseTypes = this.parseOperationExpenseTypes(this.form.bearOperationExpenseTypes);
-      if (this.form.bearOperationExpenseTypes.length === 0) {
-        this.$modal.msgError("承担全部运营费用时至少选择一个有效的运营费用种类");
-        return false;
       }
       return true;
     },
@@ -573,9 +585,13 @@ export default {
       this.queryParams = {
         pageNum: 1,
         pageSize: 20,
+        agentId: null,
         name: null,
+        recommender: null,
         siteCode: null,
-        agentStatus: null
+        agentType: null,
+        agentStatus: null,
+        googleVerify: null
       };
       this.handleQuery();
     },
@@ -588,8 +604,12 @@ export default {
       this.form = {
         id: null,
         name: null,
+        recommender: null,
         password: null,
         siteCode: null,
+        agentType: null,
+        targetIdentity: "keep",
+        currentTeam: "-",
         commissionPlanId: null,
         agentLevel: 1,
         starLevel: 1,
@@ -609,6 +629,19 @@ export default {
       this.open = true;
       this.title = "新增代理";
       this.loadSiteProfitShareRate(this.form.siteCode);
+    },
+    handleAgentAccountInput(value) {
+      this.form.name = String(value || "").replace(/[^A-Za-z0-9]/g, "");
+    },
+    handleAgentTypeChange(type) {
+      const targetCommType = type === "team" ? "6" : "3";
+      const matchedPlan = this.commissionOptions.find(item => String(item.commType) === targetCommType);
+      this.form.commissionPlanId = matchedPlan ? matchedPlan.id : null;
+      this.form.commissionPlanName = matchedPlan
+        ? matchedPlan.planName
+        : (type === "team" ? "WC盈利佣金方案" : "WC星级佣金方案");
+      this.form.agentLevel = type === "team" ? 1 : null;
+      this.form.starLevel = type === "star" ? 1 : null;
     },
     handleUpdate(row) {
       this.reset();
@@ -651,77 +684,30 @@ export default {
     },
     submitForm() {
       this.$refs.form.validate(valid => {
-        if (!valid) {
+        if (!valid || !this.validateOperationExpenseConfig()) {
           return;
         }
 
-        const selectedType = this.selectedCommissionType;
-        if (!selectedType) {
-          this.$modal.msgError("请选择有效的佣金方案");
-          return;
-        }
-        if (!this.validateOperationExpenseConfig()) {
-          return;
-        }
-
-        this.submitLoading = true;
-        this.loadCommissionPlanDetails(this.form.commissionPlanId).then(detailList => {
-          const currentLevel = selectedType === "3" ? this.form.starLevel : this.form.agentLevel;
-          const matchedDetail = (Array.isArray(detailList) ? detailList : [])
-            .find(item => Number(item.levelNum) === Number(currentLevel));
-
-          if (!this.hasCommissionRateConfigured(matchedDetail)) {
-            const levelLabel = selectedType === "3" ? "星级级别" : "层级级别";
-            this.$modal.msgError(`${levelLabel}${currentLevel}未配置返佣比例，请选择有返佣比例的级别`);
-            return null;
-          }
-          if (selectedType === "6" && !this.form.id && this.currentMultiLevelRateInvalid) {
-            this.$modal.msgError(`代理返佣比例${this.currentCommissionRateText}不能大于或等于站点返佣比例${this.currentSiteProfitShareRateText}`);
-            return null;
-          }
-
-          const payload = {
-            ...this.form,
-            bearAllOperationExpense: this.form.bearAllOperationExpense === 1 ? 1 : 0,
-            bearOperationExpenseTypes: this.form.bearAllOperationExpense === 1
-              ? this.form.bearOperationExpenseTypes.join(",")
-              : null,
-            userType: 1,
-            isAgent: 1
-          };
-
-          if (selectedType === "3") {
-            payload.agentLevel = 1;
-            payload.agentCode = null;
-            if (payload.starLevel === null || payload.starLevel === undefined || payload.starLevel === "") {
-              payload.starLevel = 1;
-            }
-          } else {
-            if (payload.agentLevel === null || payload.agentLevel === undefined || payload.agentLevel === "") {
-              payload.agentLevel = 1;
-            }
-            if (this.form.id && this.isOriginalMultiModel) {
-              payload.agentLevel = this.form.agentLevel;
-              payload.agentCode = this.form.agentCode;
-            }
-          }
-
-          if (payload.id) {
+        const payload = {
+          ...this.form,
+          commType: this.form.agentType === "team" ? "6" : "3",
+          bearAllOperationExpense: this.form.bearAllOperationExpense === 1 ? 1 : 0,
+          bearOperationExpenseTypes: null,
+          userType: 1,
+          isAgent: 1
+        };
+        const request = payload.id
+          ? (() => {
             const { password, ...updateData } = payload;
-            return updateAgent(updateData).then(() => {
-              this.$modal.msgSuccess("修改成功");
-              this.open = false;
-              this.getList();
-              this.getParentAgents();
-            });
-          }
-
-          return addAgent(payload).then(() => {
-            this.$modal.msgSuccess("新增成功");
-            this.open = false;
-            this.getList();
-            this.getParentAgents();
-          });
+            return updateAgent(updateData);
+          })()
+          : addAgent(payload);
+        this.submitLoading = true;
+        request.then(() => {
+          this.$modal.msgSuccess(payload.id ? "修改成功" : "新增成功");
+          this.open = false;
+          this.getList();
+          this.getParentAgents();
         }).finally(() => {
           this.submitLoading = false;
         });
@@ -733,15 +719,46 @@ export default {
         this.$modal.msgWarning("请选择要修改密码的代理");
         return;
       }
-      getAgent(id).then(response => {
-        this.resetPwdForm = {
-          id: response.data.id,
-          name: response.data.name,
-          newPassword: "",
-          confirmPassword: ""
-        };
-        this.resetPwdOpen = true;
-      });
+      const target = row && row.id
+        ? row
+        : this.selectedAgents.find(item => String(item.id) === String(id))
+          || this.agentList.find(item => String(item.id) === String(id));
+      this.resetPwdForm = {
+        id,
+        name: target ? target.name : "",
+        newPassword: "",
+        confirmPassword: ""
+      };
+      this.resetPwdOpen = true;
+    },
+    handleResetWithdrawPwd(row) {
+      this.$confirm(
+        `确认将代理“${row.name}”的取款密码重置为未设置状态吗？重置后需由代理本人重新设置。`,
+        "系统提示",
+        {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }
+      ).then(() => {
+        this.$modal.msgSuccess("取款密码已重置为未设置状态");
+      }).catch(() => {});
+    },
+    handleBindDomain() {
+      const target = this.selectedAgents[0];
+      if (!target) {
+        this.$modal.msgWarning("请选择要绑定专属域名的代理");
+        return;
+      }
+      this.$prompt("请输入代理专属域名", `绑定专属域名 - ${target.name}`, {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        inputValue: target.dedicatedDomain === "-" ? "" : target.dedicatedDomain,
+        inputPlaceholder: "例如：agent.wangcai.test"
+      }).then(({ value }) => {
+        this.$set(target, "dedicatedDomain", value || "-");
+        this.$modal.msgSuccess("专属域名绑定成功");
+      }).catch(() => {});
     },
     submitResetPwd() {
       this.$refs.resetPwdForm.validate(valid => {

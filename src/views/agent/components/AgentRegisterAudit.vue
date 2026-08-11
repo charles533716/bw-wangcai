@@ -14,6 +14,9 @@
       <el-form-item label="代理账号">
         <el-input v-model.trim="query.agentAccount" clearable placeholder="请输入代理账号" />
       </el-form-item>
+      <el-form-item label="推荐人">
+        <el-input v-model.trim="query.recommender" clearable placeholder="请输入推荐人" />
+      </el-form-item>
       <el-form-item label="注册来源">
         <el-select v-model="query.source" placeholder="全部" clearable style="width: 140px">
           <el-option label="WEB" value="WEB" />
@@ -84,6 +87,7 @@
         </template>
       </el-table-column>
       <el-table-column label="代理账号" prop="agentAccount" min-width="140" align="center" />
+      <el-table-column label="推荐人" prop="recommender" min-width="120" align="center" />
       <el-table-column label="注册来源" prop="source" width="110" align="center" />
       <el-table-column label="注册时间" prop="registerTime" min-width="170" align="center" />
       <el-table-column label="审核状态" prop="status" width="120" align="center">
@@ -119,6 +123,8 @@
 </template>
 
 <script>
+import { addAgent } from "@/api/agent/agent";
+
 const DEFAULT_SITES = [
   { code: "SITE001", name: "旺财体育" },
   { code: "SITE002", name: "星河体育" },
@@ -126,6 +132,7 @@ const DEFAULT_SITES = [
   { code: "SITE004", name: "DW体育" },
   { code: "SITE005", name: "托尼体育" }
 ];
+const AUDIT_STORAGE_KEY = "wc-prototype:agent-register-audit:v1";
 
 function buildRows() {
   const accountPrefixes = ["wcagent", "staragent", "fortune", "dwagent", "tony", "sports", "vipagent", "league", "gold", "promo"];
@@ -135,6 +142,7 @@ function buildRows() {
     return index % 2 === 0 ? "approved" : "rejected";
   });
   const reviewers = ["admin", "test", "kai01", "Bill"];
+  const recommenders = ["laoli", "laoliu", "admin01", "kai01", "Bill02", "tom88"];
   return accounts.map((account, index) => {
     const site = DEFAULT_SITES[index % DEFAULT_SITES.length];
     const status = statuses[index % statuses.length];
@@ -143,6 +151,7 @@ function buildRows() {
       siteCode: site.code,
       siteName: site.name,
       agentAccount: account,
+      recommender: recommenders[index % recommenders.length],
       source: index % 2 === 0 ? "WEB" : "H5",
       registerTime: `2026-08-${String((index % 9) + 1).padStart(2, "0")} ${String(9 + (index % 8)).padStart(2, "0")}:30:00`,
       status,
@@ -150,6 +159,23 @@ function buildRows() {
       reviewTime: status === "pending" ? "" : `2026-08-${String((index % 9) + 2).padStart(2, "0")} ${String(10 + (index % 7)).padStart(2, "0")}:20:00`
     };
   });
+}
+
+function loadRows() {
+  if (typeof window === "undefined") return buildRows();
+  try {
+    const cached = JSON.parse(window.localStorage.getItem(AUDIT_STORAGE_KEY) || "null");
+    if (Array.isArray(cached) && cached.length === 20) {
+      const recommenders = ["laoli", "laoliu", "admin01", "kai01", "Bill02", "tom88"];
+      return cached.map((row, index) => ({
+        ...row,
+        recommender: row.recommender || recommenders[index % recommenders.length]
+      }));
+    }
+  } catch (error) {
+    window.localStorage.removeItem(AUDIT_STORAGE_KEY);
+  }
+  return buildRows();
 }
 
 export default {
@@ -174,7 +200,7 @@ export default {
       pageNum: 1,
       pageSize: 20,
       selectedRows: [],
-      rows: buildRows()
+      rows: loadRows()
     };
   },
   computed: {
@@ -202,13 +228,21 @@ export default {
       const result = this.scopedRows.filter(row => {
         return (!this.query.siteCode || row.siteCode === this.query.siteCode)
           && (!this.query.agentAccount || row.agentAccount.toLowerCase().includes(this.query.agentAccount.toLowerCase()))
+          && (!this.query.recommender || row.recommender.toLowerCase().includes(this.query.recommender.toLowerCase()))
           && (!this.query.source || row.source === this.query.source)
           && (!this.query.status || row.status === this.query.status)
           && (!this.query.reviewer || (row.reviewer || "").toLowerCase().includes(this.query.reviewer.toLowerCase()))
           && this.inDateRange(row.registerTime, this.query.registerTime)
           && this.inDateRange(row.reviewTime, this.query.reviewTime);
       });
-      return result.sort((a, b) => this.statusWeight(a.status) - this.statusWeight(b.status) || b.id - a.id);
+      return result.sort((a, b) => {
+        const pendingDiff = this.statusWeight(a.status) - this.statusWeight(b.status);
+        if (pendingDiff !== 0) return pendingDiff;
+        if (a.status === "pending" && b.status === "pending") {
+          return String(b.registerTime).localeCompare(String(a.registerTime));
+        }
+        return String(b.reviewTime || "").localeCompare(String(a.reviewTime || ""));
+      });
     },
     pagedRows() {
       const start = (this.pageNum - 1) * this.pageSize;
@@ -223,6 +257,7 @@ export default {
       return {
         siteCode: "",
         agentAccount: "",
+        recommender: "",
         source: "",
         registerTime: [],
         status: "",
@@ -231,7 +266,7 @@ export default {
       };
     },
     statusWeight(status) {
-      return status === "pending" ? 0 : status === "approved" ? 1 : 2;
+      return status === "pending" ? 0 : 1;
     },
     statusLabel(status) {
       if (status === "approved") return "审核通过";
@@ -279,18 +314,57 @@ export default {
         cancelButtonText: "取消",
         type: status === "approved" ? "success" : "warning"
       }).then(() => {
-        this.applyReview(row, status);
+        return this.applyReview(row, status);
       }).catch(() => {});
     },
-    applyReview(row, status) {
+    applyReview(row, status, silent = false) {
       const target = this.rows.find(item => item.id === row.id);
       if (!target || target.status !== "pending") {
-        return;
+        return Promise.resolve();
       }
       target.status = status;
       target.reviewer = "admin";
       target.reviewTime = this.nowText();
-      this.$message.success(this.reviewActionLabel(status));
+      const syncRequest = status === "approved"
+        ? this.syncApprovedAgent({ ...target, siteCode: row.siteCode, siteName: row.siteName })
+        : Promise.resolve();
+      return syncRequest.then(() => {
+        this.persistRows();
+        if (!silent) {
+          this.$message.success(this.reviewActionLabel(status));
+        }
+      });
+    },
+    persistRows() {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(this.rows));
+      }
+    },
+    syncApprovedAgent(row) {
+      return addAgent({
+        name: row.agentAccount,
+        recommender: row.recommender,
+        siteCode: row.siteCode,
+        siteName: row.siteName,
+        regTime: row.registerTime,
+        createTime: row.registerTime,
+        agentType: "star",
+        commType: "3",
+        agentIdentity: "-",
+        starLevel: 1,
+        agentLevel: null,
+        agentStatus: 1,
+        status: "1",
+        googleVerify: "unbound",
+        commissionPlanName: "WC星级佣金方案",
+        pendingCommissionPlanName: "-",
+        subAgentCount: 0,
+        subMemberCount: 0,
+        centerBalanceCnySum: 0,
+        registrationSource: row.source
+      }).then(() => {
+        this.$emit("approved", row);
+      });
     },
     handleBatchReview(status) {
       const rows = this.selectedPendingRows;
@@ -303,11 +377,13 @@ export default {
         cancelButtonText: "取消",
         type: status === "approved" ? "success" : "warning"
       }).then(() => {
-        rows.forEach(row => this.applyReview(row, status));
-        this.selectedRows = [];
-        if (this.$refs.auditTable) {
-          this.$refs.auditTable.clearSelection();
-        }
+        return Promise.all(rows.map(row => this.applyReview(row, status, true))).then(() => {
+          this.$message.success(`${rows.length} 条申请${actionLabel}`);
+          this.selectedRows = [];
+          if (this.$refs.auditTable) {
+            this.$refs.auditTable.clearSelection();
+          }
+        });
       }).catch(() => {});
     },
     nowText() {

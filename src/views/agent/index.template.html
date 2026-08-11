@@ -1,198 +1,239 @@
-<div class="app-container">
+<div class="app-container agent-list-page">
   <el-tabs v-model="activeAgentTab" class="agent-management-tabs">
     <el-tab-pane label="代理列表" name="list">
-  <el-form :model="queryParams" ref="queryForm" :inline="true" label-width="80px">
-    <el-form-item label="代理账号" prop="name">
-      <el-input
-        v-model="queryParams.name"
-        placeholder="请输入代理账号"
-        clearable
-        @keyup.enter.native="handleQuery"
+      <el-form
+        ref="queryForm"
+        :model="queryParams"
+        :inline="true"
+        label-width="82px"
+        class="agent-list-query"
+      >
+        <el-form-item label="代理ID" prop="agentId">
+          <el-input
+            v-model.trim="queryParams.agentId"
+            placeholder="请输入代理ID"
+            clearable
+            @keyup.enter.native="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="代理账号" prop="name">
+          <el-input
+            v-model.trim="queryParams.name"
+            placeholder="请输入代理账号"
+            clearable
+            @keyup.enter.native="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="推荐人" prop="recommender">
+          <el-select v-model="queryParams.recommender" placeholder="请输入或选择推荐人" clearable filterable>
+            <el-option
+              v-for="item in recommenderSelectOptions"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="站点编码" prop="siteCode">
+          <el-select v-model="queryParams.siteCode" placeholder="请选择站点" clearable filterable>
+            <el-option
+              v-for="site in siteOptions"
+              :key="site.code"
+              :label="site.code + ' - ' + site.nameZn"
+              :value="site.code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="代理类型" prop="agentType">
+          <el-select v-model="queryParams.agentType" placeholder="全部类型" clearable>
+            <el-option label="团队代理（副线）" value="team" />
+            <el-option label="星级代理" value="star" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="代理状态" prop="agentStatus">
+          <el-select v-model="queryParams.agentStatus" placeholder="代理状态" clearable>
+            <el-option label="正常" :value="1" />
+            <el-option label="停用" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="谷歌验证" prop="googleVerify">
+          <el-select v-model="queryParams.googleVerify" placeholder="全部状态" clearable>
+            <el-option label="已绑定" value="bound" />
+            <el-option label="未绑定" value="unbound" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="代理注册时间" label-width="110px">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="yyyy-MM-dd"
+          />
+        </el-form-item>
+        <el-form-item class="query-actions">
+          <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+          <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-row :gutter="10" class="mb8 agent-list-actions">
+        <el-col :span="1.5">
+          <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增代理</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button type="success" icon="el-icon-edit" :disabled="single" @click="handleUpdate">修改</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button type="warning" icon="el-icon-lock" :disabled="single" @click="handleResetPwd">修改密码</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button type="success" icon="el-icon-link" :disabled="single" @click="handleBindDomain">绑定专属域名</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button type="info" icon="el-icon-download" :loading="exportLoading" @click="handleExport">导出</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button icon="el-icon-folder-opened" disabled>下载文件</el-button>
+        </el-col>
+      </el-row>
+
+      <el-table
+        v-loading="loading"
+        :data="agentList"
+        border
+        class="agent-list-table"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" align="center" fixed="left" />
+        <el-table-column label="代理ID" align="center" prop="id" width="90" fixed="left" />
+        <el-table-column label="代理账号" align="center" prop="name" width="170" fixed="left">
+          <template slot-scope="scope">
+            <el-button type="text" @click="handleUpdate(scope.row)">{{ scope.row.name }}</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="专属域名" align="center" prop="dedicatedDomain" min-width="150" />
+        <el-table-column label="代理注册时间" align="center" prop="regTime" width="180">
+          <template slot-scope="scope">
+            <span>{{ parseTime(scope.row.regTime, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="代理类型" align="center" prop="agentType" width="150">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.agentType === 'team' ? '' : 'success'" effect="plain">
+              {{ formatAgentType(scope.row.agentType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="代理身份" align="center" prop="agentIdentity" width="110">
+          <template slot-scope="scope">
+            <el-tag v-if="scope.row.agentIdentity !== '-'" effect="plain">{{ scope.row.agentIdentity }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="推荐人" align="center" prop="recommender" width="120" />
+        <el-table-column label="星级级别" align="center" prop="starLevel" width="110">
+          <template slot-scope="scope">
+            <span>{{ scope.row.agentType === 'star' ? formatStarLevel(scope.row.starLevel || 1) : '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="层级级别" align="center" prop="agentLevel" width="110">
+          <template slot-scope="scope">
+            <span>{{ scope.row.agentType === 'team' ? formatAgentLevel(scope.row.agentLevel || 1) : '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="站点编码" align="center" prop="siteCode" width="150">
+          <template slot-scope="scope">
+            <span>{{ scope.row.siteCode }}</span>
+            <el-tag v-if="getSiteName(scope.row.siteCode)" size="mini" type="info" class="site-name-tag">
+              {{ getSiteName(scope.row.siteCode) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="上级代理" align="center" prop="parentAgentName" min-width="140" show-overflow-tooltip />
+        <el-table-column label="代理状态" align="center" prop="agentStatus" width="100">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.agentStatus === 1 ? 'success' : 'danger'">
+              {{ scope.row.agentStatus === 1 ? '正常' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="谷歌验证" align="center" prop="googleVerify" width="105">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.googleVerify === 'bound' ? 'success' : 'info'" effect="plain">
+              {{ scope.row.googleVerify === 'bound' ? '已绑定' : '未绑定' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="下属代理" align="center" prop="subAgentCount" width="100">
+          <template slot-scope="scope"><el-button type="text">{{ scope.row.subAgentCount }}</el-button></template>
+        </el-table-column>
+        <el-table-column label="下属会员" align="center" prop="subMemberCount" width="100">
+          <template slot-scope="scope"><el-button type="text">{{ scope.row.subMemberCount }}</el-button></template>
+        </el-table-column>
+        <el-table-column label="佣金方案" align="center" prop="commissionPlanName" min-width="170" show-overflow-tooltip />
+        <el-table-column label="待生效方案" align="center" prop="pendingCommissionPlanName" min-width="135" />
+        <el-table-column label="代理返佣比例" align="center" prop="commissionRate" width="125">
+          <template slot-scope="scope">{{ formatCommissionRatePercent(scope.row.commissionRate) }}</template>
+        </el-table-column>
+        <el-table-column label="代理钱包余额" align="center" prop="centerBalanceCnySum" width="135">
+          <template slot-scope="scope">{{ formatWalletBalance(scope.row.centerBalanceCnySum) }}</template>
+        </el-table-column>
+        <el-table-column label="最后登录" align="center" prop="lastLoginTime" width="180">
+          <template slot-scope="scope">
+            <span>{{ scope.row.lastLoginTime ? parseTime(scope.row.lastLoginTime, '{y}-{m}-{d} {h}:{i}') : '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" class-name="small-padding" width="270" fixed="right">
+          <template slot-scope="scope">
+            <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)">修改</el-button>
+            <el-button size="mini" type="text" icon="el-icon-lock" @click="handleResetPwd(scope.row)">修改密码</el-button>
+            <el-button size="mini" type="text" icon="el-icon-lock" @click="handleResetWithdrawPwd(scope.row)">
+              重置取款密码
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <pagination
+        v-show="total > 0"
+        :total="Number(total)"
+        :page.sync="queryParams.pageNum"
+        :limit.sync="queryParams.pageSize"
+        @pagination="getList"
       />
-    </el-form-item>
-    <el-form-item label="站点编码" prop="siteCode">
-      <el-select v-model="queryParams.siteCode" placeholder="请选择站点" clearable style="width: 200px">
-        <el-option
-          v-for="site in siteOptions"
-          :key="site.code"
-          :label="site.code + ' - ' + site.nameZn"
-          :value="site.code"
-        />
-      </el-select>
-    </el-form-item>
-    <el-form-item label="代理状态" prop="agentStatus">
-      <el-select v-model="queryParams.agentStatus" placeholder="代理状态" clearable>
-        <el-option label="正常" :value="1" />
-        <el-option label="停用" :value="0" />
-      </el-select>
-    </el-form-item>
-    <el-form-item label="代理注册时间" label-width="110px">
-      <el-date-picker
-        v-model="dateRange"
-        type="daterange"
-        range-separator="至"
-        start-placeholder="开始日期"
-        end-placeholder="结束日期"
-        value-format="yyyy-MM-dd"
-      />
-    </el-form-item>
-    <el-form-item>
-      <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
-      <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
-    </el-form-item>
-  </el-form>
-
-  <el-row :gutter="10" class="mb8">
-    <el-col :span="1.5">
-      <el-button
-        type="primary"
-        icon="el-icon-plus"
-        @click="handleAdd"
-        v-hasPermi="['member:agent:add']"
-      >新增代理</el-button>
-    </el-col>
-    <el-col :span="1.5">
-      <el-button
-        type="success"
-        icon="el-icon-edit"
-        :disabled="single"
-        @click="handleUpdate"
-        v-hasPermi="['member:agent:edit']"
-      >修改</el-button>
-    </el-col>
-    <el-col :span="1.5">
-      <el-button
-        type="warning"
-        icon="el-icon-lock"
-        :disabled="single"
-        @click="handleResetPwd"
-        v-hasPermi="['member:agent:resetPwd']"
-      >修改密码</el-button>
-    </el-col>
-    <el-col :span="1.5">
-      <el-button
-        type="info"
-        icon="el-icon-download"
-        :loading="exportLoading"
-        @click="handleExport"
-        v-hasPermi="['member:agent:export']"
-      >导出</el-button>
-    </el-col>
-  </el-row>
-
-  <el-table v-loading="loading" :data="agentList" @selection-change="handleSelectionChange">
-    <el-table-column type="selection" width="55" align="center" />
-    <el-table-column label="代理ID" align="center" prop="id" />
-    <el-table-column label="代理账号" align="center" prop="name" />
-    <el-table-column label="代理注册时间" align="center" prop="regTime" width="180">
-      <template slot-scope="scope">
-        <span>{{ parseTime(scope.row.regTime, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="代理模型" align="center" width="140">
-      <template slot-scope="scope">
-        <el-tag :type="getAgentModeType(scope.row)">{{ getAgentModeLabel(scope.row) }}</el-tag>
-      </template>
-    </el-table-column>
-    <el-table-column label="星级级别" align="center" prop="starLevel">
-      <template slot-scope="scope">
-        <span v-if="isStarAgent(scope.row)">
-          {{ formatStarLevel(scope.row.starLevel) }}
-        </span>
-        <span v-else>-</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="层级级别" align="center" prop="agentLevel">
-      <template slot-scope="scope">
-        <span v-if="isMultiAgent(scope.row)">
-          {{ formatAgentLevel(scope.row.agentLevel) }}
-        </span>
-        <span v-else>-</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="站点编码" align="center" prop="siteCode">
-      <template slot-scope="scope">
-        <span>{{ scope.row.siteCode }}</span>
-        <el-tag v-if="getSiteName(scope.row.siteCode)" size="mini" type="info" style="margin-left: 5px;">
-          {{ getSiteName(scope.row.siteCode) }}
-        </el-tag>
-      </template>
-    </el-table-column>
-    <el-table-column label="上级代理" align="center" prop="parentAgentName">
-      <template slot-scope="scope">
-        <span>{{ scope.row.parentAgentName || '-' }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="代理状态" align="center" prop="agentStatus">
-      <template slot-scope="scope">
-        <el-tag :type="scope.row.agentStatus === 1 ? 'success' : 'danger'">
-          {{ scope.row.agentStatus === 1 ? '正常' : '停用' }}
-        </el-tag>
-      </template>
-    </el-table-column>
-    <el-table-column label="下属代理" align="center" prop="subAgentCount" />
-    <el-table-column label="下属会员" align="center" prop="subMemberCount" />
-    <el-table-column label="佣金方案" align="center" prop="commissionPlanName">
-      <template slot-scope="scope">
-        <span>{{ scope.row.commissionPlanName || '未设置' }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="代理返佣比例" align="center" prop="commissionRate">
-      <template slot-scope="scope">
-        <span>{{ formatCommissionRatePercent(scope.row.commissionRate) }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="代理钱包余额" align="center" prop="centerBalanceCnySum" width="130">
-      <template slot-scope="scope">
-        <span>{{ formatWalletBalance(scope.row.centerBalanceCnySum) }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="最后登录" align="center" prop="lastLoginTime" width="180">
-      <template slot-scope="scope">
-        <span>{{ parseTime(scope.row.lastLoginTime, '{y}-{m}-{d} {h}:{i}') }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="220">
-      <template slot-scope="scope">
-        <el-button
-          size="mini"
-          type="text"
-          icon="el-icon-edit"
-          @click="handleUpdate(scope.row)"
-          v-hasPermi="['member:agent:edit']"
-        >修改</el-button>
-        <el-button
-          size="mini"
-          type="text"
-          icon="el-icon-lock"
-          @click="handleResetPwd(scope.row)"
-          v-hasPermi="['member:agent:resetPwd']"
-        >修改密码</el-button>
-      </template>
-    </el-table-column>
-  </el-table>
-
-  <pagination
-    v-show="total > 0"
-    :total="Number(total)"
-    :page.sync="queryParams.pageNum"
-    :limit.sync="queryParams.pageSize"
-    @pagination="getList"
-  />
     </el-tab-pane>
+
     <el-tab-pane label="代理注册审核" name="registerAudit">
-      <agent-register-audit :show-site="true" :site-options="siteOptions" />
+      <agent-register-audit :show-site="true" :site-options="siteOptions" @approved="getList" />
     </el-tab-pane>
   </el-tabs>
 
-  <el-dialog :title="title" :visible.sync="open" width="760px" append-to-body @close="cancel">
-    <el-form ref="form" :model="form" :rules="rules" label-width="110px">
+  <el-dialog :title="title" :visible.sync="open" width="690px" append-to-body @close="cancel">
+    <el-form ref="form" :model="form" :rules="rules" label-width="110px" class="agent-edit-form">
       <el-form-item label="代理账号" prop="name">
-        <el-input v-model="form.name" placeholder="请输入代理账号" :disabled="!!form.id" />
+        <el-input
+          v-model="form.name"
+          placeholder="请输入字母或数字"
+          :disabled="!!form.id"
+          @input="handleAgentAccountInput"
+        />
       </el-form-item>
 
       <el-form-item v-if="!form.id" label="密码" prop="password">
         <el-input v-model="form.password" placeholder="请输入密码" type="password" show-password />
+      </el-form-item>
+
+      <el-form-item label="推荐人" prop="recommender">
+        <el-select v-model="form.recommender" placeholder="请输入或选择推荐人" clearable filterable style="width: 100%">
+          <el-option
+            v-for="item in recommenderSelectOptions"
+            :key="item"
+            :label="item"
+            :value="item"
+          />
+        </el-select>
       </el-form-item>
 
       <el-form-item label="站点编码" prop="siteCode">
@@ -214,55 +255,28 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item label="佣金方案" prop="commissionPlanId">
-        <el-select
-          v-model="form.commissionPlanId"
-          placeholder="请选择佣金方案"
-          style="width: 100%"
-          clearable
-          filterable
-          @change="handleCommissionPlanChange"
-        >
-          <el-option
-            v-for="plan in commissionOptions"
-            :key="plan.id"
-            :label="plan.planName + '（' + plan.commTypeName + '）'"
-            :value="plan.id"
-          />
+      <el-form-item v-if="!form.id" label="代理类型" prop="agentType">
+        <el-select v-model="form.agentType" placeholder="请选择代理类型" style="width: 100%" @change="handleAgentTypeChange">
+          <el-option label="团队代理（副线）" value="team" />
+          <el-option label="星级代理" value="star" />
         </el-select>
       </el-form-item>
 
-      <el-form-item v-if="isMultiModel" label="层级级别" prop="agentLevel">
-        <el-select
-          v-model="form.agentLevel"
-          placeholder="请选择层级级别"
-          style="width: 100%"
-          :disabled="form.id && isOriginalMultiModel"
-        >
-          <el-option v-for="level in multiLevelOptions" :key="level" :label="level + '层代理'" :value="level" />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item v-if="isStarModel" label="星级级别" prop="starLevel">
-        <el-select v-model="form.starLevel" placeholder="请选择星级级别" style="width: 100%">
-          <el-option
-            v-for="level in starLevelOptions"
-            :key="level"
-            :label="level + '星代理'"
-            :value="level"
-          />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item v-if="showCommissionRate" label="返佣比例">
-        <span>{{ currentCommissionRateText }}</span>
-        <span v-if="isMultiModel && currentSiteProfitShareRate !== null" class="rate-limit-tip">
-          站点上限：{{ currentSiteProfitShareRateText }}，代理返佣必须低于站点返佣
-        </span>
-        <span v-if="isMultiModel && currentMultiLevelRateInvalid" class="rate-limit-error">
-          当前层级已超过站点上限
-        </span>
-      </el-form-item>
+      <template v-if="form.id">
+        <el-form-item label="当前团队">
+          <span>{{ form.currentTeam || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="当前佣金方案">
+          <span>{{ form.commissionPlanName || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="目标身份" prop="targetIdentity">
+          <el-select v-model="form.targetIdentity" style="width: 100%">
+            <el-option label="保持当前身份" value="keep" />
+            <el-option label="官方代理" value="official" />
+            <el-option label="副线代理" value="branch" />
+          </el-select>
+        </el-form-item>
+      </template>
 
       <el-form-item class="operation-expense-bear" prop="bearAllOperationExpense">
         <template slot="label">承担全部运营费</template>
@@ -271,38 +285,6 @@
           <el-radio :label="0">否</el-radio>
         </el-radio-group>
         <div class="operation-expense-hint">仅对直属会员有效</div>
-        <el-checkbox-group
-          v-if="form.bearAllOperationExpense === 1"
-          v-model="form.bearOperationExpenseTypes"
-          class="operation-expense-types"
-        >
-          <el-checkbox
-            v-for="item in operationExpenseTypeOptions"
-            :key="item.value"
-            :label="item.value"
-            border
-          >
-            {{ item.label }}
-          </el-checkbox>
-        </el-checkbox-group>
-      </el-form-item>
-
-      <el-form-item v-if="isMultiModel" label="上级代理" prop="agentCode">
-        <el-select
-          v-model="form.agentCode"
-          placeholder="可选，留空表示顶级代理"
-          clearable
-          filterable
-          style="width: 100%"
-          :disabled="form.id && isOriginalMultiModel"
-        >
-          <el-option
-            v-for="agent in multiLevelParentOptions"
-            :key="agent.id"
-            :label="agent.name + '（' + formatParentAgentLevel(agent.agentLevel) + '）'"
-            :value="agent.id"
-          />
-        </el-select>
       </el-form-item>
 
       <el-form-item label="代理状态" prop="agentStatus">
@@ -313,7 +295,7 @@
       </el-form-item>
 
       <el-form-item label="代理备注" prop="agentRemark">
-        <el-input v-model="form.agentRemark" type="textarea" placeholder="请输入代理备注" :rows="3" />
+        <el-input v-model="form.agentRemark" type="textarea" placeholder="请输入代理备注" :rows="3" maxlength="200" show-word-limit />
       </el-form-item>
     </el-form>
     <div slot="footer" class="dialog-footer">

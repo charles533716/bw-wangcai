@@ -10,6 +10,22 @@
         @keyup.enter.native="handleQuery"
       />
     </el-form-item>
+    <el-form-item label="推荐人" prop="recommender">
+      <el-select
+        v-model="queryParams.recommender"
+        placeholder="请输入或选择推荐人"
+        clearable
+        filterable
+        style="width: 200px"
+      >
+        <el-option
+          v-for="item in recommenderSelectOptions"
+          :key="item"
+          :label="item"
+          :value="item"
+        />
+      </el-select>
+    </el-form-item>
     <el-form-item label="代理状态" prop="agentStatus">
       <el-select v-model="queryParams.agentStatus" placeholder="代理状态" clearable>
         <el-option label="正常" :value="1" />
@@ -62,6 +78,7 @@
     <el-table-column type="selection" width="55" align="center" />
     <el-table-column label="代理ID" align="center" prop="id" />
     <el-table-column label="代理账号" align="center" prop="name" />
+    <el-table-column label="推荐人" align="center" prop="recommender" />
     <el-table-column label="代理模型" align="center" width="140">
       <template slot-scope="scope">
         <el-tag :type="getAgentModeType(scope.row)">{{ getAgentModeLabel(scope.row) }}</el-tag>
@@ -138,7 +155,7 @@
   />
     </el-tab-pane>
     <el-tab-pane label="代理注册审核" name="registerAudit">
-      <agent-register-audit :show-site="false" :current-site-code="currentSiteCode" />
+      <agent-register-audit :show-site="false" :current-site-code="currentSiteCode" @approved="getList" />
     </el-tab-pane>
   </el-tabs>
 
@@ -161,7 +178,25 @@
           :disabled="!!form.id"
           autocomplete="off"
           name="agent-create-account"
+          @input="handleAgentAccountInput"
         />
+      </el-form-item>
+
+      <el-form-item label="推荐人" prop="recommender">
+        <el-select
+          v-model="form.recommender"
+          placeholder="请输入或选择推荐人"
+          clearable
+          filterable
+          style="width: 100%"
+        >
+          <el-option
+            v-for="item in recommenderSelectOptions"
+            :key="item"
+            :label="item"
+            :value="item"
+          />
+        </el-select>
       </el-form-item>
 
       <el-form-item v-if="!form.id" label="密码" prop="password">

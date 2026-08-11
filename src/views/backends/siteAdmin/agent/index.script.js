@@ -3,6 +3,11 @@ import { listCommissionByType, getCommission } from "@/api/agent/commission";
 import { DEFAULT_AGENT_CODE, DEFAULT_SITE_CODE, resolvePrototypePath, setBackendContext } from '@/utils/prototypeBackend'
 import AgentAdvanceRecordsDialog from '@/components/AgentAdvanceRecordsDialog'
 import AgentRegisterAudit from '@/views/agent/components/AgentRegisterAudit'
+import {
+  defaultRecommenderOptions,
+  filterAndPaginateAgentRows,
+  normalizeAgentRows
+} from '@/views/agent/agentListPrototype'
 
 export default {
   name: "Agent",
@@ -41,6 +46,7 @@ export default {
       commissionDetailMap: {},
       siteProfitShareRate: null,
       parentAgentOptions: [],
+      recommenderOptions: defaultRecommenderOptions,
       currentAgentInfo: null,
       title: "",
       open: false,
@@ -49,6 +55,7 @@ export default {
         pageNum: 1,
         pageSize: 20,
         name: null,
+        recommender: null,
         agentStatus: null
       },
       form: {},
@@ -60,7 +67,10 @@ export default {
         confirmPassword: ""
       },
       rules: {
-        name: [{ required: true, message: "代理账号不能为空", trigger: "blur" }],
+        name: [
+          { required: true, message: "代理账号不能为空", trigger: "blur" },
+          { pattern: /^[A-Za-z0-9]+$/, message: "代理账号只能包含字母和数字", trigger: "blur" }
+        ],
         password: [{ required: true, message: "密码不能为空", trigger: "blur" }],
         commissionPlanId: [{ validator: validateCommissionPlan, trigger: "change" }],
         agentLevel: [{ required: true, message: "层级级别不能为空", trigger: "change" }],
@@ -80,6 +90,13 @@ export default {
     };
   },
   computed: {
+    recommenderSelectOptions() {
+      const options = new Set(this.recommenderOptions);
+      this.parentAgentOptions.forEach(item => {
+        if (item.name) options.add(item.name);
+      });
+      return Array.from(options);
+    },
     userName() {
       return this.$store.state.user.userName;
     },
@@ -231,11 +248,12 @@ export default {
     },
     getList() {
       this.loading = true;
-      listAgent(this.queryParams)
+      listAgent({ pageNum: 1, pageSize: 2000 })
         .then(response => {
           const table = this.unwrapTableData(response);
-          this.agentList = table.rows;
-          this.total = table.total;
+          const result = filterAndPaginateAgentRows(table.rows, this.queryParams);
+          this.agentList = result.rows;
+          this.total = result.total;
         })
         .finally(() => {
           this.loading = false;
@@ -294,7 +312,7 @@ export default {
     getParentAgents() {
       listAgent({ pageNum: 1, pageSize: 2000 })
         .then(response => {
-          this.parentAgentOptions = this.unwrapTableData(response).rows;
+          this.parentAgentOptions = normalizeAgentRows(this.unwrapTableData(response).rows);
         })
         .catch(() => {
           this.parentAgentOptions = [];
@@ -590,6 +608,7 @@ export default {
         pageNum: 1,
         pageSize: 20,
         name: null,
+        recommender: null,
         agentStatus: null
       };
       this.resetForm("queryForm");
@@ -603,6 +622,7 @@ export default {
       this.form = {
         id: null,
         name: "",
+        recommender: null,
         password: "",
         commissionPlanId: null,
         commissionPlanName: "",
@@ -633,6 +653,9 @@ export default {
       }
       this.title = "新增代理";
     },
+    handleAgentAccountInput(value) {
+      this.form.name = String(value || "").replace(/[^A-Za-z0-9]/g, "");
+    },
     handleUpdate(row) {
       this.reset();
       const id = row && row.id ? row.id : this.ids[0];
@@ -641,16 +664,17 @@ export default {
       }
       const selectedRow = row || this.agentList.find(item => String(item.id) === String(id));
       getAgent(id).then(response => {
+        const normalizedAgent = normalizeAgentRows([response.data || selectedRow || {}])[0];
         this.form = {
           ...this.form,
-          ...response.data,
-          commissionPlanName: response.data.commissionPlanName || (selectedRow ? selectedRow.commissionPlanName : ""),
-          starLevel: response.data.starLevel === null || response.data.starLevel === undefined || response.data.starLevel === ""
+          ...normalizedAgent,
+          commissionPlanName: normalizedAgent.commissionPlanName || (selectedRow ? selectedRow.commissionPlanName : ""),
+          starLevel: normalizedAgent.starLevel === null || normalizedAgent.starLevel === undefined || normalizedAgent.starLevel === ""
             ? 1
-            : response.data.starLevel
+            : normalizedAgent.starLevel
         };
         this.loadCommissionPlanDetails(this.form.commissionPlanId);
-        this.originalModelType = this.resolveAgentMode(response.data);
+        this.originalModelType = this.resolveAgentMode(normalizedAgent);
         this.open = true;
         this.title = "修改代理";
       });

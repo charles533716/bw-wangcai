@@ -43,6 +43,62 @@
   font-size: 12px;
 }
 
+.agent-list-query {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  padding: 2px 0 4px;
+}
+
+.agent-list-query ::v-deep .el-form-item {
+  margin-right: 8px;
+  margin-bottom: 12px;
+}
+
+.agent-list-query ::v-deep .el-input,
+.agent-list-query ::v-deep .el-select {
+  width: 155px;
+}
+
+.agent-list-query ::v-deep .el-date-editor {
+  width: 310px;
+}
+
+.agent-list-query .query-actions ::v-deep .el-form-item__content {
+  white-space: nowrap;
+}
+
+.agent-list-actions {
+  margin-bottom: 10px;
+}
+
+.agent-list-table ::v-deep .el-table__fixed,
+.agent-list-table ::v-deep .el-table__fixed-right {
+  box-shadow: 3px 0 8px rgba(15, 23, 42, 0.08);
+}
+
+.agent-list-table ::v-deep .el-table__fixed-right {
+  box-shadow: -3px 0 8px rgba(15, 23, 42, 0.08);
+}
+
+.agent-list-table ::v-deep .el-button--text {
+  padding: 0;
+}
+
+.site-name-tag {
+  margin-left: 5px;
+}
+
+.agent-edit-form {
+  padding: 6px 0 0;
+}
+
+.agent-edit-form ::v-deep .el-form-item__content > .el-input,
+.agent-edit-form ::v-deep .el-form-item__content > .el-select {
+  width: 100%;
+}
+
 .rate-limit-tip {
   margin-left: 12px;
   color: #909399;
@@ -54,7 +110,7 @@
 }
 
 .operation-expense-bear {
-  padding: 14px 0 18px;
+  padding: 14px 0 10px;
   margin-bottom: 20px;
   border-top: 1px solid #eef2f7;
   border-bottom: 1px solid #eef2f7;
