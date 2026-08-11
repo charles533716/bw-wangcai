@@ -9,6 +9,40 @@ import {
   normalizeAgentRows
 } from "./agentListPrototype";
 
+const buildPrototypeCommissionPlan = (id, planName, commType, maxLevel, baseRate, rateStep) => ({
+  id,
+  planName,
+  commType,
+  detailList: Array.from({ length: maxLevel }, (item, index) => ({
+    levelNum: index + 1,
+    commissionRate: Number((baseRate + rateStep * index).toFixed(4))
+  }))
+});
+
+const PROTOTYPE_COMMISSION_PLANS = [
+  buildPrototypeCommissionPlan("STAR-001", "星级返佣方案", "3", 6, 0.2, 0.05),
+  buildPrototypeCommissionPlan("STAR-002", "财神Excel0419活动礼金C链星级返佣方案", "3", 6, 0.18, 0.05),
+  buildPrototypeCommissionPlan("STAR-003", "opex260808-50", "3", 6, 0.25, 0.05),
+  buildPrototypeCommissionPlan("STAR-004", "opex260808-30", "3", 6, 0.15, 0.03),
+  buildPrototypeCommissionPlan("STAR-005", "opex260808-45", "3", 6, 0.2, 0.05),
+  buildPrototypeCommissionPlan("STAR-006", "opex260808-70", "3", 6, 0.35, 0.05),
+  buildPrototypeCommissionPlan("STAR-007", "opex260808-3333", "3", 6, 0.18, 0.04),
+  buildPrototypeCommissionPlan("MULTI-001", "多层级返佣方案", "6", 9, 0.2, 0.025),
+  buildPrototypeCommissionPlan("MULTI-002", "旺财测试多层级佣金方案", "6", 9, 0.18, 0.025),
+  buildPrototypeCommissionPlan("MULTI-003", "财神Excel佣金测试方案20260406", "6", 9, 0.16, 0.025),
+  buildPrototypeCommissionPlan("MULTI-004", "财神Excel0419活动礼金A链方案", "6", 9, 0.15, 0.025),
+  buildPrototypeCommissionPlan("MULTI-005", "财神Excel0419活动礼金B链方案", "6", 9, 0.14, 0.025),
+  buildPrototypeCommissionPlan("TEAM-001", "DW负盈利佣金方案", "team", 1, 0.15, 0),
+  buildPrototypeCommissionPlan("TEAM-002", "DW666", "team", 1, 0.12, 0)
+];
+
+const PROTOTYPE_TEAM_OPTIONS = [
+  { id: "TEAM001", name: "DW推广团队" },
+  { id: "TEAM002", name: "旺财精英团队" },
+  { id: "TEAM003", name: "星河运营团队" },
+  { id: "TEAM004", name: "财神合作团队" }
+];
+
 export default {
   name: "Agent",
   components: { AgentRegisterAudit },
@@ -38,6 +72,7 @@ export default {
       siteProfitShareRateMap: {},
       parentAgentOptions: [],
       recommenderOptions: defaultRecommenderOptions,
+      teamOptions: PROTOTYPE_TEAM_OPTIONS,
       exportLoading: false,
       submitLoading: false,
       activeAgentTab: "list",
@@ -75,6 +110,7 @@ export default {
         ],
         siteCode: [{ required: true, message: "站点编码不能为空", trigger: "change" }],
         agentType: [{ required: true, message: "代理类型不能为空", trigger: "change" }],
+        commissionPlanId: [{ required: true, message: "佣金方案不能为空", trigger: "change" }],
         agentLevel: [{ required: true, message: "层级级别不能为空", trigger: "change" }],
         starLevel: [{ required: true, message: "星级级别不能为空", trigger: "change" }],
         agentStatus: [{ required: true, message: "代理状态不能为空", trigger: "change" }]
@@ -90,13 +126,15 @@ export default {
         ]
       },
       operationExpenseTypeOptions: [
+        { value: "ACTIVITY_REWARD", label: "活动奖励" },
+        { value: "MEMBER_REFERRAL", label: "会员推会员" },
+        { value: "REBATE", label: "返水" },
+        { value: "VIP_BENEFIT", label: "VIP福利" },
+        { value: "BONUS", label: "彩金" },
+        { value: "BALANCE_INTEREST", label: "余额宝利息" },
         { value: "DEPOSIT_FEE", label: "充值手续费" },
         { value: "WITHDRAW_FEE", label: "提现手续费" },
-        { value: "REBATE", label: "返水" },
-        { value: "VENUE_FEE", label: "三方场馆" },
-        { value: "BONUS", label: "礼金" },
-        { value: "ACTIVITY_REWARD", label: "活动奖励" },
-        { value: "PROMOTION_BONUS", label: "推广礼金" }
+        { value: "VENUE_FEE", label: "三方场馆费" }
       ]
     };
   },
@@ -111,6 +149,49 @@ export default {
     selectedCommissionType() {
       return this.resolveCommissionTypeByPlanId(this.form.commissionPlanId);
     },
+    isCommissionAgentType() {
+      return this.form.agentType === "star" || this.form.agentType === "multi";
+    },
+    availableCommissionOptions() {
+      const targetType = this.form.agentType === "star"
+        ? "3"
+        : this.form.agentType === "multi"
+          ? "6"
+          : "";
+      return this.commissionOptions.filter(item => String(item.commType) === targetType);
+    },
+    teamCommissionOptions() {
+      return this.commissionOptions.filter(item => String(item.commType) === "team");
+    },
+    teamAgentSelectOptions() {
+      const optionMap = new Map();
+      this.parentAgentOptions.forEach((item, index) => {
+        const name = String(item.name || "").trim();
+        if (!name) {
+          return;
+        }
+        const id = item.id || item.agentId || `AGENT-${index + 1}`;
+        optionMap.set(String(id), { id: String(id), name });
+      });
+      this.recommenderOptions.forEach((name, index) => {
+        const safeName = String(name || "").trim();
+        if (!safeName) {
+          return;
+        }
+        const id = `170${index + 1}`;
+        if (!Array.from(optionMap.values()).some(item => item.name === safeName)) {
+          optionMap.set(id, { id, name: safeName });
+        }
+      });
+      return Array.from(optionMap.values());
+    },
+    isTeamLeaderRole() {
+      return this.form.agentType === "team"
+        && (this.form.teamRole === "leader_multi" || this.form.teamRole === "leader_single");
+    },
+    isTeamBranchRole() {
+      return this.form.agentType === "team" && this.form.teamRole === "branch";
+    },
     isStarModel() {
       return this.selectedCommissionType === "3";
     },
@@ -120,21 +201,62 @@ export default {
     isOriginalMultiModel() {
       return this.originalModelType === "6";
     },
+    isOriginalStarModel() {
+      return this.originalModelType === "3";
+    },
+    isOriginalTeamModel() {
+      return this.originalModelType === "team";
+    },
+    showPendingTeamCommissionPlan() {
+      return this.isOriginalTeamModel
+        && (this.form.targetIdentity === "current_leader_multi"
+          || this.form.targetIdentity === "new_leader_single");
+    },
+    editCommissionPlanLabel() {
+      const planName = this.form.commissionPlanName || "未设置佣金方案";
+      const typeName = this.isOriginalStarModel ? "星级代理返佣" : "层级代理返佣";
+      return `${planName}（${typeName}）`;
+    },
+    editCommissionPlanValue() {
+      return this.form.commissionPlanId || "__current_commission_plan__";
+    },
+    editCommissionRateText() {
+      const rate = this.currentCommissionRate !== null && this.currentCommissionRate !== undefined
+        ? this.currentCommissionRate
+        : this.form.commissionRate !== null && this.form.commissionRate !== undefined
+          ? this.form.commissionRate
+          : 0.5;
+      return this.formatCommissionRatePercent(rate);
+    },
+    editSiteProfitShareRateText() {
+      const rate = this.currentSiteProfitShareRate !== null && this.currentSiteProfitShareRate !== undefined
+        ? this.currentSiteProfitShareRate
+        : 0.8;
+      return this.formatCommissionRatePercent(rate);
+    },
     showCommissionRate() {
       return this.isStarModel || this.isMultiModel;
     },
     starLevelOptions() {
-      return this.resolvePlanLevelOptions(this.form.commissionPlanId);
+      const levels = this.resolvePlanLevelOptions(this.form.commissionPlanId);
+      return levels.length ? levels : [1, 2, 3, 4, 5, 6];
     },
     multiLevelOptions() {
       const levels = this.resolvePlanLevelOptions(this.form.commissionPlanId);
+      if (!levels.length) {
+        return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      }
       if (this.currentSiteProfitShareRate === null || this.currentSiteProfitShareRate === undefined) {
         return levels;
       }
       return levels.filter(level => this.isAgentLevelBelowSiteRate(level));
     },
     multiLevelParentOptions() {
-      return this.parentAgentOptions.filter(item => this.resolveAgentMode(item) === "6");
+      const options = this.parentAgentOptions.filter(item => {
+        return this.resolveAgentMode(item) === "6" || item.agentType === "multi" || item.agentType === "team";
+      });
+      const sameSiteOptions = options.filter(item => !this.form.siteCode || item.siteCode === this.form.siteCode);
+      return sameSiteOptions.length ? sameSiteOptions : options.length ? options : this.parentAgentOptions.slice(0, 5);
     },
     selectedLevelNum() {
       if (this.isStarModel) {
@@ -280,7 +402,7 @@ export default {
         .then(([starResp, multiResp]) => {
           const starPlans = this.unwrapTableData(starResp).rows;
           const multiPlans = this.unwrapTableData(multiResp).rows;
-          const mergedPlans = [...starPlans, ...multiPlans];
+          const mergedPlans = [...starPlans, ...multiPlans, ...PROTOTYPE_COMMISSION_PLANS];
           const uniquePlanMap = {};
           mergedPlans.forEach(plan => {
             const planId = plan && plan.id != null ? String(plan.id) : null;
@@ -292,7 +414,9 @@ export default {
               ? "星级代理返佣"
               : commType === "6"
                 ? "多层级代理返佣"
-                : "未知";
+                : commType === "team"
+                  ? "团队代理返佣"
+                  : "未知";
             uniquePlanMap[planId] = { ...plan, commType, commTypeName };
           });
           this.commissionOptions = Object.values(uniquePlanMap);
@@ -310,9 +434,20 @@ export default {
           });
         })
         .catch(() => {
-          this.commissionOptions = [];
+          this.commissionOptions = PROTOTYPE_COMMISSION_PLANS.map(plan => ({
+            ...plan,
+            commTypeName: plan.commType === "3"
+              ? "星级代理返佣"
+              : plan.commType === "6"
+                ? "多层级代理返佣"
+                : "团队代理返佣"
+          }));
           this.commissionTypeMap = {};
           this.commissionDetailMap = {};
+          this.commissionOptions.forEach(plan => {
+            this.commissionTypeMap[plan.id] = plan.commType;
+            this.$set(this.commissionDetailMap, plan.id, plan.detailList.slice());
+          });
         });
     },
     getParentAgents() {
@@ -330,6 +465,15 @@ export default {
     resolveAgentMode(row) {
       if (!row) {
         return null;
+      }
+      if (row.agentType === "team") {
+        return "team";
+      }
+      if (row.agentType === "multi") {
+        return "6";
+      }
+      if (row.agentType === "star") {
+        return "3";
       }
       if (row.commType !== null && row.commType !== undefined && row.commType !== "") {
         return String(row.commType);
@@ -444,7 +588,9 @@ export default {
       return amount.toFixed(2);
     },
     formatAgentType(type) {
-      return type === "team" ? "团队代理（副线）" : "星级代理";
+      if (type === "team") return "团队代理";
+      if (type === "multi") return "层级代理";
+      return "星级代理";
     },
     normalizeRateValue(rateValue) {
       const rate = Number(rateValue);
@@ -462,6 +608,17 @@ export default {
       return matched && matched.commissionRate !== null && matched.commissionRate !== undefined && matched.commissionRate !== ""
         ? matched.commissionRate
         : null;
+    },
+    formatParentAgentRate(agent) {
+      const rate = this.getCommissionRateByLevel(agent.commissionPlanId, agent.agentLevel);
+      const level = Math.max(1, Number(agent.agentLevel || 1));
+      const fallbackRate = Math.min(0.75, 0.25 + level * 0.05);
+      const displayRate = rate !== null
+        ? rate
+        : agent.commissionRate !== null && agent.commissionRate !== undefined && agent.commissionRate !== ""
+          ? agent.commissionRate
+          : fallbackRate;
+      return this.formatCommissionRatePercent(displayRate);
     },
     resolvePlanLevelOptions(planId) {
       const detailList = this.commissionDetailMap[planId] || [];
@@ -518,6 +675,8 @@ export default {
       return "info";
     },
     handleCommissionPlanChange() {
+      const selectedPlan = this.commissionOptions.find(item => String(item.id) === String(this.form.commissionPlanId));
+      this.form.commissionPlanName = selectedPlan ? selectedPlan.planName : "";
       this.loadCommissionPlanDetails(this.form.commissionPlanId).then(() => {
         if (this.isStarModel) {
           this.form.agentLevel = 1;
@@ -608,7 +767,15 @@ export default {
         password: null,
         siteCode: null,
         agentType: null,
+        agentIdentity: null,
+        canAddSubline: null,
+        teamRole: null,
+        teamName: null,
+        teamId: null,
         targetIdentity: "keep",
+        newTeamName: null,
+        pendingCommissionPlanId: null,
+        pendingCommissionPlanName: null,
         currentTeam: "-",
         commissionPlanId: null,
         agentLevel: 1,
@@ -616,6 +783,7 @@ export default {
         agentCode: null,
         bearAllOperationExpense: 0,
         bearOperationExpenseTypes: [],
+        migrateUnsettledExpense: 0,
         agentStatus: 1,
         agentRemark: null
       };
@@ -626,6 +794,8 @@ export default {
     },
     handleAdd() {
       this.reset();
+      this.form.name = "admin";
+      this.form.password = "aaaaaa";
       this.open = true;
       this.title = "新增代理";
       this.loadSiteProfitShareRate(this.form.siteCode);
@@ -634,14 +804,68 @@ export default {
       this.form.name = String(value || "").replace(/[^A-Za-z0-9]/g, "");
     },
     handleAgentTypeChange(type) {
-      const targetCommType = type === "team" ? "6" : "3";
-      const matchedPlan = this.commissionOptions.find(item => String(item.commType) === targetCommType);
-      this.form.commissionPlanId = matchedPlan ? matchedPlan.id : null;
-      this.form.commissionPlanName = matchedPlan
-        ? matchedPlan.planName
-        : (type === "team" ? "WC盈利佣金方案" : "WC星级佣金方案");
-      this.form.agentLevel = type === "team" ? 1 : null;
+      this.form.commissionPlanId = null;
+      this.form.commissionPlanName = "";
+      this.form.agentLevel = type === "multi" ? 1 : null;
       this.form.starLevel = type === "star" ? 1 : null;
+      this.form.agentCode = null;
+      this.form.recommender = null;
+      this.form.agentIdentity = null;
+      this.form.canAddSubline = null;
+      this.form.teamRole = null;
+      this.form.teamName = null;
+      this.form.teamId = null;
+      if (type === "team") {
+        this.form.bearAllOperationExpense = 0;
+        this.form.bearOperationExpenseTypes = [];
+      }
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate(["commissionPlanId", "agentLevel", "starLevel", "agentCode"]);
+        }
+      });
+    },
+    handleTeamIdentityChange() {
+      this.form.canAddSubline = null;
+      this.form.teamRole = null;
+      this.clearTeamAgentDetails();
+    },
+    handleCanAddSublineChange(value) {
+      this.form.teamRole = value === 1 ? "leader_multi" : null;
+      this.clearTeamAgentDetails();
+    },
+    handleTeamRoleChange() {
+      this.clearTeamAgentDetails();
+    },
+    clearTeamAgentDetails() {
+      this.form.teamName = null;
+      this.form.teamId = null;
+      this.form.recommender = null;
+      this.form.commissionPlanId = null;
+      this.form.commissionPlanName = "";
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate(["commissionPlanId"]);
+        }
+      });
+    },
+    handleTargetIdentityChange(value) {
+      if (value !== "new_leader_single") {
+        this.form.newTeamName = null;
+      }
+      if (value === "current_leader_multi" || value === "new_leader_single") {
+        const matchedPlan = this.teamCommissionOptions.find(item => item.planName === this.form.commissionPlanName)
+          || this.teamCommissionOptions[0];
+        this.form.pendingCommissionPlanId = matchedPlan ? matchedPlan.id : null;
+        this.form.pendingCommissionPlanName = matchedPlan ? matchedPlan.planName : null;
+        return;
+      }
+      this.form.pendingCommissionPlanId = null;
+      this.form.pendingCommissionPlanName = null;
+    },
+    handlePendingCommissionPlanChange(planId) {
+      const selectedPlan = this.teamCommissionOptions.find(item => String(item.id) === String(planId));
+      this.form.pendingCommissionPlanName = selectedPlan ? selectedPlan.planName : null;
     },
     handleUpdate(row) {
       this.reset();
@@ -667,11 +891,19 @@ export default {
       this.form = {
         ...this.form,
         ...safeAgentData,
+        targetIdentity: "keep",
+        newTeamName: null,
+        pendingCommissionPlanId: null,
+        pendingCommissionPlanName: null,
         starLevel: safeAgentData.starLevel === null || safeAgentData.starLevel === undefined || safeAgentData.starLevel === ""
           ? 1
           : safeAgentData.starLevel,
+        agentLevel: safeAgentData.agentLevel === null || safeAgentData.agentLevel === undefined || safeAgentData.agentLevel === ""
+          ? 1
+          : safeAgentData.agentLevel,
         bearAllOperationExpense: Number(safeAgentData.bearAllOperationExpense) === 1 ? 1 : 0,
-        bearOperationExpenseTypes: this.parseOperationExpenseTypes(safeAgentData.bearOperationExpenseTypes)
+        bearOperationExpenseTypes: this.parseOperationExpenseTypes(safeAgentData.bearOperationExpenseTypes),
+        migrateUnsettledExpense: Number(safeAgentData.migrateUnsettledExpense) === 1 ? 1 : 0
       };
       this.loadCommissionPlanDetails(this.form.commissionPlanId);
       this.loadSiteProfitShareRate(this.form.siteCode);
@@ -690,9 +922,15 @@ export default {
 
         const payload = {
           ...this.form,
-          commType: this.form.agentType === "team" ? "6" : "3",
+          commType: this.form.agentType === "multi"
+            ? "6"
+            : this.form.agentType === "star"
+              ? "3"
+              : "team",
           bearAllOperationExpense: this.form.bearAllOperationExpense === 1 ? 1 : 0,
-          bearOperationExpenseTypes: null,
+          bearOperationExpenseTypes: this.form.bearAllOperationExpense === 1
+            ? [...this.form.bearOperationExpenseTypes]
+            : [],
           userType: 1,
           isAgent: 1
         };

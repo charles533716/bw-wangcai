@@ -109,6 +109,13 @@
   color: #f56c6c;
 }
 
+.settlement-plan-hint {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .operation-expense-bear {
   padding: 14px 0 10px;
   margin-bottom: 20px;
@@ -147,4 +154,23 @@
 .operation-expense-types ::v-deep .el-checkbox.is-checked {
   background: #eff6ff;
   border-color: #2f7dff;
+}
+
+.parent-agent-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 52px;
+  line-height: 20px;
+}
+
+.parent-agent-option strong {
+  color: #303133;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.parent-agent-option span {
+  color: #8aa0bd;
+  font-size: 12px;
 }

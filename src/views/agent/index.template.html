@@ -46,8 +46,9 @@
         </el-form-item>
         <el-form-item label="代理类型" prop="agentType">
           <el-select v-model="queryParams.agentType" placeholder="全部类型" clearable>
-            <el-option label="团队代理（副线）" value="team" />
             <el-option label="星级代理" value="star" />
+            <el-option label="层级代理" value="multi" />
+            <el-option label="团队代理" value="team" />
           </el-select>
         </el-form-item>
         <el-form-item label="代理状态" prop="agentStatus">
@@ -121,7 +122,7 @@
         </el-table-column>
         <el-table-column label="代理类型" align="center" prop="agentType" width="150">
           <template slot-scope="scope">
-            <el-tag :type="scope.row.agentType === 'team' ? '' : 'success'" effect="plain">
+            <el-tag :type="scope.row.agentType === 'team' ? '' : scope.row.agentType === 'multi' ? 'warning' : 'success'" effect="plain">
               {{ formatAgentType(scope.row.agentType) }}
             </el-tag>
           </template>
@@ -140,7 +141,7 @@
         </el-table-column>
         <el-table-column label="层级级别" align="center" prop="agentLevel" width="110">
           <template slot-scope="scope">
-            <span>{{ scope.row.agentType === 'team' ? formatAgentLevel(scope.row.agentLevel || 1) : '-' }}</span>
+            <span>{{ scope.row.agentType === 'multi' ? formatAgentLevel(scope.row.agentLevel || 1) : '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="站点编码" align="center" prop="siteCode" width="150">
@@ -225,17 +226,6 @@
         <el-input v-model="form.password" placeholder="请输入密码" type="password" show-password />
       </el-form-item>
 
-      <el-form-item label="推荐人" prop="recommender">
-        <el-select v-model="form.recommender" placeholder="请输入或选择推荐人" clearable filterable style="width: 100%">
-          <el-option
-            v-for="item in recommenderSelectOptions"
-            :key="item"
-            :label="item"
-            :value="item"
-          />
-        </el-select>
-      </el-form-item>
-
       <el-form-item label="站点编码" prop="siteCode">
         <el-select
           v-model="form.siteCode"
@@ -257,12 +247,216 @@
 
       <el-form-item v-if="!form.id" label="代理类型" prop="agentType">
         <el-select v-model="form.agentType" placeholder="请选择代理类型" style="width: 100%" @change="handleAgentTypeChange">
-          <el-option label="团队代理（副线）" value="team" />
           <el-option label="星级代理" value="star" />
+          <el-option label="层级代理" value="multi" />
+          <el-option label="团队代理" value="team" />
         </el-select>
       </el-form-item>
 
-      <template v-if="form.id">
+      <template v-if="!form.id && form.agentType === 'team'">
+        <el-form-item label="代理身份">
+          <el-select
+            v-model="form.agentIdentity"
+            placeholder="请选择代理身份"
+            style="width: 100%"
+            @change="handleTeamIdentityChange"
+          >
+            <el-option label="官方代理" value="official" />
+            <el-option label="普通代理" value="normal" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="是否可以新增副线">
+          <el-radio-group
+            v-model="form.canAddSubline"
+            :disabled="!form.agentIdentity"
+            @change="handleCanAddSublineChange"
+          >
+            <el-radio :label="1">是</el-radio>
+            <el-radio :label="0">否</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item v-if="form.agentIdentity" label="团队角色">
+          <span v-if="form.canAddSubline === 1">团队负责人【多线】</span>
+          <el-select
+            v-else
+            v-model="form.teamRole"
+            placeholder="请选择团队角色"
+            style="width: 100%"
+            :disabled="form.canAddSubline !== 0"
+            @change="handleTeamRoleChange"
+          >
+            <el-option label="团队负责人【单线】" value="leader_single" />
+            <el-option label="副线" value="branch" />
+          </el-select>
+        </el-form-item>
+
+        <template v-if="isTeamLeaderRole">
+          <el-form-item label="团队名称">
+            <el-input v-model="form.teamName" placeholder="请输入团队名称" />
+          </el-form-item>
+
+          <el-form-item label="佣金方案" prop="commissionPlanId">
+            <el-select
+              v-model="form.commissionPlanId"
+              placeholder="请选择佣金方案"
+              clearable
+              filterable
+              style="width: 100%"
+              @change="handleCommissionPlanChange"
+            >
+              <el-option
+                v-for="plan in teamCommissionOptions"
+                :key="plan.id"
+                :label="plan.planName + '（团队代理返佣）'"
+                :value="plan.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="推荐人">
+            <el-select
+              v-model="form.recommender"
+              placeholder="按代理ID或账号搜索"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="agent in teamAgentSelectOptions"
+                :key="agent.id"
+                :label="agent.id + ' / ' + agent.name"
+                :value="agent.name"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+
+        <template v-else-if="isTeamBranchRole">
+          <el-form-item label="所属团队">
+            <el-select
+              v-model="form.teamId"
+              placeholder="按团队ID或名称搜索"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="team in teamOptions"
+                :key="team.id"
+                :label="team.id + ' / ' + team.name"
+                :value="team.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="推荐人">
+            <el-select
+              v-model="form.recommender"
+              placeholder="按代理ID或账号搜索"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="agent in teamAgentSelectOptions"
+                :key="agent.id"
+                :label="agent.id + ' / ' + agent.name"
+                :value="agent.name"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+      </template>
+
+      <template v-if="!form.id && isCommissionAgentType">
+        <el-form-item label="佣金方案" prop="commissionPlanId">
+          <el-select
+            v-model="form.commissionPlanId"
+            placeholder="请选择佣金方案"
+            style="width: 100%"
+            clearable
+            filterable
+            @change="handleCommissionPlanChange"
+          >
+            <el-option
+              v-for="plan in availableCommissionOptions"
+              :key="plan.id"
+              :label="plan.planName + '（' + plan.commTypeName + '）'"
+              :value="plan.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isStarModel && form.commissionPlanId" label="星级级别" prop="starLevel">
+          <el-select v-model="form.starLevel" placeholder="请选择星级级别" style="width: 100%">
+            <el-option
+              v-for="level in starLevelOptions"
+              :key="level"
+              :label="level + '星代理'"
+              :value="level"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isMultiModel && form.commissionPlanId" label="层级级别" prop="agentLevel">
+          <el-select v-model="form.agentLevel" placeholder="请选择层级级别" style="width: 100%">
+            <el-option
+              v-for="level in multiLevelOptions"
+              :key="level"
+              :label="level + '层代理'"
+              :value="level"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="showCommissionRate && form.commissionPlanId" label="返佣比例">
+          <span>{{ currentCommissionRateText }}</span>
+          <span v-if="isMultiModel && currentSiteProfitShareRate !== null" class="rate-limit-tip">
+            站点上限：{{ currentSiteProfitShareRateText }}，代理返佣必须低于站点返佣
+          </span>
+        </el-form-item>
+      </template>
+
+      <template v-if="form.id && (isOriginalStarModel || isOriginalMultiModel)">
+        <el-form-item label="佣金方案">
+          <el-select :value="editCommissionPlanValue" disabled style="width: 100%">
+            <el-option :label="editCommissionPlanLabel" :value="editCommissionPlanValue" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isOriginalStarModel" label="星级级别" prop="starLevel">
+          <el-select v-model="form.starLevel" placeholder="请选择星级级别" style="width: 100%">
+            <el-option
+              v-for="level in starLevelOptions"
+              :key="level"
+              :label="level + '星代理'"
+              :value="level"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="isOriginalMultiModel" label="层级级别" prop="agentLevel">
+          <el-select v-model="form.agentLevel" placeholder="请选择层级级别" style="width: 100%">
+            <el-option
+              v-for="level in multiLevelOptions"
+              :key="level"
+              :label="level + '层代理'"
+              :value="level"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="返佣比例">
+          <span>{{ editCommissionRateText }}</span>
+          <span v-if="isOriginalMultiModel" class="rate-limit-tip">
+            站点上限：{{ editSiteProfitShareRateText }}，代理返佣必须低于站点返佣
+          </span>
+        </el-form-item>
+      </template>
+
+      <template v-if="form.id && isOriginalTeamModel">
         <el-form-item label="当前团队">
           <span>{{ form.currentTeam || '-' }}</span>
         </el-form-item>
@@ -270,21 +464,116 @@
           <span>{{ form.commissionPlanName || '-' }}</span>
         </el-form-item>
         <el-form-item label="目标身份" prop="targetIdentity">
-          <el-select v-model="form.targetIdentity" style="width: 100%">
-            <el-option label="保持当前身份" value="keep" />
-            <el-option label="官方代理" value="official" />
-            <el-option label="副线代理" value="branch" />
+          <el-select v-model="form.targetIdentity" style="width: 100%" @change="handleTargetIdentityChange">
+            <el-option label="保持副线" value="keep" />
+            <el-option label="当前团队负责人【多线】" value="current_leader_multi" />
+            <el-option label="新团队负责人【单线】" value="new_leader_single" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="form.targetIdentity === 'new_leader_single'" label="新团队名称">
+          <el-input v-model="form.newTeamName" placeholder="请输入唯一团队名称" />
+        </el-form-item>
+
+        <el-form-item v-if="showPendingTeamCommissionPlan" label="下次结算佣金方案">
+          <el-select
+            v-model="form.pendingCommissionPlanId"
+            placeholder="请选择佣金方案"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="handlePendingCommissionPlanChange"
+          >
+            <el-option
+              v-for="plan in teamCommissionOptions"
+              :key="plan.id"
+              :label="plan.planName + '（团队代理返佣）'"
+              :value="plan.id"
+            />
+          </el-select>
+          <div class="settlement-plan-hint">修改后在下一次正式佣金结算前生效，团队副线同步使用同一方案。</div>
         </el-form-item>
       </template>
 
-      <el-form-item class="operation-expense-bear" prop="bearAllOperationExpense">
+      <el-form-item v-if="form.id || form.agentType !== 'team'" class="operation-expense-bear" prop="bearAllOperationExpense">
         <template slot="label">承担全部运营费</template>
         <el-radio-group v-model="form.bearAllOperationExpense" @change="handleBearAllOperationExpenseChange">
           <el-radio :label="1">是</el-radio>
           <el-radio :label="0">否</el-radio>
         </el-radio-group>
         <div class="operation-expense-hint">仅对直属会员有效</div>
+        <el-checkbox-group
+          v-if="!form.id && form.bearAllOperationExpense === 1"
+          v-model="form.bearOperationExpenseTypes"
+          class="operation-expense-types"
+        >
+          <el-checkbox
+            v-for="item in operationExpenseTypeOptions"
+            :key="item.value"
+            :label="item.value"
+            border
+          >
+            {{ item.label }}
+          </el-checkbox>
+        </el-checkbox-group>
+      </el-form-item>
+
+      <el-form-item v-if="!form.id && form.agentType === 'multi' && form.commissionPlanId" label="上级代理" prop="agentCode">
+        <el-select
+          v-model="form.agentCode"
+          placeholder="可选，留空表示顶级代理"
+          clearable
+          filterable
+          style="width: 100%"
+        >
+          <el-option
+            v-for="agent in multiLevelParentOptions"
+            :key="agent.id"
+            :label="agent.id + ' / ' + agent.name"
+            :value="agent.id"
+            style="height: 56px; line-height: 20px; padding-top: 7px; padding-bottom: 7px"
+          >
+            <div class="parent-agent-option">
+              <strong>{{ agent.id }} / {{ agent.name }}</strong>
+              <span>{{ formatAgentLevel(agent.agentLevel || 1) }} ｜ 返佣 {{ formatParentAgentRate(agent) }}</span>
+            </div>
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="form.id && (isOriginalStarModel || isOriginalMultiModel)" label="上级代理" prop="agentCode">
+        <el-select
+          v-model="form.agentCode"
+          placeholder="可选，留空表示顶级代理"
+          clearable
+          filterable
+          style="width: 100%"
+        >
+          <el-option
+            v-for="agent in multiLevelParentOptions"
+            :key="agent.id"
+            :label="agent.id + ' / ' + agent.name"
+            :value="agent.id"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="form.id && (isOriginalStarModel || isOriginalMultiModel)" label="是否迁移本期未结算费用">
+        <el-radio-group v-model="form.migrateUnsettledExpense">
+          <el-radio :label="1">是</el-radio>
+          <el-radio :label="0">否</el-radio>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item v-if="form.id && isOriginalTeamModel" label="推荐人" prop="recommender">
+        <el-select v-model="form.recommender" placeholder="按代理ID或账号搜索" clearable filterable style="width: 100%">
+          <el-option
+            v-for="agent in teamAgentSelectOptions"
+            :key="agent.id"
+            :label="agent.id + ' / ' + agent.name"
+            :value="agent.name"
+          />
+        </el-select>
       </el-form-item>
 
       <el-form-item label="代理状态" prop="agentStatus">

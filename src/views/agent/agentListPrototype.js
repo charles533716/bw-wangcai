@@ -22,7 +22,20 @@ export function normalizeAgentRows(rows = []) {
     const rowNumber = resolveRowNumber(row, index);
     const currentName = row && (row.name || row.agentName || row.userName);
     const currentRecommender = row && row.recommender;
-    const agentType = row.agentType || (rowNumber <= 2 ? "team" : "star");
+    const commType = String(row.commType || "");
+    const fallbackAgentType = rowNumber % 3 === 1 ? "team" : rowNumber % 3 === 2 ? "multi" : "star";
+    const agentType = row.agentType
+      || (commType === "team" ? "team" : commType === "6" ? "multi" : commType === "3" ? "star" : fallbackAgentType);
+    const fallbackCommissionPlanId = agentType === "team"
+      ? "TEAM-001"
+      : agentType === "multi"
+        ? "MULTI-001"
+        : "STAR-003";
+    const fallbackCommissionPlanName = agentType === "team"
+      ? "DW负盈利佣金方案"
+      : agentType === "multi"
+        ? "多层级返佣方案"
+        : "opex260808-50";
     return {
       ...row,
       name: isAlphaNumeric(currentName)
@@ -42,7 +55,8 @@ export function normalizeAgentRows(rows = []) {
       parentAgentName: row.parentAgentName || (rowNumber % 3 === 0 ? "agent001" : "-"),
       subAgentCount: Number(row.subAgentCount || (rowNumber % 3)),
       subMemberCount: Number(row.subMemberCount || (rowNumber % 2)),
-      commissionPlanName: row.commissionPlanName || (agentType === "team" ? "WC盈利佣金方案" : `WC${30 + rowNumber}`),
+      commissionPlanId: row.commissionPlanId || fallbackCommissionPlanId,
+      commissionPlanName: row.commissionPlanName || fallbackCommissionPlanName,
       pendingCommissionPlanName: row.pendingCommissionPlanName || "-",
       commissionRate: row.commissionRate !== null && row.commissionRate !== undefined ? row.commissionRate : null,
       centerBalanceCnySum: row.centerBalanceCnySum !== null && row.centerBalanceCnySum !== undefined
