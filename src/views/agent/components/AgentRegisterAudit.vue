@@ -119,11 +119,85 @@
       :limit.sync="pageSize"
       @pagination="handlePageChange"
     />
+
+    <el-dialog
+      title="审核通过"
+      :visible.sync="approveOpen"
+      width="620px"
+      append-to-body
+      :close-on-click-modal="false"
+      @closed="resetApproveForm"
+    >
+      <el-form ref="approveForm" :model="approveForm" :rules="approveRules" label-width="110px">
+        <el-form-item label="代理账号">
+          <el-input
+            v-if="approveBatch"
+            :value="approveAccountText"
+            type="textarea"
+            :autosize="{ minRows: 1, maxRows: 5 }"
+            readonly
+            class="approve-account-list"
+          />
+          <el-input v-else :value="approveAccountText" disabled />
+        </el-form-item>
+        <el-form-item v-if="!approveBatch && showSite" label="站点编码">
+          <el-input :value="approveForm.siteCode" disabled />
+        </el-form-item>
+        <el-form-item v-if="!approveBatch" label="代理类型">
+          <el-input value="团队代理" disabled />
+        </el-form-item>
+        <el-form-item label="团队角色">
+          <el-input value="团队负责人【单线】" disabled />
+        </el-form-item>
+        <el-form-item v-if="!approveBatch" label="团队名称">
+          <el-input v-model.trim="approveForm.teamName" placeholder="请输入团队名称（非必填）" />
+        </el-form-item>
+        <el-form-item label="佣金方案" prop="commissionPlanId">
+          <el-select
+            v-model="approveForm.commissionPlanId"
+            placeholder="请选择佣金方案"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="plan in teamCommissionOptions"
+              :key="plan.id"
+              :label="plan.planName + '（团队代理返佣）'"
+              :value="plan.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="!approveBatch" label="推荐人">
+          <el-select
+            v-model="approveForm.recommender"
+            placeholder="请输入或选择推荐人（非必填）"
+            clearable
+            filterable
+            allow-create
+            default-first-option
+            style="width: 100%"
+          >
+            <el-option v-for="name in recommenderOptions" :key="name" :label="name" :value="name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="代理状态" prop="agentStatus">
+          <el-radio-group v-model="approveForm.agentStatus">
+            <el-radio :label="1">正常</el-radio>
+            <el-radio :label="0">停用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="approveOpen = false">取消</el-button>
+        <el-button type="primary" @click="submitApprove">确定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { addAgent } from "@/api/agent/agent";
+import { defaultRecommenderOptions } from "@/views/agent/agentListPrototype";
 
 const DEFAULT_SITES = [
   { code: "SITE001", name: "旺财体育" },
@@ -133,6 +207,10 @@ const DEFAULT_SITES = [
   { code: "SITE005", name: "托尼体育" }
 ];
 const AUDIT_STORAGE_KEY = "wc-prototype:agent-register-audit:v1";
+const TEAM_COMMISSION_OPTIONS = [
+  { id: "TEAM-001", planName: "DW负盈利佣金方案" },
+  { id: "TEAM-002", planName: "DW666" }
+];
 
 function buildRows() {
   const accountPrefixes = ["wcagent", "staragent", "fortune", "dwagent", "tony", "sports", "vipagent", "league", "gold", "promo"];
@@ -152,6 +230,7 @@ function buildRows() {
       siteName: site.name,
       agentAccount: account,
       recommender: recommenders[index % recommenders.length],
+      teamName: index % 3 === 0 ? "" : `${site.name}推广团队${index + 1}`,
       source: index % 2 === 0 ? "WEB" : "H5",
       registerTime: `2026-08-${String((index % 9) + 1).padStart(2, "0")} ${String(9 + (index % 8)).padStart(2, "0")}:30:00`,
       status,
@@ -169,7 +248,10 @@ function loadRows() {
       const recommenders = ["laoli", "laoliu", "admin01", "kai01", "Bill02", "tom88"];
       return cached.map((row, index) => ({
         ...row,
-        recommender: row.recommender || recommenders[index % recommenders.length]
+        recommender: row.recommender || recommenders[index % recommenders.length],
+        teamName: Object.prototype.hasOwnProperty.call(row, "teamName")
+          ? row.teamName
+          : (index % 3 === 0 ? "" : `推广团队${index + 1}`)
       }));
     }
   } catch (error) {
@@ -200,7 +282,17 @@ export default {
       pageNum: 1,
       pageSize: 20,
       selectedRows: [],
-      rows: loadRows()
+      rows: loadRows(),
+      approveOpen: false,
+      approveBatch: false,
+      approveRows: [],
+      teamCommissionOptions: TEAM_COMMISSION_OPTIONS,
+      recommenderOptions: defaultRecommenderOptions,
+      approveForm: this.defaultApproveForm(),
+      approveRules: {
+        commissionPlanId: [{ required: true, message: "请选择佣金方案", trigger: "change" }],
+        agentStatus: [{ required: true, message: "请选择代理状态", trigger: "change" }]
+      }
     };
   },
   computed: {
@@ -250,9 +342,21 @@ export default {
     },
     selectedPendingRows() {
       return this.selectedRows.filter(row => row.status === "pending");
+    },
+    approveAccountText() {
+      return this.approveRows.map(row => row.agentAccount).join("，");
     }
   },
   methods: {
+    defaultApproveForm() {
+      return {
+        siteCode: "",
+        teamName: "",
+        recommender: "",
+        commissionPlanId: "",
+        agentStatus: 1
+      };
+    },
     defaultQuery() {
       return {
         siteCode: "",
@@ -308,6 +412,10 @@ export default {
       this.selectedRows = selection.filter(row => this.isAuditRowSelectable(row));
     },
     handleReview(row, status) {
+      if (status === "approved") {
+        this.openApproveDialog([row], false);
+        return;
+      }
       const actionLabel = this.reviewActionLabel(status);
       this.$confirm(`确认将代理账号“${row.agentAccount}”${actionLabel}吗？`, "提示", {
         confirmButtonText: "确定",
@@ -317,7 +425,41 @@ export default {
         return this.applyReview(row, status);
       }).catch(() => {});
     },
-    applyReview(row, status, silent = false) {
+    openApproveDialog(rows, batch) {
+      this.approveRows = rows.slice();
+      this.approveBatch = batch;
+      const row = rows[0] || {};
+      this.approveForm = {
+        siteCode: row.siteCode || "",
+        teamName: batch ? "" : (row.teamName || ""),
+        recommender: batch ? "" : (row.recommender || ""),
+        commissionPlanId: "",
+        agentStatus: 1
+      };
+      this.approveOpen = true;
+      this.$nextTick(() => {
+        if (this.$refs.approveForm) this.$refs.approveForm.clearValidate();
+      });
+    },
+    resetApproveForm() {
+      this.approveRows = [];
+      this.approveBatch = false;
+      this.approveForm = this.defaultApproveForm();
+    },
+    submitApprove() {
+      this.$refs.approveForm.validate(valid => {
+        if (!valid) return;
+        const rows = this.approveRows.slice();
+        const config = { ...this.approveForm, batch: this.approveBatch };
+        Promise.all(rows.map(row => this.applyReview(row, "approved", true, config))).then(() => {
+          this.$message.success(this.approveBatch ? `${rows.length} 条申请审核通过` : "审核通过");
+          this.approveOpen = false;
+          this.selectedRows = [];
+          if (this.$refs.auditTable) this.$refs.auditTable.clearSelection();
+        });
+      });
+    },
+    applyReview(row, status, silent = false, approveConfig = null) {
       const target = this.rows.find(item => item.id === row.id);
       if (!target || target.status !== "pending") {
         return Promise.resolve();
@@ -325,8 +467,12 @@ export default {
       target.status = status;
       target.reviewer = "admin";
       target.reviewTime = this.nowText();
+      if (status === "approved" && approveConfig && !approveConfig.batch) {
+        target.teamName = approveConfig.teamName || "";
+        target.recommender = approveConfig.recommender || "";
+      }
       const syncRequest = status === "approved"
-        ? this.syncApprovedAgent({ ...target, siteCode: row.siteCode, siteName: row.siteName })
+        ? this.syncApprovedAgent({ ...target, siteCode: row.siteCode, siteName: row.siteName }, approveConfig)
         : Promise.resolve();
       return syncRequest.then(() => {
         this.persistRows();
@@ -340,7 +486,8 @@ export default {
         window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(this.rows));
       }
     },
-    syncApprovedAgent(row) {
+    syncApprovedAgent(row, approveConfig = {}) {
+      const selectedPlan = TEAM_COMMISSION_OPTIONS.find(item => item.id === approveConfig.commissionPlanId);
       return addAgent({
         name: row.agentAccount,
         recommender: row.recommender,
@@ -348,15 +495,18 @@ export default {
         siteName: row.siteName,
         regTime: row.registerTime,
         createTime: row.registerTime,
-        agentType: "star",
-        commType: "3",
-        agentIdentity: "-",
-        starLevel: 1,
+        agentType: "team",
+        commType: "team",
+        agentIdentity: "official",
+        teamRole: "leader_single",
+        teamName: row.teamName || "",
+        starLevel: null,
         agentLevel: null,
-        agentStatus: 1,
-        status: "1",
+        agentStatus: approveConfig.agentStatus,
+        status: String(approveConfig.agentStatus),
         googleVerify: "unbound",
-        commissionPlanName: "WC星级佣金方案",
+        commissionPlanId: approveConfig.commissionPlanId,
+        commissionPlanName: selectedPlan ? selectedPlan.planName : "",
         pendingCommissionPlanName: "-",
         subAgentCount: 0,
         subMemberCount: 0,
@@ -369,6 +519,10 @@ export default {
     handleBatchReview(status) {
       const rows = this.selectedPendingRows;
       if (!rows.length) {
+        return;
+      }
+      if (status === "approved") {
+        this.openApproveDialog(rows, true);
         return;
       }
       const actionLabel = this.reviewActionLabel(status);
@@ -410,5 +564,14 @@ export default {
 
 .audit-done {
   color: #909399;
+}
+
+.approve-account-list ::v-deep .el-textarea__inner {
+  max-height: 112px;
+  overflow-y: auto;
+  color: #606266;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  background: #f5f7fa;
 }
 </style>
