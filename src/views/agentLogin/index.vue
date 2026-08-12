@@ -130,6 +130,9 @@
             </div>
           </el-form-item>
           <el-form-item>
+            <el-input v-model.trim="registerForm.teamName" placeholder="团队名称（非必填）" />
+          </el-form-item>
+          <el-form-item>
             <el-input v-model.trim="registerForm.inviteCode" placeholder="邀请码（非必填）" />
           </el-form-item>
           <el-button class="agent-submit" type="primary" @click="handleRegister">注册</el-button>
@@ -213,6 +216,7 @@ export default {
         password: '',
         confirmPassword: '',
         captcha: '',
+        teamName: '',
         inviteCode: ''
       },
       loginRules: {
@@ -318,12 +322,13 @@ export default {
         accounts.push({
           username: this.registerForm.username,
           password: this.registerForm.password,
+          teamName: this.registerForm.teamName,
           inviteCode: this.registerForm.inviteCode
         })
         writeAccounts(accounts)
         const username = this.registerForm.username
         this.$message.success('注册成功')
-        this.registerForm = { username: '', password: '', confirmPassword: '', captcha: '', inviteCode: '' }
+        this.registerForm = { username: '', password: '', confirmPassword: '', captcha: '', teamName: '', inviteCode: '' }
         this.loginForm.username = username
         this.loginForm.password = ''
         this.refreshCaptcha('login')
