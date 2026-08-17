@@ -133,7 +133,15 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="推荐人" align="center" prop="recommender" width="120" />
+        <el-table-column label="招商人员" align="center" prop="recruiter" width="120">
+          <template slot-scope="scope">{{ scope.row.recruiter || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="发展人" align="center" prop="developer" width="120">
+          <template slot-scope="scope">{{ scope.row.developer || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="推荐人" align="center" prop="recommender" width="120">
+          <template slot-scope="scope">{{ scope.row.recommender || '-' }}</template>
+        </el-table-column>
         <el-table-column label="星级级别" align="center" prop="starLevel" width="110">
           <template slot-scope="scope">
             <span>{{ scope.row.agentType === 'star' ? formatStarLevel(scope.row.starLevel || 1) : '-' }}</span>
@@ -315,22 +323,6 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="推荐人">
-            <el-select
-              v-model="form.recommender"
-              placeholder="按代理ID或账号搜索"
-              clearable
-              filterable
-              style="width: 100%"
-            >
-              <el-option
-                v-for="agent in teamAgentSelectOptions"
-                :key="agent.id"
-                :label="agent.id + ' / ' + agent.name"
-                :value="agent.name"
-              />
-            </el-select>
-          </el-form-item>
         </template>
 
         <template v-else-if="isTeamBranchRole">
@@ -351,22 +343,6 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="推荐人">
-            <el-select
-              v-model="form.recommender"
-              placeholder="按代理ID或账号搜索"
-              clearable
-              filterable
-              style="width: 100%"
-            >
-              <el-option
-                v-for="agent in teamAgentSelectOptions"
-                :key="agent.id"
-                :label="agent.id + ' / ' + agent.name"
-                :value="agent.name"
-              />
-            </el-select>
-          </el-form-item>
         </template>
       </template>
 
@@ -565,7 +541,17 @@
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item v-if="form.id && isOriginalTeamModel" label="推荐人" prop="recommender">
+      <el-form-item label="招商人员">
+        <el-select v-model="form.recruiter" placeholder="请选择当前站点招商人员" clearable filterable style="width: 100%">
+          <el-option v-for="name in recruiterSelectOptions" :key="name" :label="name" :value="name" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="发展人">
+        <el-input v-model.trim="form.developer" placeholder="请输入发展人姓名（非必填）" />
+      </el-form-item>
+
+      <el-form-item label="推荐人" prop="recommender">
         <el-select v-model="form.recommender" placeholder="按代理ID或账号搜索" clearable filterable style="width: 100%">
           <el-option
             v-for="agent in teamAgentSelectOptions"

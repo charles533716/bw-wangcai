@@ -155,6 +155,7 @@ import { DEFAULT_AGENT_CODE, DEFAULT_SITE_CODE, resolvePrototypePath, setBackend
 
 const ACCOUNT_KEY = 'wc-agent-login:accounts'
 const REMEMBER_KEY = 'wc-agent-login:remember'
+const AUDIT_STORAGE_KEY = 'wc-prototype:agent-register-audit:v1'
 const DEMO_ACCOUNT = { username: 'agent', password: '123456' }
 
 function readAccounts() {
@@ -167,6 +168,29 @@ function readAccounts() {
 
 function writeAccounts(accounts) {
   window.localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts))
+}
+
+function appendAuditApplication(account) {
+  let rows = []
+  try {
+    rows = JSON.parse(window.localStorage.getItem(AUDIT_STORAGE_KEY)) || []
+  } catch (e) {}
+  rows.unshift({
+    id: Date.now(),
+    siteCode: DEFAULT_SITE_CODE,
+    siteName: '旺财体育',
+    agentAccount: account.username,
+    recruiter: account.recruiter || '',
+    developer: account.developer || '',
+    recommender: account.recommender || '',
+    teamName: account.teamName || '',
+    source: 'WEB',
+    registerTime: new Date().toLocaleString('sv-SE').replace('T', ' '),
+    status: 'pending',
+    reviewer: '',
+    reviewTime: ''
+  })
+  window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(rows))
 }
 
 function createCaptcha() {
@@ -319,16 +343,25 @@ export default {
           this.refreshCaptcha('register')
           return
         }
-        accounts.push({
+        const registeredAccount = {
           username: this.registerForm.username,
           password: this.registerForm.password,
           teamName: this.registerForm.teamName,
           inviteCode: this.registerForm.inviteCode
-        })
+        }
+        accounts.push(registeredAccount)
         writeAccounts(accounts)
+        appendAuditApplication(registeredAccount)
         const username = this.registerForm.username
         this.$message.success('注册成功')
-        this.registerForm = { username: '', password: '', confirmPassword: '', captcha: '', teamName: '', inviteCode: '' }
+        this.registerForm = {
+          username: '',
+          password: '',
+          confirmPassword: '',
+          captcha: '',
+          teamName: '',
+          inviteCode: ''
+        }
         this.loginForm.username = username
         this.loginForm.password = ''
         this.refreshCaptcha('login')

@@ -6,6 +6,7 @@ import AgentRegisterAudit from "./components/AgentRegisterAudit";
 import {
   defaultRecommenderOptions,
   filterAndPaginateAgentRows,
+  getSiteRecruiterOptions,
   normalizeAgentRows
 } from "./agentListPrototype";
 
@@ -145,6 +146,9 @@ export default {
         if (item.name) options.add(item.name);
       });
       return Array.from(options);
+    },
+    recruiterSelectOptions() {
+      return getSiteRecruiterOptions(this.form.siteCode);
     },
     selectedCommissionType() {
       return this.resolveCommissionTypeByPlanId(this.form.commissionPlanId);
@@ -374,6 +378,9 @@ export default {
       return this.siteNameMap[siteCode] || "";
     },
     handleSiteChange(siteCode) {
+      if (!getSiteRecruiterOptions(siteCode).includes(this.form.recruiter)) {
+        this.form.recruiter = null;
+      }
       this.loadSiteProfitShareRate(siteCode).then(() => {
         this.ensureAvailableMultiLevelSelected();
       });
@@ -763,6 +770,8 @@ export default {
       this.form = {
         id: null,
         name: null,
+        recruiter: null,
+        developer: null,
         recommender: null,
         password: null,
         siteCode: null,
@@ -809,7 +818,6 @@ export default {
       this.form.agentLevel = type === "multi" ? 1 : null;
       this.form.starLevel = type === "star" ? 1 : null;
       this.form.agentCode = null;
-      this.form.recommender = null;
       this.form.agentIdentity = null;
       this.form.canAddSubline = null;
       this.form.teamRole = null;
@@ -840,7 +848,6 @@ export default {
     clearTeamAgentDetails() {
       this.form.teamName = null;
       this.form.teamId = null;
-      this.form.recommender = null;
       this.form.commissionPlanId = null;
       this.form.commissionPlanName = "";
       this.$nextTick(() => {

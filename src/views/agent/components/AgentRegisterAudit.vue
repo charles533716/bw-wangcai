@@ -87,7 +87,15 @@
         </template>
       </el-table-column>
       <el-table-column label="代理账号" prop="agentAccount" min-width="140" align="center" />
-      <el-table-column label="推荐人" prop="recommender" min-width="120" align="center" />
+      <el-table-column label="招商人员" prop="recruiter" min-width="120" align="center">
+        <template slot-scope="scope">{{ scope.row.recruiter || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="发展人" prop="developer" min-width="120" align="center">
+        <template slot-scope="scope">{{ scope.row.developer || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="推荐人" prop="recommender" min-width="120" align="center">
+        <template slot-scope="scope">{{ scope.row.recommender || '-' }}</template>
+      </el-table-column>
       <el-table-column label="注册来源" prop="source" width="110" align="center" />
       <el-table-column label="注册时间" prop="registerTime" min-width="170" align="center" />
       <el-table-column label="审核状态" prop="status" width="120" align="center">
@@ -152,6 +160,21 @@
         <el-form-item v-if="!approveBatch" label="团队名称">
           <el-input v-model.trim="approveForm.teamName" placeholder="请输入团队名称（非必填）" />
         </el-form-item>
+        <el-form-item v-if="!approveBatch" label="招商人员">
+          <el-select
+            v-model="approveForm.recruiter"
+            :placeholder="approveMixedSites ? '跨站点批量审核请留空' : '请选择所属站点招商人员（非必填）'"
+            :disabled="approveMixedSites"
+            clearable
+            filterable
+            style="width: 100%"
+          >
+            <el-option v-for="name in approveRecruiterOptions" :key="name" :label="name" :value="name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="!approveBatch" label="发展人">
+          <el-input v-model.trim="approveForm.developer" placeholder="请输入发展人姓名（非必填）" />
+        </el-form-item>
         <el-form-item label="佣金方案" prop="commissionPlanId">
           <el-select
             v-model="approveForm.commissionPlanId"
@@ -170,14 +193,17 @@
         <el-form-item v-if="!approveBatch" label="推荐人">
           <el-select
             v-model="approveForm.recommender"
-            placeholder="请输入或选择推荐人（非必填）"
+            placeholder="按代理ID或账号搜索（非必填）"
             clearable
             filterable
-            allow-create
-            default-first-option
             style="width: 100%"
           >
-            <el-option v-for="name in recommenderOptions" :key="name" :label="name" :value="name" />
+            <el-option
+              v-for="agent in recommenderAgentOptions"
+              :key="agent.id"
+              :label="agent.id + ' / ' + agent.name"
+              :value="agent.name"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="代理状态" prop="agentStatus">
@@ -197,7 +223,7 @@
 
 <script>
 import { addAgent } from "@/api/agent/agent";
-import { defaultRecommenderOptions } from "@/views/agent/agentListPrototype";
+import { defaultRecommenderOptions, getSiteRecruiterOptions } from "@/views/agent/agentListPrototype";
 
 const DEFAULT_SITES = [
   { code: "SITE001", name: "旺财体育" },
@@ -230,6 +256,8 @@ function buildRows() {
       siteName: site.name,
       agentAccount: account,
       recommender: recommenders[index % recommenders.length],
+      recruiter: index % 4 === 0 ? "" : getSiteRecruiterOptions(site.code)[index % 2],
+      developer: index % 5 === 0 ? "" : `发展人${index + 1}`,
       teamName: index % 3 === 0 ? "" : `${site.name}推广团队${index + 1}`,
       source: index % 2 === 0 ? "WEB" : "H5",
       registerTime: `2026-08-${String((index % 9) + 1).padStart(2, "0")} ${String(9 + (index % 8)).padStart(2, "0")}:30:00`,
@@ -244,11 +272,19 @@ function loadRows() {
   if (typeof window === "undefined") return buildRows();
   try {
     const cached = JSON.parse(window.localStorage.getItem(AUDIT_STORAGE_KEY) || "null");
-    if (Array.isArray(cached) && cached.length === 20) {
+    if (Array.isArray(cached) && cached.length) {
       const recommenders = ["laoli", "laoliu", "admin01", "kai01", "Bill02", "tom88"];
-      return cached.map((row, index) => ({
+      const sourceRows = cached.length >= 20
+        ? cached
+        : [
+          ...cached,
+          ...buildRows().filter(seed => !cached.some(row => row.agentAccount === seed.agentAccount))
+        ];
+      return sourceRows.map((row, index) => ({
         ...row,
-        recommender: row.recommender || recommenders[index % recommenders.length],
+        recommender: Object.prototype.hasOwnProperty.call(row, "recommender") ? row.recommender : recommenders[index % recommenders.length],
+        recruiter: Object.prototype.hasOwnProperty.call(row, "recruiter") ? row.recruiter : "",
+        developer: Object.prototype.hasOwnProperty.call(row, "developer") ? row.developer : "",
         teamName: Object.prototype.hasOwnProperty.call(row, "teamName")
           ? row.teamName
           : (index % 3 === 0 ? "" : `推广团队${index + 1}`)
@@ -345,6 +381,16 @@ export default {
     },
     approveAccountText() {
       return this.approveRows.map(row => row.agentAccount).join("，");
+    },
+    approveMixedSites() {
+      return new Set(this.approveRows.map(row => row.siteCode).filter(Boolean)).size > 1;
+    },
+    approveRecruiterOptions() {
+      const firstRow = this.approveRows[0] || {};
+      return this.approveMixedSites ? [] : getSiteRecruiterOptions(firstRow.siteCode || this.currentSiteCode);
+    },
+    recommenderAgentOptions() {
+      return this.recommenderOptions.map((name, index) => ({ id: `170${index + 1}`, name }));
     }
   },
   methods: {
@@ -352,6 +398,8 @@ export default {
       return {
         siteCode: "",
         teamName: "",
+        recruiter: "",
+        developer: "",
         recommender: "",
         commissionPlanId: "",
         agentStatus: 1
@@ -432,6 +480,8 @@ export default {
       this.approveForm = {
         siteCode: row.siteCode || "",
         teamName: batch ? "" : (row.teamName || ""),
+        recruiter: batch ? "" : (row.recruiter || ""),
+        developer: batch ? "" : (row.developer || ""),
         recommender: batch ? "" : (row.recommender || ""),
         commissionPlanId: "",
         agentStatus: 1
@@ -467,9 +517,17 @@ export default {
       target.status = status;
       target.reviewer = "admin";
       target.reviewTime = this.nowText();
-      if (status === "approved" && approveConfig && !approveConfig.batch) {
-        target.teamName = approveConfig.teamName || "";
-        target.recommender = approveConfig.recommender || "";
+      if (status === "approved" && approveConfig) {
+        if (!approveConfig.batch) {
+          target.teamName = approveConfig.teamName || "";
+          target.recruiter = approveConfig.recruiter || "";
+          target.developer = approveConfig.developer || "";
+          target.recommender = approveConfig.recommender || "";
+        } else {
+          if (approveConfig.recruiter) target.recruiter = approveConfig.recruiter;
+          if (approveConfig.developer) target.developer = approveConfig.developer;
+          if (approveConfig.recommender) target.recommender = approveConfig.recommender;
+        }
       }
       const syncRequest = status === "approved"
         ? this.syncApprovedAgent({ ...target, siteCode: row.siteCode, siteName: row.siteName }, approveConfig)
@@ -490,6 +548,8 @@ export default {
       const selectedPlan = TEAM_COMMISSION_OPTIONS.find(item => item.id === approveConfig.commissionPlanId);
       return addAgent({
         name: row.agentAccount,
+        recruiter: row.recruiter,
+        developer: row.developer,
         recommender: row.recommender,
         siteCode: row.siteCode,
         siteName: row.siteName,

@@ -6,6 +6,7 @@ import AgentRegisterAudit from '@/views/agent/components/AgentRegisterAudit'
 import {
   defaultRecommenderOptions,
   filterAndPaginateAgentRows,
+  getSiteRecruiterOptions,
   normalizeAgentRows
 } from '@/views/agent/agentListPrototype'
 
@@ -96,6 +97,14 @@ export default {
         if (item.name) options.add(item.name);
       });
       return Array.from(options);
+    },
+    recruiterSelectOptions() {
+      return getSiteRecruiterOptions(this.currentSiteCode);
+    },
+    recommenderAgentOptions() {
+      return this.parentAgentOptions.length
+        ? this.parentAgentOptions
+        : this.recommenderSelectOptions.map((name, index) => ({ id: `170${index + 1}`, name }));
     },
     userName() {
       return this.$store.state.user.userName;
@@ -622,6 +631,8 @@ export default {
       this.form = {
         id: null,
         name: "",
+        recruiter: null,
+        developer: "",
         recommender: null,
         password: "",
         commissionPlanId: null,

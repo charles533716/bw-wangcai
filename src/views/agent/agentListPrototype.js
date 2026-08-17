@@ -7,6 +7,23 @@ export const defaultRecommenderOptions = [
   "tom88"
 ];
 
+export const siteRecruiterOptions = {
+  2222: ["laoli", "zhangsan"],
+  6666: ["xinghe01", "xinghe02"],
+  333333: ["caishen01", "caishen02"],
+  8888: ["dwstaff01", "dwstaff02"],
+  TONY: ["tony01", "tony02"],
+  SITE001: ["laoli", "zhangsan"],
+  SITE002: ["xinghe01", "xinghe02"],
+  SITE003: ["caishen01", "caishen02"],
+  SITE004: ["dwstaff01", "dwstaff02"],
+  SITE005: ["tony01", "tony02"]
+};
+
+export function getSiteRecruiterOptions(siteCode) {
+  return siteRecruiterOptions[String(siteCode || "")] || [];
+}
+
 const isAlphaNumeric = value => /^[A-Za-z0-9]+$/.test(String(value || ""));
 
 const resolveRowNumber = (row, index) => {
@@ -22,6 +39,8 @@ export function normalizeAgentRows(rows = []) {
     const rowNumber = resolveRowNumber(row, index);
     const currentName = row && (row.name || row.agentName || row.userName);
     const currentRecommender = row && row.recommender;
+    const hasRecommender = row && Object.prototype.hasOwnProperty.call(row, "recommender");
+    const recruiterOptions = getSiteRecruiterOptions(row && row.siteCode);
     const commType = String(row.commType || "");
     const fallbackAgentType = rowNumber % 3 === 1 ? "team" : rowNumber % 3 === 2 ? "multi" : "star";
     const agentType = row.agentType
@@ -41,9 +60,15 @@ export function normalizeAgentRows(rows = []) {
       name: isAlphaNumeric(currentName)
         ? String(currentName)
         : `agent${String(rowNumber).padStart(3, "0")}`,
-      recommender: isAlphaNumeric(currentRecommender)
-        ? String(currentRecommender)
+      recommender: hasRecommender
+        ? (isAlphaNumeric(currentRecommender) ? String(currentRecommender) : "")
         : defaultRecommenderOptions[(rowNumber - 1) % defaultRecommenderOptions.length],
+      recruiter: Object.prototype.hasOwnProperty.call(row, "recruiter")
+        ? (row.recruiter || "")
+        : (rowNumber % 4 === 0 ? "" : recruiterOptions[(rowNumber - 1) % Math.max(recruiterOptions.length, 1)] || ""),
+      developer: Object.prototype.hasOwnProperty.call(row, "developer")
+        ? (row.developer || "")
+        : (rowNumber % 5 === 0 ? "" : `发展人${String(rowNumber).padStart(2, "0")}`),
       agentStatus: row.agentStatus !== null && row.agentStatus !== undefined
         ? Number(row.agentStatus)
         : Number(row.status || 0),
